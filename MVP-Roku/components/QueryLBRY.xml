@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="QueryLBRY" extends="Task">
+    <interface>
+            <field id="query" type="roAssociativeArray"/>
+            <field id="resp" type="roAssociativeArray"/>
+            <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_HTTP.brs" />
+    <script type="text/brightscript" uri="pkg:/components/QueryLBRY.brs" />
+</component>

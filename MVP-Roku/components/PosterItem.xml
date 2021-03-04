@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<component name="PosterItem" extends="Group">
+    <interface>
+        <field id="width"       type="float" onChange="updateLayout"/>
+        <field id="height"      type="float" onChange="updateLayout"/>
+        <field id="itemContent" type="node" onChange="itemContentChanged"/>
+    </interface>
+
+    <script type="text/brightscript">
+        <![CDATA[
+            Sub Init()
+                m.Poster = m.top.findNode("poster")
+                m.Title = m.top.findNode("title")
+                m.Background = m.top.findNode("ibackground")
+                m.Creator = m.top.findNode("creator")
+            End Sub
+            Sub itemContentChanged()
+                m.Poster.loadWidth = m.top.itemContent.thumbnailDimensions[0]
+                m.Poster.loadHeight = m.top.itemContent.thumbnailDimensions[1]
+                m.Poster.uri = m.top.itemContent.HDPOSTERURL
+                m.Title.text = m.top.itemContent.TITLE
+                m.Creator.text = m.top.itemContent.CREATOR
+                updateLayout()
+            End Sub
+            Sub updateLayout()
+                If m.top.height > 0 And m.top.width > 0 Then
+                    m.Poster.width  = m.top.width-20
+                    m.Poster.height = 197
+                    m.Background.width = m.top.width
+                    m.Background.height = m.top.height
+                    m.Title.width = m.top.width-20
+                    m.Creator.width = m.top.width-20
+                End If
+            End Sub]]>
+    </script>
+    <children>
+        <!--[351,197] is our item size, poster is hardcoded to 197 but true item size will be background.-->
+        <Rectangle
+        id="ibackground"
+        color="0x1f1f1f" />
+        <Poster id="poster" loadDisplayMode="limitSize" loadWidth="320" loadheight="180" translation="[10,10]">
+        </Poster>
+        <Label id="title" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,205]" text="title">
+        <Font role="font" uri = "pkg:/images/rofont.otf" size="24"/>
+        </Label>
+        <Label id="creator" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,245]" text="publisher">
+        <Font role="font" uri = "pkg:/images/rofont.otf" size="24"/>
+        </Label>
+    </children>
+</component>
