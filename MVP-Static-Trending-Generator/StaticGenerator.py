@@ -3,19 +3,30 @@ import json
 import time
 import math
 import re
+import os.path
+import sys
+import urllib
 
 #Static Trending Generator
 #William Foster/S9260/CaffinatedCoder 2021
 
-uid = 1612640807859 #My UID, hardcoded.
 numitems = 80
 numpages = math.ceil((numitems) / 30)
 
 def writeconfiguration(filename, configuration):
-    file = open(filename, 'r+')
+    file = open(filename, 'w')
     file.seek(0)
     file.write(json.dumps(configuration))
     file.truncate()
+
+def readconfiguration(filename):
+    try:
+        file = open(filename, "r+")
+        configuration = json.loads(file.read())
+        return(configuration)
+    except:
+        writeconfiguration(filename, [])
+        return([])
 
 def find_subvar(input, varname):
     start = content.find(varname+' =') #https://stackoverflow.com/a/18368449
@@ -31,6 +42,34 @@ def find_subvar(input, varname):
         else:
             subvars.append(var)
     return(subvars)
+
+def create_account():
+    rawquery = requests.get("https://api.lbry.com/user/new")
+    rawjson = rawquery.text
+    rawaccount = json.loads(rawjson)
+    formattedaccount = [rawaccount["data"]["id"], rawaccount["data"]["auth_token"]]
+    return(formattedaccount)
+
+def check_account(authtoken):
+    rawaccount = json.loads(requests.get("https://api.lbry.com/user/me?auth_token="+authtoken).text)
+    try:
+        rawaccount.success
+        return True
+    except:
+        return False
+
+account = readconfiguration("./account.json")
+if account == []:
+    print("no account, creating")
+    account = create_account()
+    print(account)
+    writeconfiguration("./account.json", account)
+else:
+    if not check_account(account[1]):
+        account = create_account()
+        writeconfiguration("./account.json", account)
+uid = account[0]
+
 
 for s in requests.get("https://odysee.com/").text.split('\n'):
     if "script" in s and "async" in s and "public" in s: #todo: add domain check to make sure only odysee.com is in this string
@@ -76,8 +115,8 @@ for key in masterfeed:
     master = masterfeed[key]
     entries = []
     for item in master:
-        invaliditem = re.search('[^\x1F-\x7F]+', item['normalized_name'])
-        if numkeyentries < numitems and invaliditem != True:
+        validitem = type(re.search('[^\x1F-\x7F]+', item['normalized_name'])).__name__ == "NoneType"
+        if numkeyentries < numitems and validitem:
             validvideo = True
             try: item['value']['source']['hash']
             except: validvideo = False
