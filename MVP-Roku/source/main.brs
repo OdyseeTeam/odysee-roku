@@ -16,7 +16,6 @@ sub Main(args)
     m.global.deeplink = deeplink
 
     screen.show()
-    'SafeZone(scene)
     while(true)  'Listens to see if screen is closed
         msg = wait(0, m.port)
         msgType = type(msg)

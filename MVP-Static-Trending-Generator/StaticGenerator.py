@@ -68,7 +68,7 @@ for key in cids:
     for pagenum in range(numpages):
         print("current page number is", pagenum+1, "for key", key)
         queries[key] = str({"jsonrpc":"2.0","method":"claim_search","params":{"page": pagenum+1,"page_size":numitems,"claim_type":["stream","channel"],"no_totals":True,"any_tags":[],"not_tags":["porn","porno","nsfw","mature","xxx","sex","creampie","blowjob","handjob","vagina","boobs","big boobs","big dick","pussy","cumshot","anal","hard fucking","ass","fuck","hentai"],"channel_ids":cids[key],"not_channel_ids":[],"order_by":["trending_group","trending_mixed"],"stream_types":["video"],"release_time":qexp,"fee_amount":"<=0","limit_claims_per_channel":1,"include_purchase_receipt":True},"id":uid}).replace("True", "true").replace("'",'"')
-        subfeed = json.loads(requests.post("http://192.168.1.212:5279", data = queries[key]).text)
+        subfeed = json.loads(requests.post("https://api.lbry.tv/api/v1/proxy", data = queries[key]).text)
         masterfeed[key].extend(subfeed['result']['items'])
         #print(masterfeed[key])
 for key in masterfeed:
@@ -76,8 +76,8 @@ for key in masterfeed:
     master = masterfeed[key]
     entries = []
     for item in master:
-        m = re.search('(?<=abc)def', 'abcdef')
-        if numkeyentries < numitems:
+        invaliditem = re.search('[^\x1F-\x7F]+', item['normalized_name'])
+        if numkeyentries < numitems and invaliditem != True:
             validvideo = True
             try: item['value']['source']['hash']
             except: validvideo = False

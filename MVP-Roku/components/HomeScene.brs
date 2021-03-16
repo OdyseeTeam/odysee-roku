@@ -1,17 +1,23 @@
 Sub init()
 
-    'UI Logic Variables
+    'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
     m.authenticated = False 'Do we have a valid ID and authkey for search?
     m.searchloading = False 'Has a search been made, and is it still loading?
     m.canright = False 'Can we move from the video grid (VGRID) to the selector bar (SELECTOR)?
-    m.isleft = True 'Are we on the leftmost item of the video grid and ready to transition to the selector?
-    m.isup = False 'Are we on the highest item of the video grid and ready to transition to the search button?
+    m.canSelector = True 'Are we ready to transition to the selector? (We are either in the video grid on the leftmost item or in search)
     m.issearch = False 'Are we in search mode? (Search mode prevents transition to the selector)
     m.searchFailed = False 'Did the previous search fail? (Indicate to the user that the search failed)
     m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
     m.modelwarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
-    m.useLegacyUI = True 'Use Legacy UI (Temporary Variable)
+
+    m.lastSelectorItem = 0 'Used to return user to either the last selector or video grid item.
+    m.lastVGridItem = [0,0]
+
+    'Legacy UI Variables (to be removed along w/legacy)
+    m.useLegacyUI = False 'Use Legacy UI (Temporary Variable)
+    m.isup = False 'Are we on the highest item of the video grid and ready to transition to the search button?
+
 
     'Warning UI Items
     m.warningtext = m.top.findNode("warningtext")
@@ -115,8 +121,8 @@ End Sub
 
 function getselectorData() as object
   data = CreateObject("roSGNode", "ContentNode")
-  names = ["Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe", "Wild West"]
-  for i = 1 to 10
+  names = ["Search", "Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe", "Wild West"]
+  for i = 1 to 11
       dataItem = data.CreateChild("catselectordata")
       '? "creating item"
       dataItem.posterUrl = "pkg:/images/odysee/"+i.toStr()+".png"
@@ -378,10 +384,10 @@ sub vgridFocusChanged(msg)
     '? "not up, can't transition to search"
   end if
   if m.vgrid.rowItemFocused[1] = 0
-    m.isleft=True
+    m.canSelector=True
     '? "is left, can transition"
   else
-    m.isleft=False
+    m.canSelector=False
     '? "not left, can't transition"
   end if
   if isValid(m.vgrid.rowItemFocused)
@@ -404,56 +410,68 @@ sub SelectorFocusChanged(msg)
       m.canright = True
       m.vgrid.visible = true
       m.loadingtext.visible = false
-      '0 = Primary
-      '1 = Cheese
-      '2 = Big Hits
-      '3 = Gaming
-      '4 = Lab/Science
-      '5 = Tech/Technology
-      '6 = News&Politics
-      '7 = Finance 2.0
-      '8 = The Universe
-      '9 = Wild West
+      '0 = Search
+      '1 = Primary
+      '2 = Cheese
+      '3 = Big Hits
+      '4 = Gaming
+      '5 = Lab/Science
+      '6 = Tech/Technology
+      '7 = News&Politics
+      '8 = Finance 2.0
+      '9 = The Universe
+      '10 = Wild West
 
       'if only BrightScript had Case Switch =(
 
       if m.selector.itemFocused = 0
+          ? "in search UI"
+          m.vgrid.visible = false
+          m.canSelector = false
+          m.canRight = false
+      end if
+      if m.selector.itemFocused <> 0
+        m.vgrid.visible = true
+        m.canSelector = true
+        m.canRight = true
+      end if
+      if m.selector.itemFocused = 1
           base = m.JSONTask.output["PRIMARY_CONTENT"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 1
+      else if m.selector.itemFocused = 2
           base = m.JSONTask.output["CHEESE"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 2
+      else if m.selector.itemFocused = 3
           base = m.JSONTask.output["BIG_HITS"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 3
+      else if m.selector.itemFocused = 4
           base = m.JSONTask.output["GAMING"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 4
+      else if m.selector.itemFocused = 5
           base = m.JSONTask.output["SCIENCE"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 5
+      else if m.selector.itemFocused = 6
           base = m.JSONTask.output["TECHNOLOGY"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 6
+      else if m.selector.itemFocused = 7
           base = m.JSONTask.output["NEWS"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 7
+      else if m.selector.itemFocused = 8
           base = m.JSONTask.output["FINANCE"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 8
+      else if m.selector.itemFocused = 9
           base = m.JSONTask.output["THE_UNIVERSE"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
-      else if m.selector.itemFocused = 9
+      else if m.selector.itemFocused = 10
           base = m.JSONTask.output["COMMUNITY"]
           m.vgrid.content = base["content"]
           m.mediaindex = base["index"]
@@ -546,7 +564,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if (key = "right") and (m.selector.hasFocus() = true) and (m.canright = true)
           m.vgrid.setFocus(true)
           m.selector.setFocus(false)
-        else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.isleft = true) and (m.issearch = false)
+        else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.canSelector = true) and (m.issearch = false)
           m.canright = True
           m.selector.setFocus(true)
           m.vgrid.setFocus(false)
