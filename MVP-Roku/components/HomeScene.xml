@@ -5,8 +5,6 @@
     <field id="contentId" type="string"/>
     <field id="mediaType" type="string"/>
   </interface>
-    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_HTTP.brs" />
-    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Account.brs" />
     <script type="text/brightscript" uri="pkg:/components/HomeScene.brs" />
 
     <!-- All nodes must be inside <children> headers -->
@@ -97,6 +95,8 @@
         vertFocusAnimationStyle= "floatingfocus"
         />
     -->
+
+    <Button id="searchbutton" text="Search Videos" translation="[280,75]" height="32" minWidth="275" maxWidth="275" textFont="font:SmallestSystemFont" focusedTextFont="font:SmallestBoldSystemFont" iconUri="" focusedIconUri="" showFocusFootprint="true" visible="false"/>
 
     <Video
         id = "Video"

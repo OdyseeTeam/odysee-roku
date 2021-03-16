@@ -5,7 +5,7 @@ sub Main(args)
     screen.setMessagePort(m.port)  'Set message port to listen to screen
 
     scene = screen.CreateScene("HomeScene")  'Create HomeScene
-
+    
     
     m.global = screen.getGlobalNode()
     m.global.addFields( {scene: scene} ) 'Add the scene so we can pass Roku certification.
@@ -16,7 +16,7 @@ sub Main(args)
     m.global.deeplink = deeplink
 
     screen.show()
-
+    'SafeZone(scene)
     while(true)  'Listens to see if screen is closed
         msg = wait(0, m.port)
         msgType = type(msg)

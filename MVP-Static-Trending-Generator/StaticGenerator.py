@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import math
+import re
 
 #Static Trending Generator
 #William Foster/S9260/CaffinatedCoder 2021
@@ -75,6 +76,7 @@ for key in masterfeed:
     master = masterfeed[key]
     entries = []
     for item in master:
+        m = re.search('(?<=abc)def', 'abcdef')
         if numkeyentries < numitems:
             validvideo = True
             try: item['value']['source']['hash']
@@ -103,7 +105,7 @@ for key in masterfeed:
                 except:
                     thumbnail = "pkg:\\images\\odyseeoops.png"
                 
-                entries.append([title, channelname, description, time.strftime('%a, %e %b %Y %H:%M:%S +0000', time.localtime(item['timestamp'])), item['claim_id'], thumburl, "https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item ['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['hash'][:6],"https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item ['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['sd_hash'][:6]])
+                entries.append([title, channelname, description, time.strftime('%a, %e %b %Y %H:%M:%S +0000', time.localtime(item['timestamp'])), item['claim_id'], thumburl, "https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['hash'][:6],"https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['sd_hash'][:6]])
                 numkeyentries+=1
         #standard: name, desc, pubdate, id, thumb, url
         #Temporary Redirect Fix: Vanwanet doesn't redirect properly.

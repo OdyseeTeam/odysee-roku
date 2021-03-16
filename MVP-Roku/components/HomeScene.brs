@@ -2,9 +2,16 @@ Sub init()
 
     'UI Logic Variables
     m.loaded = False 'Has the app finished its first load?
+    m.authenticated = False 'Do we have a valid ID and authkey for search?
+    m.searchloading = False 'Has a search been made, and is it still loading?
     m.canright = False 'Can we move from the video grid (VGRID) to the selector bar (SELECTOR)?
     m.isleft = True 'Are we on the leftmost item of the video grid and ready to transition to the selector?
+    m.isup = False 'Are we on the highest item of the video grid and ready to transition to the search button?
+    m.issearch = False 'Are we in search mode? (Search mode prevents transition to the selector)
+    m.searchFailed = False 'Did the previous search fail? (Indicate to the user that the search failed)
+    m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
     m.modelwarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
+    m.useLegacyUI = True 'Use Legacy UI (Temporary Variable)
 
     'Warning UI Items
     m.warningtext = m.top.findNode("warningtext")
@@ -55,12 +62,27 @@ Sub init()
       
     m.InputTask.observefield("inputData","handleInputEvent")
     m.InputTask.control="RUN"
-    m.QueryLBRY=createObject("roSgNode","QueryLBRY")
-    m.QueryLBRY.observeField("resp", "gotResponse")
-    m.QueryLBRY.observeField("cookies", "cookiesUpdated")
+   
 
-    'Registry
+    'Registry+UID
     m.registry = CreateObject("roRegistrySection", "Authentication")
+    m.QueryLBRY = createObject("roSGNode", "QueryLBRY")
+    m.date = CreateObject("roDateTime")
+    if IsValid(GetRegistry("uid")) AND IsValid(GetRegistry("authtoken")) AND IsValid(GetRegistry("cookies"))
+        ? "found account with UID"+GetRegistry("uid")
+        m.uid = StrToI(GetRegistry("uid"))
+        m.authtoken = GetRegistry("authtoken")
+        m.cookies = ParseJSON(GetRegistry("cookies"))
+        m.QueryLBRY.setField("uid", m.uid)
+        m.QueryLBRY.setField("authtoken", m.authtoken)
+        m.QueryLBRY.setField("cookies", m.cookies)  
+      end if
+    m.QueryLBRY.setField("method", "startup")
+    m.QueryLBRY.observeField("uid", "gotUID")
+    m.QueryLBRY.observeField("authtoken", "gotAuth")
+    m.QueryLBRY.observeField("cookies", "gotCookies")
+    m.QueryLBRY.observeField("output", "startupRan")
+    m.QueryLBRY.control = "RUN"
 
     'UI items
     m.loadingtext = m.top.findNode("loadingtext")
@@ -77,28 +99,18 @@ Sub init()
     m.selector.observeField("itemFocused", "SelectorFocusChanged")
     m.vgrid.observeField("rowItemSelected", "playVideo")
     m.vgrid.observeField("rowitemFocused", "vgridFocusChanged")
+    m.searchbutton = m.top.findNode("searchbutton")
+    m.searchbutton.observeField("buttonSelected", "searchMode")
 
-    ' LOGIC:
-      ' Check if data storage for user used.
-      ' If so: Run a query that only an existing account can do.
-      ' If it works: we are fine
-      ' If it does not work: we need to make an account, so createAccount is called again.
-      ' If not: create an account, and add it to the datastore.
-      if isValid(GetRegistry("uid")) AND isvalid(GetRegistry("authtoken")) AND isvalid(GetRegistry("cookies"))
-        '? "found account with UID"+GetRegistry("uid")
-        m.uid = StrToI(GetRegistry("uid"))
-        m.authtoken = GetRegistry("authtoken")
-        m.cookies = ParseJSON(GetRegistry("cookies"))
-      else
-        '? "no entries found, creating account."
-        m.cookies = [] 'prevent invalid
-        createAccount()
-      end if
-
-      m.JSONTask = createObject("roSGNode", "JSONTask")
-      m.JSONTask.setField("thumbnaildims", [m.maxThumbWidth, m.maxThumbHeight])
-      m.JSONTask.observeField("output", "AppFinishedFirstLoad")
-      m.JSONTask.control = "RUN"
+    'LEGACY UI
+    if m.useLegacyUI = False
+      m.searchbutton.unobserveField("buttonSelected") ' Disable Search Mode
+    end if
+    
+    m.JSONTask = createObject("roSGNode", "JSONTask")
+    m.JSONTask.setField("thumbnaildims", [m.maxThumbWidth, m.maxThumbHeight])
+    m.JSONTask.observeField("output", "AppFinishedFirstLoad")
+    m.JSONTask.control = "RUN"
 End Sub
 
 function getselectorData() as object
@@ -168,9 +180,183 @@ sub finishInit()
   m.vgrid.visible = true
   m.selector.visible = true
   m.loaded = True
+  if m.loaded and m.authenticated and m.useLegacyUI
+    m.searchbutton.visible = true
+  end if
   m.vgrid.setFocus(true)
   m.global.scene.signalBeacon("AppLaunchComplete")
 end sub
+
+Sub gotUID()
+  SetRegistry("uid", m.QueryLBRY.uid.toStr())
+End Sub
+
+Sub gotAuth()
+    SetRegistry("authtoken", m.QueryLBRY.authtoken)
+End Sub
+
+sub gotCookies()
+    SetRegistry("cookies", FormatJSON(m.QueryLBRY.cookies))
+End Sub
+
+Sub startupRan()
+    ? "got AuthToken "+m.queryLBRY.authtoken+" with ID "+m.queryLBRY.uid.toStr()
+    m.QueryLBRY.control = "STOP"
+    m.QueryLBRY.unobserveField("output") 'for the next use
+    m.authenticated = True
+    if m.loaded and m.authenticated and m.useLegacyUI
+      m.searchbutton.visible = true
+    end if
+End Sub
+
+sub searchMode()
+  ? "in search mode"
+  m.issearch = True
+  m.keyboarddialog = createObject("roSGNode", "KeyboardDialog")
+  m.keyboarddialog.backgroundUri = "pkg:/images/searchbackground.png"
+  m.keyboarddialog.title = "Video Search"
+  
+  m.keyboarddialog.buttons = ["OK", "Cancel"]
+  m.keyboarddialog.buttonGroup.observeField("buttonSelected", "searchEntered")
+  if m.searchFailed
+      m.keyboarddialog.text = m.failedSearchText
+      m.keyboarddialog.title = "No results found with previous search"
+      m.searchFailed = False
+  else
+    m.keyboarddialog.keyboard.texteditbox.hintText = "Enter Video Name Here"
+  end if
+  children = m.keyboarddialog.buttonGroup.getChildren(-1,0)
+  for each child in children
+    child.iconUri=""
+    child.focusedIconUri=""
+  end for
+  m.top.appendChild(m.keyboarddialog)
+  m.vgrid.setFocus(false)
+  m.searchbutton.setFocus(false)
+  m.keyboarddialog.setFocus(true)
+end sub
+
+sub searchEntered()
+  if m.keyboarddialog.buttonGroup.buttonSelected = 0
+    '? "Selected OK, continue with logic flow"
+    if m.keyboarddialog.text <> ""
+      '? "Valid Input"
+      'search starting
+      m.searchbutton.unobserveField("buttonSelected")
+      searchquery = m.keyboarddialog.text
+      m.failedSearchText = searchquery 'so we don't have to extract it from the Task later on.
+      m.keyboarddialog.setFocus(false)
+      m.searchbutton.setFocus(false)
+      m.top.removeChild(m.keyboarddialog)
+      m.vgrid.visible = false
+      m.searchloading = True
+      m.issearch = True
+      m.searchbutton.text = "Loading..."
+      m.loadingtext.visible = true
+      m.loadingtext.text = "Loading your search results.."
+      'm.searchbutton.setFocus(true)
+      m.QueryLBRY.setField("method", "lighthouse")
+      m.no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
+      m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: m.no_earlier, query: searchquery})
+      m.QueryLBRY.observeField("output", "gotLighthouse")
+      m.QueryLBRY.control = "RUN"
+    else if Len(m.keyboarddialog.text) > 16
+      m.keyboarddialog.keyboard.texteditbox.hintText = "Length of search is too long, please either cancel or try again."
+    else
+      m.keyboarddialog.keyboard.texteditbox.hintText = "No text was entered, please either cancel or try again."
+    end if
+  else
+    ? "Selected cancel, do not continue."
+    m.keyboarddialog.setFocus(false)
+    m.top.removeChild(m.keyboarddialog)
+    m.searchbutton.setFocus(true)
+  end if
+end sub
+
+sub gotLighthouse()
+  m.QueryLBRY.control = "STOP"
+  if isValid(m.QueryLBRY.output.result.noresults)
+      ? "got nothing"
+      m.searchFailed = True
+      failedSearch()
+  else
+      base = m.QueryLBRY.output.result
+      m.vgrid.content = base["content"]
+      m.mediaindex = base["index"]
+      handleDeepLink(m.global.deeplink)
+      m.searchloading = False
+      m.vgrid.visible = true
+      m.loadingtext.visible = false
+      m.searchbutton.text = "Go Back"
+      m.searchbutton.observeField("buttonSelected", "closeSearch")
+      m.vgrid.setFocus(true)
+  end if
+end sub
+
+sub closeSearch()
+  m.QueryLBRY.control = "STOP"
+  m.searchbutton.unobserveField("buttonSelected")
+  m.searchbutton.text = "Search Videos"
+  base = m.JSONTask.output["PRIMARY_CONTENT"]
+  m.vgrid.content = base["content"]
+  m.mediaindex = base["index"]
+  handleDeepLink(m.global.deeplink)
+  m.searchloading = False
+  m.issearch = False
+  m.loadingtext.visible = False
+  m.loadingtext.text = "Loading..."
+  m.vgrid.visible = True
+  m.vgrid.setFocus(true)
+  m.searchbutton.observeField("buttonSelected", "searchMode")
+end sub
+
+sub cancelSearch()
+  ? "cancelling search"
+  m.QueryLBRY.control = "STOP"
+  ? "task stopped"
+  m.searchbutton.unobserveField("buttonSelected")
+  m.searchbutton.text = "Search Videos"
+  base = m.JSONTask.output["PRIMARY_CONTENT"]
+  m.vgrid.content = base["content"]
+  m.mediaindex = base["index"]
+  handleDeepLink(m.global.deeplink)
+  m.searchloading = False
+  m.issearch = False
+  m.loadingtext.visible = False
+  m.loadingtext.text = "Loading..."
+  m.vgrid.visible = True
+  m.vgrid.setFocus(true)
+  m.searchbutton.observeField("buttonSelected", "searchMode")
+end sub
+
+sub failedSearch()
+  ? "search failed"
+  m.QueryLBRY.control = "STOP"
+  ? "task stopped"
+  m.searchbutton.unobserveField("buttonSelected")
+  m.searchbutton.text = "Search Videos"
+  searchMode()
+end sub
+
+'sub searchMode()
+'  ? "Button was selected."
+'  m.issearch = True
+'  m.keyboarddialog = createObject("roSGNode", "KeyboardDialog")
+'  m.keyboarddialog.backgroundUri = "pkg:/images/searchbackground.png"
+'  m.keyboarddialog.title = "Video Search"
+'  m.keyboarddialog.keyboard.texteditbox.hintText = "Enter Video Name Here"
+'  m.keyboarddialog.buttons = ["OK", "Cancel"]
+'  m.keyboarddialog.buttonGroup.observeField("buttonSelected", "searchEntered")
+'  children = m.keyboarddialog.buttonGroup.getChildren(-1,0)
+'  for each child in children
+'    child.iconUri=""
+'    child.focusedIconUri=""
+'  end for
+'  m.top.appendChild(m.keyboarddialog)
+'  m.vgrid.setFocus(false)
+'  m.searchbutton.setFocus(false)
+'  m.keyboarddialog.setFocus(true)
+'end sub
 
 Function handleDeepLink(deeplink as object)
   if validateDeepLink(deeplink)
@@ -184,7 +370,13 @@ sub vgridFocusChanged(msg)
   '? "focus changed from:"
   '? m.vgrid.rowitemUnfocused
   '? "to:"
-  '? m.vgrid.rowitemFocused
+  if m.vgrid.rowItemFocused[0] = 0
+    m.isup = True
+    '? "is up, can transition to search"
+  else
+    m.isup = False
+    '? "not up, can't transition to search"
+  end if
   if m.vgrid.rowItemFocused[1] = 0
     m.isleft=True
     '? "is left, can transition"
@@ -197,7 +389,7 @@ sub vgridFocusChanged(msg)
     m.videoContent.streamFormat = "mp4"
     keepPlaying = false
     m.Video.content = m.videoContent
-    '? m.videoContent.url
+    ? m.videoContent.url
     m.Video.control = "prebuffer"
     '? m.Video.contentMetadata
   end if
@@ -322,6 +514,9 @@ Sub playVideo(url = invalid)
     m.Video.visible = "true"
     m.Video.setFocus(true)
     m.Video.control = "play"
+    ? m.Video.errorStr
+    ? m.Video.videoFormat
+    ? m.Video
 End Sub
 
 Function returnToUIPage()
@@ -351,51 +546,34 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if (key = "right") and (m.selector.hasFocus() = true) and (m.canright = true)
           m.vgrid.setFocus(true)
           m.selector.setFocus(false)
-        else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.isleft = true)
+        else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.isleft = true) and (m.issearch = false)
           m.canright = True
           m.selector.setFocus(true)
           m.vgrid.setFocus(false)
+        else if (key = "up") and (m.isup = true) and (m.searchbutton.visible = true) and (m.useLegacyUI = true)
+          m.vgrid.setFocus(false)
+          m.searchbutton.setFocus(true)
+        else if (key = "down") and (m.isup = true) and (m.searchbutton.visible = true) and (m.searchloading = false) and (m.useLegacyUI = true)
+          m.searchbutton.setFocus(false)
+          m.vgrid.setFocus(true)
         end if
     end if
 end Function
 
-''LBRY REGISTRY+HTTP CODE BELOW
+'Registry+Utility Functions
+
+Function GetRegistry(key) As Dynamic
+     if m.registry.Exists(key)
+         return m.registry.Read(key)
+     endif
+     return invalid
+End Function
+
+Function SetRegistry(key, value) As Void
+  m.registry.Write(key, value)
+  m.registry.Flush()
+End Function
 
 Function IsValid(value As Dynamic) As Boolean 'TheEndless Roku Development forums
     Return Type(value) <> "<uninitialized>" And value <> invalid
 End Function
-
-Function queryLBRY(query, endpoint)
-  m.QueryLBRY.setField("query",{"query": query, "endpoint": endpoint})
-  m.QueryLBRY.setfield("cookies", [])
-  m.QueryLBRY.control = "RUN"
-end Function
-
-sub gotResponse(msg as Object)
-  if type(msg) = "roSGNodeEvent"
-      input = msg.getData()
-      if input.success = true
-        if IsValid(input.data)
-          data = input.data
-          if IsValid(data.id) AND IsValid(data.created_at)
-            m.uid = data.id
-            SetRegistry("uid", m.uid.toStr())
-          end if
-          if IsValid(data.auth_token)
-            m.authtoken = data.auth_token
-            SetRegistry("authtoken", m.authtoken)
-          end if
-        else
-          createAccount() 'Our account expired. Create another.
-      end if
-    end if
-  end if
-end sub
-
-sub cookiesUpdated(msg as Object)
-  if type(msg) = "roSGNodeEvent"
-      m.cookies = msg.getData()
-      SetRegistry("cookies", FormatJSON(m.cookies))
-  end if
-  m.QueryLBRY.control = "STOP"
-end sub

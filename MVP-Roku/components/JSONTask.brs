@@ -1,8 +1,8 @@
 Sub Init()
-    m.top.functionName = "master"
+    m.top.functionName = "JSONTask"
 End Sub
 
-sub master()
+sub JSONTask()
     feed = parsejson(GetRawText("https://roku.halitesoftware.com/odysee/trending.json"))
     final_output = {}
     for each key in feed
