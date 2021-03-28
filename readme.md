@@ -5,6 +5,12 @@
 </div>
 
 <div align="center">
+ <a href="https://lbry.com">
+ <img src="https://lbry.com/img/website-screenshot.png">
+ </a>
+</div>
+
+<div align="center">
   Official Roku app for <a href="https://odysee.com">Odysee</a>.
 </div>
 
