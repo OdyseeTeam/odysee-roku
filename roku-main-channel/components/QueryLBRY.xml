@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    I decided since pretty much ALL queries run with UID, it would be feasible to
+    make this an all-in-one component. This means that Account Logic is handled in a seperate Thread,
+    making the app (in theroy) much more performant. The last (terrible!) version had the account
+    logic handled inside of the Render thread. That was a horrible, because it meant the rendering 
+    was held up by the account logic.
+-->
+
+<component name="QueryLBRY" extends="Task">
+    <interface>
+            <!--Universal Output-->
+            <field id="method" type="String"/>
+            <field id="input" type="roAssociativeArray"/>
+            <field id="output" type="roAssociativeArray"/>
+            <!--Account-Specific Vars-->
+            <field id="uid" type="Int"/>
+            <field id="authtoken" type="String"/>
+            <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Account.brs" />
+    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Parsing.brs" />
+    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_HTTP.brs" />
+    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Lighthouse.brs" />
+    <script type="text/brightscript" uri="pkg:/components/QueryLBRY.brs" />
+</component>

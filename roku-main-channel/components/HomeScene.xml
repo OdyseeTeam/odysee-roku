@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="HomeScene" extends="Scene">
+  <interface>
+    <field id="contentId" type="string"/>
+    <field id="mediaType" type="string"/>
+  </interface>
+    <script type="text/brightscript" uri="pkg:/components/HomeScene.brs" />
+
+    <!-- All nodes must be inside <children> headers -->
+    <children>
+    <Rectangle
+        id="background"
+        color="0x09070c"
+        width="1920"
+        height="1080"
+        translation="[0,0]" />
+    <Label id="loadingtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="1080" vertAlign="center" horizAlign="center" text="Loading some weird stuff...">
+        <Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
+    </Label>
+    <Rectangle
+        id="headerrectangle"
+        color="0x241f2a"
+        width="1920"
+        height="130"
+        translation="[0,0]" 
+        visible = "false" 
+         />
+    <Rectangle
+        id="sidebartrim"
+        color="0x241f2a"
+        width="185"
+        height="1000"
+        translation="[60,130]" 
+        visible = "false" 
+         />
+    <Rectangle
+        id="sidebarbackground"
+        color="0x0a070d"
+        width="175"
+        height="1000"
+        translation="[65,130]" 
+        visible = "false" 
+         />
+    <Poster
+        id="odyseelogo"
+        uri="pkg:/images/odysee.png"
+        width="156"
+        height="47"
+        translation="[101, 66]" 
+        visible = "false"
+         />
+    <!-- video grid -->
+    <RowList
+        id= "vgrid"
+        translation= "[210,120]"
+        itemComponentName= "PosterItem"
+        numRows= "4"
+        rowitemSize="[[380,290]]"
+        rowItemSpacing= "[[20,0]]"
+        itemSize= "[1920,305]"
+        focusXOffset = "[50]"
+        showRowLabel= "[false]"
+        rowFocusAnimationStyle= "floatingfocus"
+        vertFocusAnimationStyle= "fixedfocus"
+        visible = "false"
+    />
+    
+    <MarkupList
+            id="selector"
+            itemComponentName="catselector"
+            itemSize="[110, 70]"
+            itemSpacing="[10, 10]"
+            translation="[100,133]"
+            numColumns="1"
+            numRows="11"
+            vertFocusAnimationStyle="floatingFocus"
+            focusFootprintBlendColor="#2b2037"
+            columnWidths="[110,70]"
+            visible = "false"
+    />
+    <!--Old rowlist node
+        <RowList
+        id= "RowList"
+        translation= "[160,90]"
+        itemComponentName= "PosterItem"
+        numRows="3"
+        rowitemSize="[[240,140]]"
+        rowItemSpacing= "[[36,0]]"
+        itemSize= "[1760,190]"
+        rowLabelOffset= "[[27,10]]"
+        focusXOffset = "[27]"
+        showRowLabel= "[true]"
+        rowFocusAnimationStyle= "floatingfocus"
+        vertFocusAnimationStyle= "floatingfocus"
+        />
+    -->
+
+    <Button id="searchbutton" text="Search Videos" translation="[280,75]" height="32" minWidth="275" maxWidth="275" textFont="font:SmallestSystemFont" focusedTextFont="font:SmallestBoldSystemFont" iconUri="" focusedIconUri="" showFocusFootprint="true" visible="false"/>
+
+    <Video
+        id = "Video"
+        height = "1080"
+        width = "1920"
+	    loop = "false"
+        visible = "false"
+    />
+    <Label id="warningtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="80" text="Warning!" translation="[192,106]" visible="false">
+			<Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
+	</Label>
+	<Label id="warningsubtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[192,186]" visible="false">
+		<Font role="font" uri = "pkg:/images/rofont.otf" size="32"/>
+	</Label>
+	<Button id="warningbutton" textcolor="#ffffff" minwidth="300" height="64" text="Click to acknowledge" showFocusFootprint="true" translation="[192,286]" visible="false"/>
+    </children>
+</component>
