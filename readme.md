@@ -1,23 +1,46 @@
-# Odysee Roku App
-The official Odysee app on Roku.
+<h1 align="center">Odysee.com</h1>
 
-## Roku App Build Instructions
-https://sdkdocs-archive.roku.com/Loading-and-Running-Your-Application_3737091.html
+<div align="center">
+  <strong>Video stonks.</strong>
+</div>
 
-## How to Sideload an App on Roku
-To sideload an app onto your Roku device, follow the simple step-by-step instructions below.
+<div align="center">
+  Official Roku app for <a href="https://odysee.com">Odysee</a>.
+</div>
 
-1.Using your Roku remote, enter the following button sequence: 
-> :house: :house: :house: + :arrow_up_small: :arrow_up_small: + :arrow_forward: :arrow_backward: + :arrow_forward:  :arrow_backward: + :arrow_forward:
-2. Make a note of the on-screen IP address or check your roku's IP address on your router.
-3. Select I Agree on the SDK License page.
-4. Create a password.
-5. Enter the previously-noted IP address into your browser.
-6. Click on Upload.
-7. Select the ZIP file of the channel you want to install.
-8. Click on Install.
 
-## Developer Instructions
-If you want to debug, clone this repository and go to roku-main-channel folder. You can see the core files such as components, images, etc.
+<div align="center">
+  <a href="https://github.com/lbryio/lbry.com/blob/master/LICENSE">
+    <img src="https://img.shields.io/dub/l/vibe-d.svg?style=flat-square"/>
+  </a>
 
-If you want to sideload, just zip your directory, but exclude the out folder. If you want to execute it via IDE, check the appropriate plugin/export settings on your IDE.
+  <a href="https://chat.lbry.com">
+    <img src="https://img.shields.io/discord/362322208485277697.svg?style=flat-square&logo=discord"/>
+  </a>
+
+  <a href="https://tosdr.org/en/service/2391">
+    <img src="https://shields.tosdr.org/en_2391.svg"/>
+</a>
+</div>
+
+
+## Installation
+Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-follow instructions on running this project.
+
+## Contributing
+Contributions to this project are welcome, encouraged, and compensated. For more details, see [CONTRIBUTING](https://lbry.tech/contribute).
+
+## License
+This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
+
+## Security
+Please see [SECURITY](SECURITY.md) to know more about the security and how to contact if the project has serious flaws.
+
+## Contact
+The primary contact for this project is [@netoperatorwibby](https://github.com/netoperatorwibby) (paul+github@lbry.com).
+
+## Additional Info and Links
+- [https://odysee.com](https://odysee.com) - The website
+- [Discord Chat](https://chat.lbry.com) - A chat room for Odyseenauts
+- [Email us](mailto:hello@odysee.com) - Odysee Support email
+- [Twitter](https://twitter.com/@odysee) - Odysee Twitter page
