@@ -45,7 +45,7 @@ Contributions to this project are welcome, encouraged, and compensated. For more
 This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 
 ## Security
-Please see [SECURITY](SECURITY.md) to know more about the security and how to contact if the project has serious flaws.
+We take security seriously. Please contact security@lbry.com regarding any security issues. Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it. All releases are signed by [Sean Yesmunt](https://keybase.io/seanyesmunt/key.asc).
 
 ## Contact
 The maintainer for this project is [@s9260](https://github.com/s9260).
