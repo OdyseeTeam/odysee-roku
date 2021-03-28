@@ -15,7 +15,7 @@
         width="1920"
         height="1080"
         translation="[0,0]" />
-    <Label id="loadingtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="1080" vertAlign="center" horizAlign="center" text="Loading....">
+    <Label id="loadingtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="1080" vertAlign="center" horizAlign="center" text="Loading some weird stuff...">
         <Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
     </Label>
     <Rectangle
