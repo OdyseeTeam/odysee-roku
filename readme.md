@@ -35,7 +35,8 @@
    <img src="https://img.shields.io/badge/-Download%20via%20Roku%20Channel%20Store-lightgrey?logo=Roku&color=662d91"/>
   </a>
 </div>
-Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-follow instructions on running this project.
+
+For developers, Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-follow instructions on running this project.
 
 ## Contributing
 Contributions to this project are welcome, encouraged, and compensated. For more details, see [CONTRIBUTING](https://lbry.tech/contribute).
