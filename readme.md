@@ -1,4 +1,4 @@
-<h1 align="center">Odysee.com</h1>
+<h1 align="center">Odysee Roku App</h1>
 
 <div align="center">
   <strong>Video stonks.</strong>
