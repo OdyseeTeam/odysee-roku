@@ -4,7 +4,7 @@
 </div>
 
 <div align="center">
- <a href="https://lbry.com">
+ <a href="https://odysee.com">
  <img src="https://cdn.discordapp.com/attachments/655789251363078164/825582570691231775/dev.jpg">
  </a>
 </div>
