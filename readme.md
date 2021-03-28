@@ -19,4 +19,5 @@ To sideload an app onto your Roku device, follow the simple step-by-step instruc
 
 ## Developer Instructions
 > If you want to debug, clone this repository and go to roku-main-channel folder. You can see the core files such as components, images, etc.
+
 > If you want to sideload, just zip your directory, but exclude the out folder. If you want to excecute it via IDE, check the appropriate plugin/export settings on your IDE.
