@@ -43,7 +43,7 @@ This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 Please see [SECURITY](SECURITY.md) to know more about the security and how to contact if the project has serious flaws.
 
 ## Contact
-The primary contact for this project is [@netoperatorwibby](https://github.com/netoperatorwibby) (paul+github@lbry.com).
+The maintainer for this project is [@s9260](https://github.com/s9260).
 
 ## Additional Info and Links
 - [https://odysee.com](https://odysee.com) - The website
