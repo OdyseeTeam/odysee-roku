@@ -5,7 +5,7 @@
 
 <div align="center">
  <a href="https://odysee.com">
- <img src="https://cdn.discordapp.com/attachments/655789251363078164/825582570691231775/dev.jpg">
+ <img src="https://user-images.githubusercontent.com/24932514/112762909-d0c1e800-9034-11eb-8171-34007b850868.jpg">
  </a>
 </div>
 
