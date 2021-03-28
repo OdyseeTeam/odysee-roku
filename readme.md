@@ -31,8 +31,8 @@
 
 ## Installation
 <div align="center">
-  <a href="#">
-   <img src="https://img.shields.io/badge/-Download%20via%20Roku%20Channel%20Store-lightgrey?logo=Roku"/>
+  <a href="http://comingsoon.io/">
+   <img src="https://img.shields.io/badge/-Download%20via%20Roku%20Channel%20Store-lightgrey?logo=Roku&color=662d91"/>
   </a>
 </div>
 Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-follow instructions on running this project.
