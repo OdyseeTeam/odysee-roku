@@ -235,7 +235,6 @@ Sub startupRan()
 End Sub
 
 sub execSearch(search)
-  if search <> ""
     '? "Valid Input"
     'search starting
     m.issearch = True
@@ -254,11 +253,6 @@ sub execSearch(search)
     m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: m.no_earlier, query: searchquery})
     m.QueryLBRY.observeField("output", "gotLighthouse")
     m.QueryLBRY.control = "RUN"
-  else if Len(m.keyboarddialog.text) > 16
-    ' TOO long? (TODO: FIX)
-    else
-    ' No text entered
-  end if
 end sub
 
 sub gotLighthouse()
@@ -266,9 +260,6 @@ sub gotLighthouse()
   m.QueryLBRY.unobserveField("output")
   if isValid(m.QueryLBRY.output.result.noresults) OR m.QueryLBRY.output.result.content.getChildCount() < 2
       ? "got nothing"
-      m.loadingtext.visible = false
-      m.loadingtext.text = "No results."
-      m.loadingtext.visible = true
       m.searchFailed = True
       failedSearch()
   else
@@ -285,41 +276,11 @@ sub gotLighthouse()
   end if
 end sub
 
-sub closeSearch()
-  m.QueryLBRY.control = "STOP"
-  base = m.JSONTask.output["PRIMARY_CONTENT"]
-  m.vgrid.content = base["content"]
-  m.mediaindex = base["index"]
-  handleDeepLink(m.global.deeplink)
-  m.searchloading = False
-  m.issearch = False
-  m.loadingtext.visible = False
-  m.vgrid.visible = True
-  m.vgrid.setFocus(true)
-end sub
-
-sub cancelSearch()
-  ? "cancelling search"
-  m.QueryLBRY.control = "STOP"
-  ? "task stopped"
-  base = m.JSONTask.output["PRIMARY_CONTENT"]
-  m.vgrid.content = base["content"]
-  m.mediaindex = base["index"]
-  handleDeepLink(m.global.deeplink)
-  m.searchloading = False
-  m.issearch = False
-  m.loadingtext.visible = False
-  m.loadingtext.text = "Loading..."
-  m.vgrid.visible = True
-  m.vgrid.setFocus(true)
-end sub
-
 sub failedSearch()
   ? "search failed"
   m.QueryLBRY.control = "STOP"
   ? "task stopped"
-  Sleep(3000)
-  backToKeyboard()
+  searchError("No results.", "Nothing found on Odysee.")
 end sub
 
 sub backToKeyboard()
@@ -331,6 +292,7 @@ sub backToKeyboard()
   m.searchHistoryLabel.visible = True
   m.searchHistoryBox.visible = True
   m.searchKeyboardDialog.visible = True
+  m.searchHistoryDialog.visible = True
   m.loadingtext.visible = False
   m.loadingtext.text = "Loading..."
   m.searchKeyboard.setFocus(true)
@@ -520,8 +482,30 @@ function validateDeepLink(deeplink as Object) as Boolean
   return false
 end function
 
+sub searchError(title, error)
+  m.searchKeyboard.visible = False
+  m.searchHistoryDialog.visible = False
+  m.searchKeyboardDialog.visible = false
+  m.searchHistoryLabel.visible = false
+  m.searchHistoryBox.visible = False
+  m.loadingtext.visible = False
+  m.warningtext.text = title
+  m.warningsubtext.text = error
+  m.warningtext.visible = true
+  m.warningsubtext.visible = true
+  m.warningbutton.visible = true
+  m.warningbutton.observeField("buttonSelected", "searchErrorDismissed")
+  m.warningbutton.setFocus(true)
+end sub
 
-
+sub searchErrorDismissed()
+  m.warningtext.visible = false
+  m.warningsubtext.visible = false
+  m.warningbutton.visible = false
+  m.warningbutton.unobserveField("buttonSelected")
+  m.searchKeyboard.text = ""
+  backToKeyboard()
+end sub
 
 Sub vgridContentChanged(msg as Object)
     if type(msg) = "roSGNodeEvent" and msg.getField() = "content"
@@ -696,6 +680,9 @@ sub clearHistory()
 end sub
 
 sub search()
+  if m.searchKeyboard.text = "" OR Len(m.searchKeyboard.text) < 3
+    searchError("Search too short", "Needs to be more than 2 characters long.")
+  else
     ? "======SEARCH======"
     if m.searchHistoryContent.getChildCount() >= 8
         m.searchHistoryContent.removeChildIndex(8) 'removeChildIndex is basically pop
@@ -713,6 +700,7 @@ sub search()
     ? "======SEARCH======"
     SetRegistry("searchHistory", FormatJSON(m.searchHistoryItems))
     execSearch(m.searchKeyboard.text)
+  end if
 end sub
 
 'Registry+Utility Functions

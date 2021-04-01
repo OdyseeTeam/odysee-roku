@@ -152,12 +152,12 @@
 	    loop = "false"
         visible = "false"
     />
-    <Label id="warningtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="80" text="Warning!" translation="[192,106]" visible="false">
+    <Label id="warningtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="80" text="Warning!" translation="[300,106]" visible="false">
 			<Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
 	</Label>
-	<Label id="warningsubtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[192,186]" visible="false">
+	<Label id="warningsubtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[300,186]" visible="false">
 		<Font role="font" uri = "pkg:/images/rofont.otf" size="32"/>
 	</Label>
-	<Button id="warningbutton" textcolor="#ffffff" minwidth="300" height="64" text="Click to acknowledge" showFocusFootprint="true" translation="[192,286]" visible="false"/>
+	<Button id="warningbutton" textcolor="#ffffff" minwidth="300" height="64" text="OK" showFocusFootprint="true" translation="[300,286]" visible="false"/>
     </children>
 </component>
