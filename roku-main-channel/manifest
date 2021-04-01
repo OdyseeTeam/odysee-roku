@@ -5,5 +5,7 @@ build_version=0
 mm_icon_focus_hd=pkg:/images/channel-poster.png
 mm_icon_focus_sd=pkg:/images/channel-poster.png
 splash_screen_fhd=pkg:/images/channel-splash.png
+splash_color=#2c1543
+splash_min_time=3000
 ui_resolutions=fhd
 supports_input_launch=1

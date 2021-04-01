@@ -245,7 +245,7 @@ sub execSearch(search)
     m.searchHistoryLabel.visible = false
     m.searchHistoryBox.visible = False
     m.loadingtext.visible = true
-    m.loadingtext.text = "Loading your search results.."
+    m.loadingtext.text = "Searching..."
     searchquery = search
     m.failedSearchText = searchquery 'so we don't have to extract it from the Task later on.
     m.QueryLBRY.setField("method", "lighthouse")
