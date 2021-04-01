@@ -103,7 +103,7 @@
 		translation="[290,160]"
 		>
 		<LabelList
-			id="keyboardDialog"
+			id="searchKeyboardDialog"
 			itemSize="[510,65]"
 			translation="[35,707]"
 			>

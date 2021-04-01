@@ -12,8 +12,9 @@ Sub init()
     m.modelwarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
     m.lastSelectorItem = 0 'Used to return user to either the last selector or video grid item.
     m.lastVGridItem = [0,0]
+    m.focusedItem = 6 'set to External. This is just a workaround for legacy code here that I am planning on removing.
 
-    m.itemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
+    m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.switchState = 0
     m.switchRow = 0 'Row on History/Keyboard
 
@@ -87,6 +88,15 @@ Sub init()
         m.QueryLBRY.setField("cookies", m.cookies)  
       end if
     
+    if IsValid(GetRegistry("searchHistory"))
+        m.searchHistoryItems = ParseJSON(GetRegistry("searchHistory"))
+        ? "History Found"
+    else
+        ? "No History Found"
+        m.searchHistoryItems = []
+        SetRegistry("searchHistory", FormatJSON(m.searchHistoryItems))
+    end if
+    
     m.QueryLBRY.setField("method", "startup")
     m.QueryLBRY.observeField("uid", "gotUID")
     m.QueryLBRY.observeField("authtoken", "gotAuth")
@@ -111,12 +121,21 @@ Sub init()
     m.vgrid.observeField("rowitemFocused", "vgridFocusChanged")
 
     m.searchKeyboard = m.top.findNode("searchKeyboard")
-    m.keyboardDialog = m.searchkeyboard.findNode("keyboardDialog")
+    m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
     m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
     m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
     m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
+
+    m.searchHistoryBox.observeField("itemSelected", "historySearch")
+    m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
+    m.searchKeyboardDialog.observeField("itemSelected", "search")
+
+    for each histitem in m.searchHistoryItems
+      item = m.searchHistoryContent.createChild("ContentNode")
+      item.title = histitem
+    end for
 
     m.JSONTask = createObject("roSGNode", "JSONTask")
     m.JSONTask.setField("thumbnaildims", [m.maxThumbWidth, m.maxThumbHeight])
@@ -189,6 +208,7 @@ sub finishInit()
   m.sidebarbackground.visible = true
   m.odyseelogo.visible = true
   m.vgrid.visible = true
+  m.selector.jumpToItem = 1
   m.selector.visible = true
   m.loaded = True
   m.vgrid.setFocus(true)
@@ -214,25 +234,20 @@ Sub startupRan()
     m.authenticated = True
 End Sub
 
-sub searchMode()
-  ? "in search mode"
-  m.issearch = True
-  if m.searchFailed
-      m.searchFailed = False
-  else
-    'enter video name here
-  end if
-  'remove legacy selection code
-end sub
-
-sub searchEntered()
-  stub_dialogtext = "test"
-  if stub_dialogtext <> ""
+sub execSearch(search)
+  if search <> ""
     '? "Valid Input"
     'search starting
+    m.issearch = True
+    m.canSelector = False
+    m.searchKeyboard.visible = False
+    m.searchHistoryDialog.visible = False
+    m.searchKeyboardDialog.visible = false
+    m.searchHistoryLabel.visible = false
+    m.searchHistoryBox.visible = False
     m.loadingtext.visible = true
     m.loadingtext.text = "Loading your search results.."
-    searchquery = stub_dialogtext
+    searchquery = search
     m.failedSearchText = searchquery 'so we don't have to extract it from the Task later on.
     m.QueryLBRY.setField("method", "lighthouse")
     m.no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
@@ -248,11 +263,16 @@ end sub
 
 sub gotLighthouse()
   m.QueryLBRY.control = "STOP"
-  if isValid(m.QueryLBRY.output.result.noresults)
+  m.QueryLBRY.unobserveField("output")
+  if isValid(m.QueryLBRY.output.result.noresults) OR m.QueryLBRY.output.result.content.getChildCount() < 2
       ? "got nothing"
+      m.loadingtext.visible = false
+      m.loadingtext.text = "No results."
+      m.loadingtext.visible = true
       m.searchFailed = True
       failedSearch()
   else
+      m.focusedItem = 6 'Use standard UI loop for the search.
       base = m.QueryLBRY.output.result
       m.vgrid.content = base["content"]
       m.mediaindex = base["index"]
@@ -274,7 +294,6 @@ sub closeSearch()
   m.searchloading = False
   m.issearch = False
   m.loadingtext.visible = False
-  m.loadingtext.text = "Loading..."
   m.vgrid.visible = True
   m.vgrid.setFocus(true)
 end sub
@@ -299,13 +318,24 @@ sub failedSearch()
   ? "search failed"
   m.QueryLBRY.control = "STOP"
   ? "task stopped"
-  searchMode()
+  Sleep(3000)
+  backToKeyboard()
 end sub
 
-'sub searchMode()
-'  ? "Button was selected."
-'  m.issearch = True
-'  m.keyboarddialog = createObject("roSGNode", "KeyboardDialog")
+sub backToKeyboard()
+  m.issearch = False
+  m.canSelector = True
+  m.searchKeyboard.visible = True
+  m.searchKeyboardDialog.visible = True
+  m.searchKeyboardGrid.visible = True
+  m.searchHistoryLabel.visible = True
+  m.searchHistoryBox.visible = True
+  m.searchKeyboardDialog.visible = True
+  m.loadingtext.visible = False
+  m.loadingtext.text = "Loading..."
+  m.searchKeyboard.setFocus(true)
+  m.focusedItem = 1
+  '  m.keyboarddialog = createObject("roSGNode", "KeyboardDialog")
 '  m.keyboarddialog.backgroundUri = "pkg:/images/searchbackground.png"
 '  m.keyboarddialog.title = "Video Search"
 '  m.keyboarddialog.keyboard.texteditbox.hintText = "Enter Video Name Here"
@@ -319,7 +349,7 @@ end sub
 '  m.top.appendChild(m.keyboarddialog)
 '  m.vgrid.setFocus(false)
 '  m.keyboarddialog.setFocus(true)
-'end sub
+end sub
 
 Function handleDeepLink(deeplink as object)
   if validateDeepLink(deeplink)
@@ -384,20 +414,24 @@ sub SelectorFocusChanged(msg)
       if m.selector.itemFocused = 0
           ? "in search UI"
           m.vgrid.visible = false
-          m.canSelector = false
-          m.canRight = false
+          m.canSelector = true
+          m.canRight = true
           m.searchHistoryBox.visible = true
           m.searchHistoryLabel.visible = true
           m.searchHistoryDialog.visible = true
           m.searchKeyboard.visible = true
-          m.keyboardDialog.visible = true
+          m.searchKeyboardDialog.visible = true
+          m.focusedItem = 1
+          m.selector.setFocus(true)
+          m.vgrid.setFocus(false)
+          m.searchKeyboard.setFocus(true)
       end if
       if m.selector.itemFocused <> 0
         m.searchHistoryBox.visible = false
         m.searchHistoryLabel.visible = false
         m.searchHistoryDialog.visible = false
         m.searchKeyboard.visible = false
-        m.keyboardDialog.visible = false
+        m.searchKeyboardDialog.visible = false
         m.vgrid.visible = true
         m.canSelector = true
         m.canRight = true
@@ -520,24 +554,166 @@ end Function
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
     if press
-        if key = "back"  'If the back button is pressed
-            if m.Video.visible
-                returnToUIPage()
-                return true
-            else
-                return false
-            end if
-        end if
-        if (key = "right") and (m.selector.hasFocus() = true) and (m.canright = true)
-          m.vgrid.setFocus(true)
-          m.selector.setFocus(false)
-        else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.canSelector = true) and (m.issearch = false)
-          m.canright = True
-          m.selector.setFocus(true)
-          m.vgrid.setFocus(false)
+      if m.focusedItem = 6 ' Use standard UI Procedure if we are External.
+          if key = "back"  'If the back button is pressed
+              if m.Video.visible
+                  returnToUIPage()
+                  return true
+              else
+                  return false
+              end if
+          end if
+          if (key = "right") and (m.selector.hasFocus() = true) and (m.canright = true)
+            m.vgrid.setFocus(true)
+            m.selector.setFocus(false)
+          else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.canSelector = true)
+            m.canright = True
+            m.selector.setFocus(true)
+            m.vgrid.setFocus(false)
+          end if
+        else
+          changeFocus(m.focusedItem, key)
         end if
     end if
 end Function
+
+sub changeFocus(focusedItem, key)
+    ? "key", key, "pressed with focus", focusedItem
+
+    if key = "up"
+
+        if m.focusedItem = 2 'Search -> Keyboard
+            m.searchKeyboardDialog.setFocus(false)
+            m.searchKeyboard.setFocus(true)
+            m.searchKeyboardGrid.jumpToItem = 37
+            m.focusedItem = 1
+        end if
+
+        if m.focusedItem = 4 'Clear History -> History
+            if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
+                m.searchHistoryDialog.setFocus(false)
+                m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                m.searchHistoryBox.setFocus(true)
+            end if
+            m.focusedItem = 3
+        end if
+
+    end if
+
+    if key = "down"
+
+        if m.focusedItem = 1 'Keyboard -> Search
+            m.searchKeyboard.setFocus(false)
+            m.searchKeyboardDialog.setFocus(true)
+            m.focusedItem = 2
+        end if
+
+        if m.focusedItem = 3 'History -> Clear
+            m.searchHistoryBox.setFocus(false)
+            m.searchHistoryDialog.setFocus(true)
+            m.focusedItem = 4
+        end if
+
+    end if
+    if key = "left"
+        if m.focusedItem = 2 OR m.focusedItem = 1 'Exit (Keyboard/Search Button -> Bar)
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(false)
+          m.selector.jumpToItem = 1
+          m.selector.setFocus(true)
+          m.focusedItem = 6
+        end if
+        if m.focusedItem = 3 'History - Keyboard
+            switchRow = m.searchHistoryBox.itemFocused
+            if m.searchHistoryBox.itemFocused > 6
+                switchRow = 6
+            end if
+            m.searchHistoryBox.setFocus(false)
+            ? "itemArray:", m.searchKeyboardItemArray[switchRow-1]
+            m.searchKeyboard.setFocus(true)
+            m.focusedItem = 1
+            m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
+            switchRow = invalid
+            m.focusedItem = 1
+        end if
+        if m.focusedItem = 4 'Clear History -> Search
+            m.searchHistoryDialog.setFocus(false)
+            m.searchKeyboardDialog.setFocus(true)
+            m.focusedItem = 2
+        end if
+    end if
+    if key = "right"
+
+        if m.focusedItem = 2 'Search -> Clear History
+            m.searchKeyboardDialog.setFocus(false)
+            m.searchHistoryDialog.setFocus(true)
+            m.focusedItem = 4
+        end if
+
+        if m.focusedItem = 1 'Keyboard -> Search History
+            column = Int(m.searchKeyboardGrid.currFocusColumn)
+            row = Int(m.searchKeyboardGrid.currFocusRow)
+            itemFocused = m.searchKeyboardGrid.itemFocused
+            ? row, column
+            if column = 4 AND row = 6 OR column = 5
+                if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
+                    if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
+                        m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                    else if row = 6
+                        m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                    else
+                        m.searchHistoryBox.jumpToItem = row
+                    end if
+                    m.searchKeyboard.setFocus(false)
+                    m.searchHistoryBox.setFocus(true)
+                    m.focusedItem = 3
+                end if
+            end if
+            column = Invalid 'free memory
+            row = Invalid
+            itemFocused = Invalid
+        end if
+    end if
+end sub
+
+sub historySearch()
+    ? "======HISTORY SEARCH======"
+    execSearch(m.searchHistoryContent.getChildren(-1, 0)[m.searchHistoryBox.itemSelected].TITLE)
+    ? "======HISTORY SEARCH======"
+end sub
+
+sub clearHistory()
+    searchHistoryItems = []
+    SetRegistry("searchHistory", FormatJSON(searchHistoryItems))
+    if m.searchHistoryContent.removeChildrenIndex(-1, 0) <> true
+        cCount = m.searchHistoryContent.getChildCount()
+        for item = 0 to cCount
+            m.searchHistoryContent.removeChildIndex(0)
+        end for
+    end if
+end sub
+
+sub search()
+    ? "======SEARCH======"
+    if m.searchHistoryContent.getChildCount() >= 8
+        m.searchHistoryContent.removeChildIndex(8) 'removeChildIndex is basically pop
+        m.searchHistoryItems.pop()
+        item = createObject("roSGNode", "ContentNode")
+        item.title = m.searchKeyboard.text
+        m.searchHistoryContent.insertChild(item, 0) 'basically unshift
+        m.searchHistoryItems.unshift(m.searchKeyboard.text)
+    else
+        item = createObject("roSGNode", "ContentNode")
+        item.title = m.searchKeyboard.text
+        m.searchHistoryContent.insertChild(item, 0) 'basically unshift
+        m.searchHistoryItems.unshift(m.searchKeyboard.text)
+    end if
+    ? "======SEARCH======"
+    SetRegistry("searchHistory", FormatJSON(m.searchHistoryItems))
+    execSearch(m.searchKeyboard.text)
+end sub
 
 'Registry+Utility Functions
 
