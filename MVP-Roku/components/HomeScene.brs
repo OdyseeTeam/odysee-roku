@@ -10,9 +10,12 @@ Sub init()
     m.searchFailed = False 'Did the previous search fail? (Indicate to the user that the search failed)
     m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
     m.modelwarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
-
     m.lastSelectorItem = 0 'Used to return user to either the last selector or video grid item.
     m.lastVGridItem = [0,0]
+
+    m.itemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
+    m.switchState = 0
+    m.switchRow = 0 'Row on History/Keyboard
 
     'Legacy UI Variables (to be removed along w/legacy)
     m.useLegacyUI = False 'Use Legacy UI (Temporary Variable)
@@ -83,6 +86,7 @@ Sub init()
         m.QueryLBRY.setField("authtoken", m.authtoken)
         m.QueryLBRY.setField("cookies", m.cookies)  
       end if
+    
     m.QueryLBRY.setField("method", "startup")
     m.QueryLBRY.observeField("uid", "gotUID")
     m.QueryLBRY.observeField("authtoken", "gotAuth")
@@ -105,14 +109,15 @@ Sub init()
     m.selector.observeField("itemFocused", "SelectorFocusChanged")
     m.vgrid.observeField("rowItemSelected", "playVideo")
     m.vgrid.observeField("rowitemFocused", "vgridFocusChanged")
-    m.searchbutton = m.top.findNode("searchbutton")
-    m.searchbutton.observeField("buttonSelected", "searchMode")
 
-    'LEGACY UI
-    if m.useLegacyUI = False
-      m.searchbutton.unobserveField("buttonSelected") ' Disable Search Mode
-    end if
-    
+    m.searchKeyboard = m.top.findNode("searchKeyboard")
+    m.keyboardDialog = m.searchkeyboard.findNode("keyboardDialog")
+    m.searchHistoryBox = m.top.findNode("searchHistory")
+    m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
+    m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
+    m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
+    m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
+
     m.JSONTask = createObject("roSGNode", "JSONTask")
     m.JSONTask.setField("thumbnaildims", [m.maxThumbWidth, m.maxThumbHeight])
     m.JSONTask.observeField("output", "AppFinishedFirstLoad")
@@ -186,9 +191,6 @@ sub finishInit()
   m.vgrid.visible = true
   m.selector.visible = true
   m.loaded = True
-  if m.loaded and m.authenticated and m.useLegacyUI
-    m.searchbutton.visible = true
-  end if
   m.vgrid.setFocus(true)
   m.global.scene.signalBeacon("AppLaunchComplete")
 end sub
@@ -210,72 +212,37 @@ Sub startupRan()
     m.QueryLBRY.control = "STOP"
     m.QueryLBRY.unobserveField("output") 'for the next use
     m.authenticated = True
-    if m.loaded and m.authenticated and m.useLegacyUI
-      m.searchbutton.visible = true
-    end if
 End Sub
 
 sub searchMode()
   ? "in search mode"
   m.issearch = True
-  m.keyboarddialog = createObject("roSGNode", "KeyboardDialog")
-  m.keyboarddialog.backgroundUri = "pkg:/images/searchbackground.png"
-  m.keyboarddialog.title = "Video Search"
-  
-  m.keyboarddialog.buttons = ["OK", "Cancel"]
-  m.keyboarddialog.buttonGroup.observeField("buttonSelected", "searchEntered")
   if m.searchFailed
-      m.keyboarddialog.text = m.failedSearchText
-      m.keyboarddialog.title = "No results found with previous search"
       m.searchFailed = False
   else
-    m.keyboarddialog.keyboard.texteditbox.hintText = "Enter Video Name Here"
+    'enter video name here
   end if
-  children = m.keyboarddialog.buttonGroup.getChildren(-1,0)
-  for each child in children
-    child.iconUri=""
-    child.focusedIconUri=""
-  end for
-  m.top.appendChild(m.keyboarddialog)
-  m.vgrid.setFocus(false)
-  m.searchbutton.setFocus(false)
-  m.keyboarddialog.setFocus(true)
+  'remove legacy selection code
 end sub
 
 sub searchEntered()
-  if m.keyboarddialog.buttonGroup.buttonSelected = 0
-    '? "Selected OK, continue with logic flow"
-    if m.keyboarddialog.text <> ""
-      '? "Valid Input"
-      'search starting
-      m.searchbutton.unobserveField("buttonSelected")
-      searchquery = m.keyboarddialog.text
-      m.failedSearchText = searchquery 'so we don't have to extract it from the Task later on.
-      m.keyboarddialog.setFocus(false)
-      m.searchbutton.setFocus(false)
-      m.top.removeChild(m.keyboarddialog)
-      m.vgrid.visible = false
-      m.searchloading = True
-      m.issearch = True
-      m.searchbutton.text = "Loading..."
-      m.loadingtext.visible = true
-      m.loadingtext.text = "Loading your search results.."
-      'm.searchbutton.setFocus(true)
-      m.QueryLBRY.setField("method", "lighthouse")
-      m.no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
-      m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: m.no_earlier, query: searchquery})
-      m.QueryLBRY.observeField("output", "gotLighthouse")
-      m.QueryLBRY.control = "RUN"
-    else if Len(m.keyboarddialog.text) > 16
-      m.keyboarddialog.keyboard.texteditbox.hintText = "Length of search is too long, please either cancel or try again."
+  stub_dialogtext = "test"
+  if stub_dialogtext <> ""
+    '? "Valid Input"
+    'search starting
+    m.loadingtext.visible = true
+    m.loadingtext.text = "Loading your search results.."
+    searchquery = stub_dialogtext
+    m.failedSearchText = searchquery 'so we don't have to extract it from the Task later on.
+    m.QueryLBRY.setField("method", "lighthouse")
+    m.no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
+    m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: m.no_earlier, query: searchquery})
+    m.QueryLBRY.observeField("output", "gotLighthouse")
+    m.QueryLBRY.control = "RUN"
+  else if Len(m.keyboarddialog.text) > 16
+    ' TOO long? (TODO: FIX)
     else
-      m.keyboarddialog.keyboard.texteditbox.hintText = "No text was entered, please either cancel or try again."
-    end if
-  else
-    ? "Selected cancel, do not continue."
-    m.keyboarddialog.setFocus(false)
-    m.top.removeChild(m.keyboarddialog)
-    m.searchbutton.setFocus(true)
+    ' No text entered
   end if
 end sub
 
@@ -293,16 +260,13 @@ sub gotLighthouse()
       m.searchloading = False
       m.vgrid.visible = true
       m.loadingtext.visible = false
-      m.searchbutton.text = "Go Back"
-      m.searchbutton.observeField("buttonSelected", "closeSearch")
+      'close observeField removed, add in input loop
       m.vgrid.setFocus(true)
   end if
 end sub
 
 sub closeSearch()
   m.QueryLBRY.control = "STOP"
-  m.searchbutton.unobserveField("buttonSelected")
-  m.searchbutton.text = "Search Videos"
   base = m.JSONTask.output["PRIMARY_CONTENT"]
   m.vgrid.content = base["content"]
   m.mediaindex = base["index"]
@@ -313,15 +277,12 @@ sub closeSearch()
   m.loadingtext.text = "Loading..."
   m.vgrid.visible = True
   m.vgrid.setFocus(true)
-  m.searchbutton.observeField("buttonSelected", "searchMode")
 end sub
 
 sub cancelSearch()
   ? "cancelling search"
   m.QueryLBRY.control = "STOP"
   ? "task stopped"
-  m.searchbutton.unobserveField("buttonSelected")
-  m.searchbutton.text = "Search Videos"
   base = m.JSONTask.output["PRIMARY_CONTENT"]
   m.vgrid.content = base["content"]
   m.mediaindex = base["index"]
@@ -332,15 +293,12 @@ sub cancelSearch()
   m.loadingtext.text = "Loading..."
   m.vgrid.visible = True
   m.vgrid.setFocus(true)
-  m.searchbutton.observeField("buttonSelected", "searchMode")
 end sub
 
 sub failedSearch()
   ? "search failed"
   m.QueryLBRY.control = "STOP"
   ? "task stopped"
-  m.searchbutton.unobserveField("buttonSelected")
-  m.searchbutton.text = "Search Videos"
   searchMode()
 end sub
 
@@ -360,7 +318,6 @@ end sub
 '  end for
 '  m.top.appendChild(m.keyboarddialog)
 '  m.vgrid.setFocus(false)
-'  m.searchbutton.setFocus(false)
 '  m.keyboarddialog.setFocus(true)
 'end sub
 
@@ -429,8 +386,18 @@ sub SelectorFocusChanged(msg)
           m.vgrid.visible = false
           m.canSelector = false
           m.canRight = false
+          m.searchHistoryBox.visible = true
+          m.searchHistoryLabel.visible = true
+          m.searchHistoryDialog.visible = true
+          m.searchKeyboard.visible = true
+          m.keyboardDialog.visible = true
       end if
       if m.selector.itemFocused <> 0
+        m.searchHistoryBox.visible = false
+        m.searchHistoryLabel.visible = false
+        m.searchHistoryDialog.visible = false
+        m.searchKeyboard.visible = false
+        m.keyboardDialog.visible = false
         m.vgrid.visible = true
         m.canSelector = true
         m.canRight = true
@@ -568,12 +535,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           m.canright = True
           m.selector.setFocus(true)
           m.vgrid.setFocus(false)
-        else if (key = "up") and (m.isup = true) and (m.searchbutton.visible = true) and (m.useLegacyUI = true)
-          m.vgrid.setFocus(false)
-          m.searchbutton.setFocus(true)
-        else if (key = "down") and (m.isup = true) and (m.searchbutton.visible = true) and (m.searchloading = false) and (m.useLegacyUI = true)
-          m.searchbutton.setFocus(false)
-          m.vgrid.setFocus(true)
         end if
     end if
 end Function

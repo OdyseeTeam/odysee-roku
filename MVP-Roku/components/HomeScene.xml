@@ -96,8 +96,55 @@
         />
     -->
 
-    <Button id="searchbutton" text="Search Videos" translation="[280,75]" height="32" minWidth="275" maxWidth="275" textFont="font:SmallestSystemFont" focusedTextFont="font:SmallestBoldSystemFont" iconUri="" focusedIconUri="" showFocusFootprint="true" visible="false"/>
-
+    <MiniKeyboard
+		id="searchKeyboard"
+        visible="false"
+		showTextEditBox = "true"
+		translation="[290,160]"
+		>
+		<LabelList
+			id="keyboardDialog"
+			itemSize="[510,65]"
+			translation="[35,707]"
+			>
+			<ContentNode id="Dialog" role="content">
+				<ContentNode title="Search"/>
+			</ContentNode>
+		</LabelList>
+	</MiniKeyboard>
+    <Label
+		id="searchHistoryLabel"
+        visible="false"
+		font="font:INTER LIGHT BETA"
+		color="#ffffff" 
+		width="500" 
+		height="64" 
+		text="Search History"
+		translation="[1080,160]"
+		>
+        <Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
+    </Label>
+	<LabelList
+		id="searchHistory"
+        visible="false"
+		vertFocusAnimationStyle="floatingFocus"
+		translation="[930,260]"
+		itemSize="[700,65]"
+		>
+		<ContentNode id="searchHistoryContent" role="content">
+		</ContentNode>
+	</LabelList>
+	<LabelList
+		id="searchHistoryDialog"
+        visible="false"
+		itemSize="[700,65]"
+		translation="[930,867]"
+		>
+		<ContentNode id="Dialog" role="content">
+			<ContentNode title="Clear History"/>
+		</ContentNode>
+	</LabelList>
+    
     <Video
         id = "Video"
         height = "1080"
