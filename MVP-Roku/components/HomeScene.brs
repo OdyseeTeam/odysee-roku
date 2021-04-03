@@ -4,25 +4,13 @@ Sub init()
     m.loaded = False 'Has the app finished its first load?
     m.authenticated = False 'Do we have a valid ID and authkey for search?
     m.searchloading = False 'Has a search been made, and is it still loading?
-    m.canright = False 'Can we move from the video grid (VGRID) to the selector bar (SELECTOR)?
-    m.canSelector = True 'Are we ready to transition to the selector? (We are either in the video grid on the leftmost item or in search)
-    m.issearch = False 'Are we in search mode? (Search mode prevents transition to the selector)
-    m.searchFailed = False 'Did the previous search fail? (Indicate to the user that the search failed)
     m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
     m.modelwarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
-    m.lastSelectorItem = 0 'Used to return user to either the last selector or video grid item.
-    m.lastVGridItem = [0,0]
     m.focusedItem = 6 'set to External. This is just a workaround for legacy code here that I am planning on removing.
 
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
-    m.switchState = 0
     m.switchRow = 0 'Row on History/Keyboard
-
-    'Legacy UI Variables (to be removed along w/legacy)
-    m.useLegacyUI = False 'Use Legacy UI (Temporary Variable)
-    m.isup = False 'Are we on the highest item of the video grid and ready to transition to the search button?
-
-
+    
     'Warning UI Items
     m.warningtext = m.top.findNode("warningtext")
     m.warningsubtext = m.top.findNode("warningsubtext")
