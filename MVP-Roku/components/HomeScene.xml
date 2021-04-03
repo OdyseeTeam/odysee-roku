@@ -9,6 +9,18 @@
 
     <!-- All nodes must be inside <children> headers -->
     <children>
+
+    <!--
+        Interactive Items are:
+            Items that can export a selected-type event, such as onFocus.
+
+        Non-Interactive Items are:
+            Items such as a logo, or background objects or trim.
+            They have no focus events at all, so they are mainly theme objects and (if you really wanted to) you could remove them with some effort and keep the app's core functionality intact.
+            Of course, this means no errors on a failed search, no labels on things, etc, but it would still practically act the same.
+            They are still important for usability however. 
+    -->
+    <!--Non-Interactive Items-->
     <Rectangle
         id="background"
         color="0x09070c"
@@ -50,7 +62,41 @@
         translation="[101, 66]" 
         visible = "false"
          />
+    <Label
+		id="searchHistoryLabel"
+        visible="false"
+		font="font:INTER LIGHT BETA"
+		color="#ffffff" 
+		width="500" 
+		height="64" 
+		text="Search History"
+		translation="[1080,160]"
+		>
+        <Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
+    </Label>
+    <Label id="warningtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="80" text="Warning!" translation="[300,106]" visible="false">
+			<Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
+	</Label>
+	<Label id="warningsubtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[300,186]" visible="false">
+		<Font role="font" uri = "pkg:/images/rofont.otf" size="32"/>
+	</Label>
+    <!--Interactive Items-->
+
     <!-- video grid -->
+    <MarkupList
+            id="selector"
+            itemComponentName="catselector"
+            itemSize="[110, 70]"
+            itemSpacing="[10, 10]"
+            translation="[100,133]"
+            numColumns="1"
+            numRows="11"
+            vertFocusAnimationStyle="floatingFocus"
+            focusFootprintBlendColor="#2b2037"
+            columnWidths="[110,70]"
+            visible = "false"
+    />
+
     <RowList
         id= "vgrid"
         translation= "[210,120]"
@@ -65,36 +111,6 @@
         vertFocusAnimationStyle= "fixedfocus"
         visible = "false"
     />
-    
-    <MarkupList
-            id="selector"
-            itemComponentName="catselector"
-            itemSize="[110, 70]"
-            itemSpacing="[10, 10]"
-            translation="[100,133]"
-            numColumns="1"
-            numRows="11"
-            vertFocusAnimationStyle="floatingFocus"
-            focusFootprintBlendColor="#2b2037"
-            columnWidths="[110,70]"
-            visible = "false"
-    />
-    <!--Old rowlist node
-        <RowList
-        id= "RowList"
-        translation= "[160,90]"
-        itemComponentName= "PosterItem"
-        numRows="3"
-        rowitemSize="[[240,140]]"
-        rowItemSpacing= "[[36,0]]"
-        itemSize= "[1760,190]"
-        rowLabelOffset= "[[27,10]]"
-        focusXOffset = "[27]"
-        showRowLabel= "[true]"
-        rowFocusAnimationStyle= "floatingfocus"
-        vertFocusAnimationStyle= "floatingfocus"
-        />
-    -->
 
     <MiniKeyboard
 		id="searchKeyboard"
@@ -112,18 +128,7 @@
 			</ContentNode>
 		</LabelList>
 	</MiniKeyboard>
-    <Label
-		id="searchHistoryLabel"
-        visible="false"
-		font="font:INTER LIGHT BETA"
-		color="#ffffff" 
-		width="500" 
-		height="64" 
-		text="Search History"
-		translation="[1080,160]"
-		>
-        <Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
-    </Label>
+
 	<LabelList
 		id="searchHistory"
         visible="false"
@@ -134,7 +139,8 @@
 		<ContentNode id="searchHistoryContent" role="content">
 		</ContentNode>
 	</LabelList>
-	<LabelList
+	
+    <LabelList
 		id="searchHistoryDialog"
         visible="false"
 		itemSize="[700,65]"
@@ -152,12 +158,8 @@
 	    loop = "false"
         visible = "false"
     />
-    <Label id="warningtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="80" text="Warning!" translation="[300,106]" visible="false">
-			<Font role="font" uri = "pkg:/images/rofont.otf" size="64"/>
-	</Label>
-	<Label id="warningsubtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[300,186]" visible="false">
-		<Font role="font" uri = "pkg:/images/rofont.otf" size="32"/>
-	</Label>
+
 	<Button id="warningbutton" textcolor="#ffffff" minwidth="300" height="64" text="OK" showFocusFootprint="true" translation="[300,286]" visible="false"/>
+    
     </children>
 </component>
