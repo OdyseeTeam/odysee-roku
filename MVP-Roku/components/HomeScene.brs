@@ -526,34 +526,32 @@ end Function
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
     if press
-      if m.focusedItem = 6 ' Use standard UI Procedure if we are External.
-          if key = "back"  'If the back button is pressed
-              if m.Video.visible
-                  returnToUIPage()
-                  return true
-              else
-                  return false
-              end if
-          end if
-          if (key = "right") and (m.selector.hasFocus() = true) and (m.canright = true)
-            m.vgrid.setFocus(true)
-            m.selector.setFocus(false)
-          else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.canSelector = true)
-            m.canright = True
-            m.selector.setFocus(true)
-            m.vgrid.setFocus(false)
-          end if
-        else
-          changeFocus(m.focusedItem, key)
-        end if
+      changeFocus(m.focusedItem, key)
     end if
 end Function
+
+'LEGACY UI CODE BELOW (for reimp.)
+          'if key = "back"  'If the back button is pressed
+          '    if m.Video.visible
+          '        returnToUIPage()
+          '        return true
+          '    else
+          '        return false
+          '    end if
+          'end if
+          'if (key = "right") and (m.selector.hasFocus() = true) and (m.canright = true)
+          '  m.vgrid.setFocus(true)
+          '  m.selector.setFocus(false)
+          'else if (key = "left") and (m.vgrid.hasFocus()= true) and (m.canSelector = true)
+          '  m.canright = True
+          '  m.selector.setFocus(true)
+          '  m.vgrid.setFocus(false)
+          'end if
 
 sub changeFocus(focusedItem, key)
     ? "key", key, "pressed with focus", focusedItem
 
     if key = "up"
-
         if m.focusedItem = 2 'Search -> Keyboard
             m.searchKeyboardDialog.setFocus(false)
             m.searchKeyboard.setFocus(true)
