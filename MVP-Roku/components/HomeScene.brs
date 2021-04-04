@@ -6,7 +6,7 @@ Sub init()
     m.searchloading = False 'Has a search been made, and is it still loading?
     m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
     m.modelwarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
-    m.focusedItem = 6 'set to External. This is just a workaround for legacy code here that I am planning on removing.
+    m.focusedItem = 1 'set to External. This is just a workaround for legacy code here that I am planning on removing.
 
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.switchRow = 0 'Row on History/Keyboard
@@ -199,7 +199,7 @@ sub finishInit()
   m.selector.jumpToItem = 1
   m.selector.visible = true
   m.loaded = True
-  m.vgrid.setFocus(true)
+  m.selector.setFocus(true)
   m.global.scene.signalBeacon("AppLaunchComplete")
 end sub
 
@@ -251,7 +251,7 @@ sub gotLighthouse()
       m.searchFailed = True
       failedSearch()
   else
-      m.focusedItem = 6 'Use standard UI loop for the search.
+      m.focusedItem = 2
       base = m.QueryLBRY.output.result
       m.vgrid.content = base["content"]
       m.mediaindex = base["index"]
@@ -371,7 +371,7 @@ sub SelectorFocusChanged(msg)
           m.searchHistoryDialog.visible = true
           m.searchKeyboard.visible = true
           m.searchKeyboardDialog.visible = true
-          m.focusedItem = 1
+          m.focusedItem = 3
           m.selector.setFocus(true)
           m.vgrid.setFocus(false)
           m.searchKeyboard.setFocus(true)
@@ -504,6 +504,7 @@ end Sub
 Sub playVideo(url = invalid)
     m.Video.visible = "true"
     m.Video.setFocus(true)
+    m.focusedItem = 7
     m.Video.control = "play"
     ? m.Video.errorStr
     ? m.Video.videoFormat
@@ -511,9 +512,11 @@ Sub playVideo(url = invalid)
 End Sub
 
 Function returnToUIPage()
+    m.Video.setFocus(false)
     m.Video.visible = "false" 'Hide video
-    m.vgrid.setFocus(true)
     m.Video.control = "stop"  'Stop video from playing
+    m.vgrid.setFocus(true)
+    m.focusedItem = 2
 end Function
 
 Function onVideoStateChanged(msg as Object)
@@ -526,7 +529,16 @@ end Function
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
     if press
-      changeFocus(m.focusedItem, key)
+      if key = "back"  'If the back button is pressed
+        if m.Video.visible
+            returnToUIPage()
+            return true
+        else
+          return false
+        end if
+      else
+        changeFocus(m.focusedItem, key)
+      end if
     end if
 end Function
 
@@ -570,8 +582,7 @@ sub changeFocus(focusedItem, key)
     end if
 
     if key = "down"
-
-        if m.focusedItem = 3 'Keyboard -> Search
+        if m.focusedItem = 3
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(true)
             m.focusedItem = 4
@@ -586,9 +597,16 @@ sub changeFocus(focusedItem, key)
     end if
     if key = "left"
         if m.focusedItem = 2
-          m.vgrid.setFocus(false)
-          m.selector.setFocus(true)
-          m.focusedItem = 1
+          if m.selector.itemFocused = 0
+            m.vgrid.setFocus(false)
+            m.selector.jumpToItem = 1
+            m.selector.setFocus(true)
+            m.focusedItem = 1
+          else
+            m.vgrid.setFocus(false)
+            m.selector.setFocus(true)
+            m.focusedItem = 1
+          end if
         end if
         
         if m.focusedItem = 3 OR m.focusedItem = 4 'Exit (Keyboard/Search Button -> Bar)
@@ -621,6 +639,7 @@ sub changeFocus(focusedItem, key)
     end if
     if key = "right"
         if m.focusedItem = 1 AND m.selector.itemFocused = 0
+          m.focusedItem = 3
           m.selector.setFocus(false)
           m.searchKeyboard.setFocus(true)
           m.focusedItem = 3
