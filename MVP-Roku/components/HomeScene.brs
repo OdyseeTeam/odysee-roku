@@ -3,27 +3,27 @@ Sub init()
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
     m.authenticated = False 'Do we have a valid ID and authkey for search?
-    m.searchloading = False 'Has a search been made, and is it still loading?
-    m.searchfailed = False 'Has a search failed?
+    m.searchLoading = False 'Has a search been made, and is it still loading?
+    m.searchFailed = False 'Has a search failed?
     m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
-    m.modelwarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
+    m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
     m.focusedItem = 1 'set to External. This is just a workaround for legacy code here that I am planning on removing.
 
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.switchRow = 0 'Row on History/Keyboard
 
     'UI Items
-    m.warningtext = m.top.findNode("warningtext")
-    m.warningsubtext = m.top.findNode("warningsubtext")
-    m.warningbutton = m.top.findNode("warningbutton")
-    m.loadingtext = m.top.findNode("loadingtext")
+    m.errorText = m.top.findNode("warningtext")
+    m.errorSubtext = m.top.findNode("warningsubtext")
+    m.errorButton = m.top.findNode("warningbutton")
+    m.loadingText = m.top.findNode("loadingtext")
     m.header = m.top.findNode("headerrectangle")
-    m.sidebartrim = m.top.findNode("sidebartrim")
-    m.sidebarbackground = m.top.findNode("sidebarbackground")
-    m.odyseelogo = m.top.findNode("odyseelogo")
-    m.Video = m.top.findNode("Video")
-    m.VideoContent = createObject("roSGNode", "ContentNode")
-    m.vgrid = m.top.findNode("vgrid")
+    m.sidebarTrim = m.top.findNode("sidebartrim")
+    m.sidebarBackground = m.top.findNode("sidebarbackground")
+    m.odyseeLogo = m.top.findNode("odyseelogo")
+    m.video = m.top.findNode("Video")
+    m.videoContent = createObject("roSGNode", "ContentNode")
+    m.videoGrid = m.top.findNode("vgrid")
     m.selector = m.top.findNode("selector")
     m.selector.content = getselectorData()
     m.searchKeyboard = m.top.findNode("searchKeyboard")
@@ -35,10 +35,10 @@ Sub init()
     m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
 
     'UI Item observers
-    m.Video.observeField("state", "onVideoStateChanged")
+    m.video.observeField("state", "onVideoStateChanged")
     m.selector.observeField("itemFocused", "SelectorFocusChanged")
-    m.vgrid.observeField("rowItemSelected", "playVideo")
-    m.vgrid.observeField("rowitemFocused", "vgridFocusChanged")
+    m.videoGrid.observeField("rowItemSelected", "playVideo")
+    m.videoGrid.observeField("rowitemFocused", "vgridFocusChanged")
     m.searchHistoryBox.observeField("itemSelected", "historySearch")
     m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
     m.searchKeyboardDialog.observeField("itemSelected", "search")
@@ -60,8 +60,8 @@ Sub init()
     if m.ModelNumber = "2710X" OR m.ModelNumber = "2720X" OR m.ModelNumber = "3500X" OR m.ModelNumber = "3700X" OR m.ModelNumber = "3710X" OR m.ModelNumber = "5000X" 'Sugarland (ARM) added due to assumed 20mb limit, correlates with known 720p limit of Tyler
       '? "WARNING: Model may have problems with Video or Texture Memory"
       '? "Attempting to accomodate."
-      m.warningsubtext.text = "Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur."
-      m.modelwarning = True
+      m.errorSubtext.text = "Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur."
+      m.modelWarning = True
       m.maxThumbHeight=m.maxThumbHeight/2
       m.maxThumbWidth=m.maxThumbWidth/2
     end if
@@ -72,8 +72,8 @@ Sub init()
     '4230X
 
     if m.ModelNumber = "4200X" OR m.ModelNumber = "4210X" OR m.ModelNumber = "4230X"
-      m.warningsubtext.text = "Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur."
-      m.modelwarning = True
+      m.errorSubtext.text = "Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur."
+      m.modelWarning = True
     end if
     
     'Roku Players that WILL NOT WORK:
@@ -82,8 +82,8 @@ Sub init()
       
     if m.ModelNumber = "2700X" OR m.ModelNumber = "3500X"
       '? "CRITICAL: Model may not work at all."
-      m.warningsubtext.text = "Your Roku cannot run Odysee! It cannot play 1080p Video. We are sorry for this inconvenience. Please join us on odysee.com"
-      m.modelwarning = True
+      m.errorSubtext.text = "Your Roku cannot run Odysee! It cannot play 1080p Video. We are sorry for this inconvenience. Please join us on odysee.com"
+      m.modelWarning = True
     end if
 
 
@@ -94,10 +94,10 @@ Sub init()
     if IsValid(GetRegistry("uid")) AND IsValid(GetRegistry("authtoken")) AND IsValid(GetRegistry("cookies"))
         ? "found account with UID"+GetRegistry("uid")
         m.uid = StrToI(GetRegistry("uid"))
-        m.authtoken = GetRegistry("authtoken")
+        m.authToken = GetRegistry("authtoken")
         m.cookies = ParseJSON(GetRegistry("cookies"))
         m.QueryLBRY.setField("uid", m.uid)
-        m.QueryLBRY.setField("authtoken", m.authtoken)
+        m.QueryLBRY.setField("authtoken", m.authToken)
         m.QueryLBRY.setField("cookies", m.cookies)  
       end if
 
@@ -111,7 +111,7 @@ Sub init()
         SetRegistry("searchHistory", FormatJSON(m.searchHistoryItems))
     end if
 
-    for each histitem in m.searchHistoryItems
+    for each histitem in m.searchHistoryItems 'Not efficient. Research a way to convert between the items and ContentNode directly, without for.
       item = m.searchHistoryContent.createChild("ContentNode")
       item.title = histitem
     end for
@@ -179,14 +179,14 @@ end sub
 sub AppFinishedFirstLoad()
     m.JSONTask.control = "STOP"
     base = m.JSONTask.output["PRIMARY_CONTENT"]
-    m.vgrid.content = base["content"]
-    m.mediaindex = base["index"]
+    m.videoGrid.content = base["content"]
+    m.mediaIndex = base["index"]
     handleDeepLink(m.global.deeplink)
-    m.loadingtext.visible = false
-    m.loadingtext.translation="[800,0]"
-    m.loadingtext.vertAlign="center" 
-    m.loadingtext.horizAlign="left"
-    if m.modelwarning
+    m.loadingText.visible = false
+    m.loadingText.translation="[800,0]"
+    m.loadingText.vertAlign="center" 
+    m.loadingText.horizAlign="left"
+    if m.modelWarning
       modelWarning()
     else
       finishInit()
@@ -195,29 +195,29 @@ end sub
 
 sub modelWarning()
   m.global.scene.signalBeacon("AppDialogInitiate")
-  m.warningtext.visible = true
-  m.warningsubtext.visible = true
-  m.warningbutton.visible = true
-  m.warningbutton.observeField("buttonSelected", "warningdismissed")
-  m.warningbutton.setFocus(true)
+  m.errorText.visible = true
+  m.errorSubtext.visible = true
+  m.errorButton.visible = true
+  m.errorButton.observeField("buttonSelected", "warningdismissed")
+  m.errorButton.setFocus(true)
 end sub
 
 sub warningdismissed()
-  m.warningtext.visible = false
-  m.warningsubtext.visible = false
-  m.warningbutton.visible = false
-  m.warningbutton.unobserveField("buttonSelected")
-  m.warningbutton.setFocus(false)
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.errorButton.setFocus(false)
   m.global.scene.signalBeacon("AppDialogComplete")
   finishInit()
 end sub
 
 sub finishInit()
   m.header.visible = true
-  m.sidebartrim.visible = true
-  m.sidebarbackground.visible = true
-  m.odyseelogo.visible = true
-  m.vgrid.visible = true
+  m.sidebarTrim.visible = true
+  m.sidebarBackground.visible = true
+  m.odyseeLogo.visible = true
+  m.videoGrid.visible = true
   m.selector.jumpToItem = 1
   m.selector.visible = true
   m.loaded = True
@@ -228,24 +228,22 @@ end sub
 sub execSearch(search)
     '? "Valid Input"
     'search starting
-    m.issearch = True
-    m.canSelector = False
     m.searchKeyboard.visible = False
     m.searchHistoryDialog.visible = False
     m.searchKeyboardDialog.visible = false
     m.searchHistoryLabel.visible = false
     m.searchHistoryBox.visible = False
-    m.loadingtext.visible = true
-    m.loadingtext.text = "Loading your search results.."
-    searchquery = search
-    m.failedSearchText = searchquery 'so we don't have to extract it from the Task later on.
+    m.loadingText.visible = true
+    m.loadingText.text = "Loading your search results.."
+    m.failedSearchText = search 'so we don't have to extract it from the Task later on.
     m.QueryLBRY.setField("method", "lighthouse")
-    m.no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
-    m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: m.no_earlier, query: searchquery})
+    no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
+    m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: no_earlier, query: search})
     m.QueryLBRY.observeField("output", "gotLighthouse")
     m.QueryLBRY.control = "RUN"
+    no_earlier = invalid ' free memory on variable used only once, rather than making an m.
 end sub
-
+ 
 sub gotLighthouse()
   m.QueryLBRY.control = "STOP"
   m.QueryLBRY.unobserveField("output")
@@ -256,14 +254,14 @@ sub gotLighthouse()
   else
       m.focusedItem = 2
       base = m.QueryLBRY.output.result
-      m.vgrid.content = base["content"]
-      m.mediaindex = base["index"]
+      m.videoGrid.content = base["content"]
+      m.mediaIndex = base["index"]
       handleDeepLink(m.global.deeplink)
-      m.searchloading = False
-      m.vgrid.visible = true
-      m.loadingtext.visible = false
+      m.searchLoading = False
+      m.videoGrid.visible = true
+      m.loadingText.visible = false
       'close observeField removed, add in input loop
-      m.vgrid.setFocus(true)
+      m.videoGrid.setFocus(true)
   end if
 end sub
 
@@ -275,8 +273,6 @@ sub failedSearch()
 end sub
 
 sub backToKeyboard()
-  m.issearch = False
-  m.canSelector = True
   m.searchKeyboard.visible = True
   m.searchKeyboardDialog.visible = True
   m.searchKeyboardGrid.visible = True
@@ -284,8 +280,8 @@ sub backToKeyboard()
   m.searchHistoryBox.visible = True
   m.searchKeyboardDialog.visible = True
   m.searchHistoryDialog.visible = True
-  m.loadingtext.visible = False
-  m.loadingtext.text = "Loading..."
+  m.loadingText.visible = False
+  m.loadingText.text = "Loading..."
   m.searchKeyboard.setFocus(true)
   m.focusedItem = 1
   '  m.keyboarddialog = createObject("roSGNode", "KeyboardDialog")
@@ -300,7 +296,7 @@ sub backToKeyboard()
 '    child.focusedIconUri=""
 '  end for
 '  m.top.appendChild(m.keyboarddialog)
-'  m.vgrid.setFocus(false)
+'  m.videoGrid.setFocus(false)
 '  m.keyboarddialog.setFocus(true)
 end sub
 
@@ -313,31 +309,14 @@ Function handleDeepLink(deeplink as object)
 end Function
 
 sub vgridFocusChanged(msg)
-  '? "focus changed from:"
-  '? m.vgrid.rowitemUnfocused
-  '? "to:"
-  if m.vgrid.rowItemFocused[0] = 0
-    m.isup = True
-    '? "is up, can transition to search"
-  else
-    m.isup = False
-    '? "not up, can't transition to search"
-  end if
-  if m.vgrid.rowItemFocused[1] = 0
-    m.canSelector=True
-    '? "is left, can transition"
-  else
-    m.canSelector=False
-    '? "not left, can't transition"
-  end if
-  if isValid(m.vgrid.rowItemFocused)
-    m.videoContent.url = m.vgrid.content.getChild(m.vgrid.rowItemFocused[0]).getChild(m.vgrid.rowItemFocused[1]).URL
+  if isValid(m.videoGrid.rowItemFocused)
+    m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
     m.videoContent.streamFormat = "mp4"
     keepPlaying = false
-    m.Video.content = m.videoContent
-    ? m.videoContent.url
-    m.Video.control = "prebuffer"
-    '? m.Video.contentMetadata
+    m.video.content = m.videoContent
+    '? m.videoContent.url
+    m.video.control = "prebuffer"
+    '? m.video.contentMetadata
   end if
 end sub
 
@@ -347,9 +326,8 @@ sub SelectorFocusChanged(msg)
   '? "to:"
   '? m.selector.itemFocused
   if m.selector.itemFocused <> -1 AND m.loaded = True
-      m.canright = True
-      m.vgrid.visible = true
-      m.loadingtext.visible = false
+      m.videoGrid.visible = true
+      m.loadingText.visible = false
       '0 = Search
       '1 = Primary
       '2 = Cheese
@@ -366,9 +344,7 @@ sub SelectorFocusChanged(msg)
 
       if m.selector.itemFocused = 0
           ? "in search UI"
-          m.vgrid.visible = false
-          m.canSelector = true
-          m.canRight = true
+          m.videoGrid.visible = false
           m.searchHistoryBox.visible = true
           m.searchHistoryLabel.visible = true
           m.searchHistoryDialog.visible = true
@@ -376,7 +352,7 @@ sub SelectorFocusChanged(msg)
           m.searchKeyboardDialog.visible = true
           m.focusedItem = 3
           m.selector.setFocus(true)
-          m.vgrid.setFocus(false)
+          m.videoGrid.setFocus(false)
           m.searchKeyboard.setFocus(true)
       end if
       if m.selector.itemFocused <> 0
@@ -385,54 +361,52 @@ sub SelectorFocusChanged(msg)
         m.searchHistoryDialog.visible = false
         m.searchKeyboard.visible = false
         m.searchKeyboardDialog.visible = false
-        m.vgrid.visible = true
-        m.canSelector = true
-        m.canRight = true
+        m.videoGrid.visible = true
       end if
       if m.selector.itemFocused = 1
           base = m.JSONTask.output["PRIMARY_CONTENT"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 2
           base = m.JSONTask.output["CHEESE"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 3
           base = m.JSONTask.output["BIG_HITS"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 4
           base = m.JSONTask.output["GAMING"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 5
           base = m.JSONTask.output["SCIENCE"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 6
           base = m.JSONTask.output["TECHNOLOGY"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 7
           base = m.JSONTask.output["NEWS"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 8
           base = m.JSONTask.output["FINANCE"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 9
           base = m.JSONTask.output["THE_UNIVERSE"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       else if m.selector.itemFocused = 10
           base = m.JSONTask.output["COMMUNITY"]
-          m.vgrid.content = base["content"]
-          m.mediaindex = base["index"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       end if
       'base = m.JSONTask.output["PRIMARY_CONTENT"]
-      'm.vgrid.content = base["content"]
-      'm.mediaindex = base["index"]
+      'm.videoGrid.content = base["content"]
+      'm.mediaIndex = base["index"]
   end if
 end sub
 
@@ -479,21 +453,21 @@ sub Error(title, error)
   m.searchKeyboardDialog.visible = false
   m.searchHistoryLabel.visible = false
   m.searchHistoryBox.visible = False
-  m.loadingtext.visible = False
-  m.warningtext.text = title
-  m.warningsubtext.text = error
-  m.warningtext.visible = true
-  m.warningsubtext.visible = true
-  m.warningbutton.visible = true
-  m.warningbutton.observeField("buttonSelected", "ErrorDismissed")
-  m.warningbutton.setFocus(true)
+  m.loadingText.visible = False
+  m.errorText.text = title
+  m.errorSubtext.text = error
+  m.errorText.visible = true
+  m.errorSubtext.visible = true
+  m.errorButton.visible = true
+  m.errorButton.observeField("buttonSelected", "ErrorDismissed")
+  m.errorButton.setFocus(true)
 end sub
 
 sub ErrorDismissed()
-  m.warningtext.visible = false
-  m.warningsubtext.visible = false
-  m.warningbutton.visible = false
-  m.warningbutton.unobserveField("buttonSelected")
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
   m.searchKeyboard.text = ""
   if m.searchFailed = true
     backToKeyboard()
@@ -502,25 +476,25 @@ end sub
 
 Sub vgridContentChanged(msg as Object)
     if type(msg) = "roSGNodeEvent" and msg.getField() = "content"
-        m.vgrid.content = msg.getData()
+        m.videoGrid.content = msg.getData()
     end if
 end Sub
 
 Sub playVideo(url = invalid)
-    m.Video.visible = "true"
-    m.Video.setFocus(true)
+    m.video.visible = "true"
+    m.video.setFocus(true)
     m.focusedItem = 7
-    m.Video.control = "play"
-    ? m.Video.errorStr
-    ? m.Video.videoFormat
-    ? m.Video
+    m.video.control = "play"
+    ? m.video.errorStr
+    ? m.video.videoFormat
+    ? m.video
 End Sub
 
 Function returnToUIPage()
-    m.Video.setFocus(false)
-    m.Video.visible = "false" 'Hide video
-    m.Video.control = "stop"  'Stop video from playing
-    m.vgrid.setFocus(true)
+    m.video.setFocus(false)
+    m.video.visible = "false" 'Hide video
+    m.video.control = "stop"  'Stop video from playing
+    m.videoGrid.setFocus(true)
     m.focusedItem = 2
 end Function
 
@@ -536,10 +510,11 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
     if press
       ? "key", key, "pressed with focus", m.focusedItem
       if key = "back"  'If the back button is pressed
-        if m.Video.visible
+        if m.video.visible
             returnToUIPage()
             return true
         else if m.selector.itemFocused <> 1
+          ErrorDismissed()
           m.searchKeyboard.setFocus(false)
           m.searchKeyboardDialog.setFocus(false)
           m.searchHistoryBox.setFocus(false)
@@ -586,12 +561,12 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       if key = "left"
           if m.focusedItem = 2
             if m.selector.itemFocused = 0
-              m.vgrid.setFocus(false)
+              m.videoGrid.setFocus(false)
               m.selector.jumpToItem = 1
               m.selector.setFocus(true)
               m.focusedItem = 1
             else
-              m.vgrid.setFocus(false)
+              m.videoGrid.setFocus(false)
               m.selector.setFocus(true)
               m.focusedItem = 1
             end if
@@ -633,7 +608,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.focusedItem = 3
           else if m.selector.itemFocused <> 0
             m.selector.setFocus(false)
-            m.vgrid.setFocus(true)
+            m.videoGrid.setFocus(true)
             m.focusedItem = 2
           end if
   
