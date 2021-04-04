@@ -624,6 +624,10 @@ sub changeFocus(focusedItem, key)
           m.selector.setFocus(false)
           m.searchKeyboard.setFocus(true)
           m.focusedItem = 3
+        else if m.selector.itemFocused <> 0
+          m.selector.setFocus(false)
+          m.vgrid.setFocus(true)
+          m.focusedItem = 2
         end if
 
         if m.focusedItem = 4 'Search -> Clear History
