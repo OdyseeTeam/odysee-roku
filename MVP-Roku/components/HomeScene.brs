@@ -10,14 +10,43 @@ Sub init()
 
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.switchRow = 0 'Row on History/Keyboard
-    
-    'Warning UI Items
+
+    'UI Items
     m.warningtext = m.top.findNode("warningtext")
     m.warningsubtext = m.top.findNode("warningsubtext")
     m.warningbutton = m.top.findNode("warningbutton")
+    m.loadingtext = m.top.findNode("loadingtext")
+    m.header = m.top.findNode("headerrectangle")
+    m.sidebartrim = m.top.findNode("sidebartrim")
+    m.sidebarbackground = m.top.findNode("sidebarbackground")
+    m.odyseelogo = m.top.findNode("odyseelogo")
+    m.Video = m.top.findNode("Video")
+    m.VideoContent = createObject("roSGNode", "ContentNode")
+    m.vgrid = m.top.findNode("vgrid")
+    m.selector = m.top.findNode("selector")
+    m.selector.content = getselectorData()
+    m.searchKeyboard = m.top.findNode("searchKeyboard")
+    m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
+    m.searchHistoryBox = m.top.findNode("searchHistory")
+    m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
+    m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
+    m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
+    m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
 
-    'Tasks
-    m.InputTask=createObject("roSgNode","inputTask")
+    'UI Content Variables
+
+    'UI Item observers
+    m.Video.observeField("state", "onVideoStateChanged")
+    m.selector.observeField("itemFocused", "SelectorFocusChanged")
+    m.vgrid.observeField("rowItemSelected", "playVideo")
+    m.vgrid.observeField("rowitemFocused", "vgridFocusChanged")
+    m.searchHistoryBox.observeField("itemSelected", "historySearch")
+    m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
+    m.searchKeyboardDialog.observeField("itemSelected", "search")
+
+    '=========Initialization Phase=========
+
+    '=========Warnings=========
     m.DeviceInfo=createObject("roDeviceInfo")
     m.ModelNumber = m.DeviceInfo.GetModel()
     m.maxThumbHeight=180
@@ -57,12 +86,9 @@ Sub init()
       m.warningsubtext.text = "Your Roku cannot run Odysee! It cannot play 1080p Video. We are sorry for this inconvenience. Please join us on odysee.com"
       m.modelwarning = True
     end if
-      
-    m.InputTask.observefield("inputData","handleInputEvent")
-    m.InputTask.control="RUN"
-   
 
-    'Registry+UID
+
+    '=========Registry+UID+Account Check=========
     m.registry = CreateObject("roRegistrySection", "Authentication")
     m.QueryLBRY = createObject("roSGNode", "QueryLBRY")
     m.date = CreateObject("roDateTime")
@@ -75,7 +101,8 @@ Sub init()
         m.QueryLBRY.setField("authtoken", m.authtoken)
         m.QueryLBRY.setField("cookies", m.cookies)  
       end if
-    
+
+    '=========Search History=========
     if IsValid(GetRegistry("searchHistory"))
         m.searchHistoryItems = ParseJSON(GetRegistry("searchHistory"))
         ? "History Found"
@@ -84,7 +111,13 @@ Sub init()
         m.searchHistoryItems = []
         SetRegistry("searchHistory", FormatJSON(m.searchHistoryItems))
     end if
+
+    for each histitem in m.searchHistoryItems
+      item = m.searchHistoryContent.createChild("ContentNode")
+      item.title = histitem
+    end for
     
+    'Tasks
     m.QueryLBRY.setField("method", "startup")
     m.QueryLBRY.observeField("uid", "gotUID")
     m.QueryLBRY.observeField("authtoken", "gotAuth")
@@ -92,43 +125,14 @@ Sub init()
     m.QueryLBRY.observeField("output", "startupRan")
     m.QueryLBRY.control = "RUN"
 
-    'UI items
-    m.loadingtext = m.top.findNode("loadingtext")
-    m.header = m.top.findNode("headerrectangle")
-    m.sidebartrim = m.top.findNode("sidebartrim")
-    m.sidebarbackground = m.top.findNode("sidebarbackground")
-    m.odyseelogo = m.top.findNode("odyseelogo")
-    m.Video = m.top.findNode("Video")
-    m.Video.observeField("state", "onVideoStateChanged")
-    m.VideoContent = createObject("roSGNode", "ContentNode")
-    m.vgrid = m.top.findNode("vgrid")
-    m.selector = m.top.findNode("selector")
-    m.selector.content = getselectorData()
-    m.selector.observeField("itemFocused", "SelectorFocusChanged")
-    m.vgrid.observeField("rowItemSelected", "playVideo")
-    m.vgrid.observeField("rowitemFocused", "vgridFocusChanged")
-
-    m.searchKeyboard = m.top.findNode("searchKeyboard")
-    m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
-    m.searchHistoryBox = m.top.findNode("searchHistory")
-    m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
-    m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
-    m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
-    m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
-
-    m.searchHistoryBox.observeField("itemSelected", "historySearch")
-    m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
-    m.searchKeyboardDialog.observeField("itemSelected", "search")
-
-    for each histitem in m.searchHistoryItems
-      item = m.searchHistoryContent.createChild("ContentNode")
-      item.title = histitem
-    end for
-
     m.JSONTask = createObject("roSGNode", "JSONTask")
     m.JSONTask.setField("thumbnaildims", [m.maxThumbWidth, m.maxThumbHeight])
     m.JSONTask.observeField("output", "AppFinishedFirstLoad")
     m.JSONTask.control = "RUN"
+
+    m.InputTask=createObject("roSgNode","inputTask")
+    m.InputTask.observefield("inputData","handleInputEvent")
+    m.InputTask.control="RUN"
 End Sub
 
 function getselectorData() as object
