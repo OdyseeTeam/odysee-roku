@@ -548,54 +548,59 @@ end Function
           '  m.vgrid.setFocus(false)
           'end if
 
+'see and print out MVP-FocusedItem.ods for what the focusedItem number means.   	        
 sub changeFocus(focusedItem, key)
     ? "key", key, "pressed with focus", focusedItem
-
     if key = "up"
-        if m.focusedItem = 2 'Search -> Keyboard
+        if m.focusedItem = 4 'Search -> Keyboard
             m.searchKeyboardDialog.setFocus(false)
             m.searchKeyboard.setFocus(true)
             m.searchKeyboardGrid.jumpToItem = 37
-            m.focusedItem = 1
+            m.focusedItem = 3
         end if
 
-        if m.focusedItem = 4 'Clear History -> History
+        if m.focusedItem = 6 'Clear History -> History
             if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
                 m.searchHistoryDialog.setFocus(false)
                 m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
                 m.searchHistoryBox.setFocus(true)
+                m.focusedItem = 5
             end if
-            m.focusedItem = 3
         end if
-
     end if
 
     if key = "down"
 
-        if m.focusedItem = 1 'Keyboard -> Search
+        if m.focusedItem = 3 'Keyboard -> Search
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(true)
-            m.focusedItem = 2
+            m.focusedItem = 4
         end if
 
-        if m.focusedItem = 3 'History -> Clear
+        if m.focusedItem = 5 'History -> Clear
             m.searchHistoryBox.setFocus(false)
             m.searchHistoryDialog.setFocus(true)
-            m.focusedItem = 4
+            m.focusedItem = 6
         end if
 
     end if
     if key = "left"
-        if m.focusedItem = 2 OR m.focusedItem = 1 'Exit (Keyboard/Search Button -> Bar)
+        if m.focusedItem = 2
+          m.vgrid.setFocus(false)
+          m.selector.setFocus(true)
+          m.focusedItem = 1
+        end if
+        
+        if m.focusedItem = 3 OR m.focusedItem = 4 'Exit (Keyboard/Search Button -> Bar)
           m.searchKeyboard.setFocus(false)
           m.searchKeyboardDialog.setFocus(false)
           m.searchHistoryBox.setFocus(false)
           m.searchHistoryDialog.setFocus(false)
           m.selector.jumpToItem = 1
           m.selector.setFocus(true)
-          m.focusedItem = 6
+          m.focusedItem = 1
         end if
-        if m.focusedItem = 3 'History - Keyboard
+        if m.focusedItem = 5 'History - Keyboard
             switchRow = m.searchHistoryBox.itemFocused
             if m.searchHistoryBox.itemFocused > 6
                 switchRow = 6
@@ -603,26 +608,31 @@ sub changeFocus(focusedItem, key)
             m.searchHistoryBox.setFocus(false)
             ? "itemArray:", m.searchKeyboardItemArray[switchRow-1]
             m.searchKeyboard.setFocus(true)
-            m.focusedItem = 1
+            m.focusedItem = 3
             m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
             switchRow = invalid
-            m.focusedItem = 1
+            m.focusedItem = 3
         end if
-        if m.focusedItem = 4 'Clear History -> Search
+        if m.focusedItem = 6 'Clear History -> Search
             m.searchHistoryDialog.setFocus(false)
             m.searchKeyboardDialog.setFocus(true)
-            m.focusedItem = 2
+            m.focusedItem = 4
         end if
     end if
     if key = "right"
-
-        if m.focusedItem = 2 'Search -> Clear History
-            m.searchKeyboardDialog.setFocus(false)
-            m.searchHistoryDialog.setFocus(true)
-            m.focusedItem = 4
+        if m.focusedItem = 1 AND m.selector.itemFocused = 0
+          m.selector.setFocus(false)
+          m.searchKeyboard.setFocus(true)
+          m.focusedItem = 3
         end if
 
-        if m.focusedItem = 1 'Keyboard -> Search History
+        if m.focusedItem = 4 'Search -> Clear History
+            m.searchKeyboardDialog.setFocus(false)
+            m.searchHistoryDialog.setFocus(true)
+            m.focusedItem = 6
+        end if
+
+        if m.focusedItem = 3 'Keyboard -> Search History
             column = Int(m.searchKeyboardGrid.currFocusColumn)
             row = Int(m.searchKeyboardGrid.currFocusRow)
             itemFocused = m.searchKeyboardGrid.itemFocused
@@ -638,7 +648,7 @@ sub changeFocus(focusedItem, key)
                     end if
                     m.searchKeyboard.setFocus(false)
                     m.searchHistoryBox.setFocus(true)
-                    m.focusedItem = 3
+                    m.focusedItem = 5
                 end if
             end if
             column = Invalid 'free memory
