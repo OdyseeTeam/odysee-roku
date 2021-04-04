@@ -24,8 +24,8 @@ Sub init()
     m.video = m.top.findNode("Video")
     m.videoContent = createObject("roSGNode", "ContentNode")
     m.videoGrid = m.top.findNode("vgrid")
-    m.selector = m.top.findNode("selector")
-    m.selector.content = getselectorData()
+    m.categorySelector = m.top.findNode("selector")
+    m.categorySelector.content = getselectorData()
     m.searchKeyboard = m.top.findNode("searchKeyboard")
     m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
     m.searchHistoryBox = m.top.findNode("searchHistory")
@@ -36,7 +36,7 @@ Sub init()
 
     'UI Item observers
     m.video.observeField("state", "onVideoStateChanged")
-    m.selector.observeField("itemFocused", "SelectorFocusChanged")
+    m.categorySelector.observeField("itemFocused", "SelectorFocusChanged")
     m.videoGrid.observeField("rowItemSelected", "playVideo")
     m.videoGrid.observeField("rowitemFocused", "vgridFocusChanged")
     m.searchHistoryBox.observeField("itemSelected", "historySearch")
@@ -218,10 +218,10 @@ sub finishInit()
   m.sidebarBackground.visible = true
   m.odyseeLogo.visible = true
   m.videoGrid.visible = true
-  m.selector.jumpToItem = 1
-  m.selector.visible = true
+  m.categorySelector.jumpToItem = 1
+  m.categorySelector.visible = true
   m.loaded = True
-  m.selector.setFocus(true)
+  m.categorySelector.setFocus(true)
   m.global.scene.signalBeacon("AppLaunchComplete")
 end sub
 
@@ -283,21 +283,7 @@ sub backToKeyboard()
   m.loadingText.visible = False
   m.loadingText.text = "Loading..."
   m.searchKeyboard.setFocus(true)
-  m.focusedItem = 1
-  '  m.keyboarddialog = createObject("roSGNode", "KeyboardDialog")
-'  m.keyboarddialog.backgroundUri = "pkg:/images/searchbackground.png"
-'  m.keyboarddialog.title = "Video Search"
-'  m.keyboarddialog.keyboard.texteditbox.hintText = "Enter Video Name Here"
-'  m.keyboarddialog.buttons = ["OK", "Cancel"]
-'  m.keyboarddialog.buttonGroup.observeField("buttonSelected", "searchEntered")
-'  children = m.keyboarddialog.buttonGroup.getChildren(-1,0)
-'  for each child in children
-'    child.iconUri=""
-'    child.focusedIconUri=""
-'  end for
-'  m.top.appendChild(m.keyboarddialog)
-'  m.videoGrid.setFocus(false)
-'  m.keyboarddialog.setFocus(true)
+  m.focusedItem = 3
 end sub
 
 Function handleDeepLink(deeplink as object)
@@ -322,10 +308,10 @@ end sub
 
 sub SelectorFocusChanged(msg)
   '? "[Selector] focus changed from:"
-  '? m.selector.itemUnfocused
+  '? m.categorySelector.itemUnfocused
   '? "to:"
-  '? m.selector.itemFocused
-  if m.selector.itemFocused <> -1 AND m.loaded = True
+  '? m.categorySelector.itemFocused
+  if m.categorySelector.itemFocused <> -1 AND m.loaded = True
       m.videoGrid.visible = true
       m.loadingText.visible = false
       '0 = Search
@@ -342,7 +328,7 @@ sub SelectorFocusChanged(msg)
 
       'if only BrightScript had Case Switch =(
 
-      if m.selector.itemFocused = 0
+      if m.categorySelector.itemFocused = 0
           ? "in search UI"
           m.videoGrid.visible = false
           m.searchHistoryBox.visible = true
@@ -351,11 +337,11 @@ sub SelectorFocusChanged(msg)
           m.searchKeyboard.visible = true
           m.searchKeyboardDialog.visible = true
           m.focusedItem = 3
-          m.selector.setFocus(true)
+          m.categorySelector.setFocus(true)
           m.videoGrid.setFocus(false)
           m.searchKeyboard.setFocus(true)
       end if
-      if m.selector.itemFocused <> 0
+      if m.categorySelector.itemFocused <> 0
         m.searchHistoryBox.visible = false
         m.searchHistoryLabel.visible = false
         m.searchHistoryDialog.visible = false
@@ -363,43 +349,43 @@ sub SelectorFocusChanged(msg)
         m.searchKeyboardDialog.visible = false
         m.videoGrid.visible = true
       end if
-      if m.selector.itemFocused = 1
+      if m.categorySelector.itemFocused = 1
           base = m.JSONTask.output["PRIMARY_CONTENT"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 2
+      else if m.categorySelector.itemFocused = 2
           base = m.JSONTask.output["CHEESE"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 3
+      else if m.categorySelector.itemFocused = 3
           base = m.JSONTask.output["BIG_HITS"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 4
+      else if m.categorySelector.itemFocused = 4
           base = m.JSONTask.output["GAMING"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 5
+      else if m.categorySelector.itemFocused = 5
           base = m.JSONTask.output["SCIENCE"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 6
+      else if m.categorySelector.itemFocused = 6
           base = m.JSONTask.output["TECHNOLOGY"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 7
+      else if m.categorySelector.itemFocused = 7
           base = m.JSONTask.output["NEWS"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 8
+      else if m.categorySelector.itemFocused = 8
           base = m.JSONTask.output["FINANCE"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 9
+      else if m.categorySelector.itemFocused = 9
           base = m.JSONTask.output["THE_UNIVERSE"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.selector.itemFocused = 10
+      else if m.categorySelector.itemFocused = 10
           base = m.JSONTask.output["COMMUNITY"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
@@ -513,14 +499,14 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if m.video.visible
             returnToUIPage()
             return true
-        else if m.selector.itemFocused <> 1
+        else if m.categorySelector.itemFocused <> 1
           ErrorDismissed()
           m.searchKeyboard.setFocus(false)
           m.searchKeyboardDialog.setFocus(false)
           m.searchHistoryBox.setFocus(false)
           m.searchHistoryDialog.setFocus(false)
-          m.selector.jumpToItem = 1
-          m.selector.setFocus(true)
+          m.categorySelector.jumpToItem = 1
+          m.categorySelector.setFocus(true)
           m.focusedItem = 1
           return true
         else
@@ -560,14 +546,14 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       end if
       if key = "left"
           if m.focusedItem = 2
-            if m.selector.itemFocused = 0
+            if m.categorySelector.itemFocused = 0
               m.videoGrid.setFocus(false)
-              m.selector.jumpToItem = 1
-              m.selector.setFocus(true)
+              m.categorySelector.jumpToItem = 1
+              m.categorySelector.setFocus(true)
               m.focusedItem = 1
             else
               m.videoGrid.setFocus(false)
-              m.selector.setFocus(true)
+              m.categorySelector.setFocus(true)
               m.focusedItem = 1
             end if
           end if
@@ -577,8 +563,8 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.searchKeyboardDialog.setFocus(false)
             m.searchHistoryBox.setFocus(false)
             m.searchHistoryDialog.setFocus(false)
-            m.selector.jumpToItem = 1
-            m.selector.setFocus(true)
+            m.categorySelector.jumpToItem = 1
+            m.categorySelector.setFocus(true)
             m.focusedItem = 1
           end if
           if m.focusedItem = 5 'History - Keyboard
@@ -601,13 +587,13 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
       end if
       if key = "right"
-          if m.focusedItem = 1 AND m.selector.itemFocused = 0
+          if m.focusedItem = 1 AND m.categorySelector.itemFocused = 0
             m.focusedItem = 3
-            m.selector.setFocus(false)
+            m.categorySelector.setFocus(false)
             m.searchKeyboard.setFocus(true)
             m.focusedItem = 3
-          else if m.selector.itemFocused <> 0
-            m.selector.setFocus(false)
+          else if m.categorySelector.itemFocused <> 0
+            m.categorySelector.setFocus(false)
             m.videoGrid.setFocus(true)
             m.focusedItem = 2
           end if
