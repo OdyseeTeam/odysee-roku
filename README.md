@@ -41,6 +41,8 @@ For developers, Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-foll
 ## Contributing
 Contributions to this project are welcome, encouraged, and compensated. For more details, see [CONTRIBUTING](https://lbry.tech/contribute).
 
+> Currently, the developer dosen't accept commits yet, because it is in development. You can see it [here.](https://github.com/lbryio/odysee-roku/issues/7)
+
 ## License
 This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
 
