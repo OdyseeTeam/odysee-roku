@@ -36,7 +36,7 @@ Sub init()
 
     'UI Item observers
     m.video.observeField("state", "onVideoStateChanged")
-    m.categorySelector.observeField("itemFocused", "SelectorFocusChanged")
+    m.categorySelector.observeField("itemFocused", "categorySelectorFocusChanged")
     m.videoGrid.observeField("rowItemSelected", "playVideo")
     m.videoGrid.observeField("rowitemFocused", "vgridFocusChanged")
     m.searchHistoryBox.observeField("itemSelected", "historySearch")
@@ -296,17 +296,12 @@ end Function
 
 sub vgridFocusChanged(msg)
   if isValid(m.videoGrid.rowItemFocused)
-    m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
-    m.videoContent.streamFormat = "mp4"
-    keepPlaying = false
-    m.video.content = m.videoContent
     '? m.videoContent.url
-    m.video.control = "prebuffer"
     '? m.video.contentMetadata
   end if
 end sub
 
-sub SelectorFocusChanged(msg)
+sub categorySelectorFocusChanged(msg)
   '? "[Selector] focus changed from:"
   '? m.categorySelector.itemUnfocused
   '? "to:"
@@ -467,6 +462,9 @@ Sub vgridContentChanged(msg as Object)
 end Sub
 
 Sub playVideo(url = invalid)
+    m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
+    m.videoContent.streamFormat = "mp4"
+    m.video.content = m.videoContent
     m.video.visible = "true"
     m.video.setFocus(true)
     m.focusedItem = 7
