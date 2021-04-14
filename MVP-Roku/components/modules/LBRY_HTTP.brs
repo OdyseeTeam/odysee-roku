@@ -9,7 +9,8 @@ function QueryLBRYAPI(json) as Object
   http.InitClientCertificates()
   http.EnableCookies()
   http.AddCookies(m.top.cookies)
-  http.SetUrl("https://api.lbry.tv/api/v1/proxy") 'doesn't need to have m variable url encoded to work.
+  'https://api.lbry.tv/api/v1/proxy?m=claim_search
+  http.SetUrl("https://api.lbry.tv/api/v1/proxy?m="+json.method) 'fix: encode method
   http.AddHeader("Content-Type", "application/json")
   http.AddHeader("Accept", "application/json")
   if IsValid(m.top.authtoken)
@@ -136,7 +137,7 @@ function urlencode(data)
       encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
     end if
   end for
-  ? encoded 'debug
+  '? encoded 'debug
   return encoded
 end function
 

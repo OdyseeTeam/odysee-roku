@@ -8,6 +8,7 @@ Sub init()
     m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
     m.focusedItem = 1 'set to External. This is just a workaround for legacy code here that I am planning on removing.
+    m.searchType = "channel" 'changed to either video or channel
 
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.switchRow = 0 'Row on History/Keyboard
@@ -225,7 +226,7 @@ sub finishInit()
   m.global.scene.signalBeacon("AppLaunchComplete")
 end sub
 
-sub execSearch(search)
+sub execSearch(search, searchType)
     '? "Valid Input"
     'search starting
     m.searchKeyboard.visible = False
@@ -236,14 +237,18 @@ sub execSearch(search)
     m.loadingText.visible = true
     m.loadingText.text = "Loading your search results.."
     m.failedSearchText = search 'so we don't have to extract it from the Task later on.
-    m.QueryLBRY.setField("method", "lighthouse")
+    m.QueryLBRY.setField("method", "lighthouse_search")
     no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
-    m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: no_earlier, query: search})
+    if m.searchType = "video"
+      m.QueryLBRY.setField("input", {claimType: "file", mediaType: "video", size: 80, from: 0, expiration: no_earlier, query: search})
+    else if m.searchType = "channel"
+      m.QueryLBRY.setField("input", {claimType: "channel", size: 20, from: 0, query: search})
+    end if
     m.QueryLBRY.observeField("output", "gotLighthouse")
     m.QueryLBRY.control = "RUN"
     no_earlier = invalid ' free memory on variable used only once, rather than making an m.
 end sub
- 
+
 sub gotLighthouse()
   m.QueryLBRY.control = "STOP"
   m.QueryLBRY.unobserveField("output")
@@ -267,8 +272,10 @@ end sub
 
 sub failedSearch()
   ? "search failed"
+  m.videoGrid.visible = false
   m.QueryLBRY.control = "STOP"
   ? "task stopped"
+
   Error("No results.", "Nothing found on Odysee.")
 end sub
 
@@ -462,16 +469,24 @@ Sub vgridContentChanged(msg as Object)
 end Sub
 
 Sub playVideo(url = invalid)
-    m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
-    m.videoContent.streamFormat = "mp4"
-    m.video.content = m.videoContent
-    m.video.visible = "true"
-    m.video.setFocus(true)
-    m.focusedItem = 7
-    m.video.control = "play"
-    ? m.video.errorStr
-    ? m.video.videoFormat
-    ? m.video
+    if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "video"
+      m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
+      m.videoContent.streamFormat = "mp4"
+      m.video.content = m.videoContent
+      m.video.visible = "true"
+      m.video.setFocus(true)
+      m.focusedItem = 7
+      m.video.control = "play"
+      ? m.video.errorStr
+      ? m.video.videoFormat
+      ? m.video
+    else if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "channel"
+      no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
+      m.QueryLBRY.setField("method", "lighthouse_channel")
+      m.QueryLBRY.setField("input", {channelID: m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL, expiration: no_earlier})
+      m.QueryLBRY.observeField("output", "gotLighthouse")
+      m.QueryLBRY.control = "RUN"
+    end if
 End Sub
 
 Function returnToUIPage()
@@ -631,7 +646,7 @@ end Function
 
 sub historySearch()
     ? "======HISTORY SEARCH======"
-    execSearch(m.searchHistoryContent.getChildren(-1, 0)[m.searchHistoryBox.itemSelected].TITLE)
+    execSearch(m.searchHistoryContent.getChildren(-1, 0)[m.searchHistoryBox.itemSelected].TITLE, m.searchType)
     ? "======HISTORY SEARCH======"
 end sub
 
@@ -666,7 +681,7 @@ sub search()
     end if
     ? "======SEARCH======"
     SetRegistry("searchHistory", FormatJSON(m.searchHistoryItems))
-    execSearch(m.searchKeyboard.text)
+    execSearch(m.searchKeyboard.text, m.searchType)
   end if
 end sub
 

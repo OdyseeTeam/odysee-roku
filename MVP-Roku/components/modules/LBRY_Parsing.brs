@@ -1,5 +1,5 @@
 'All parsing functions (creating feed, etc)
-Function ManufactureSearchFeed(query)
+Function ManufactureQueryFeed(query)
     ? "manufacturing started (search)"
     lbryclaims = QueryLBRYAPI(query)
     result = []  'Store all results inside an array.
@@ -47,6 +47,7 @@ Function ManufactureSearchFeed(query)
                 item.link = item.url
                 item.source = "lbry"
                 item.guid = claim.claim_id
+                item.itemType = "video"
                 result.push(item)
                 mediaindex[item.guid] = item
             end if
@@ -71,6 +72,46 @@ Function ManufactureSearchFeed(query)
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
 End Function
 
+Function ManufactureChannelGrid(feed)
+    '? "manufacturing started for key: "+subkey
+    mediaindex={}
+    result = []
+    '{id: channel, username: username, realname: title, subs: getSubs(channel), thumbnail: channelthumb}
+    for each video in feed
+        item = {}
+        item.Title = video["realname"]
+        item.Creator = Str(video["subs"])+" following"
+        item.Description = item.Creator
+        item.ReleaseDate = "none"
+        item.guid = video["id"]
+        thumbnail = video["thumbnail"]
+        item.HDPosterURL = thumbnail
+        item.HDBackgroundImageUrl = thumbnail
+        item.thumbnailDimensions = [360, 240]
+        item.url = video["id"]
+        item.stream = {url : "none"}
+        item.streamFormat = "none"
+        item.link = item.url
+        item.source = "lbry"
+        item.itemType = "channel"
+        result.push(item)
+        mediaindex[item.guid] = item
+    end for
+    list = [
+        {
+            ContentList : SelectTo(result, 4)
+        }
+    ]
+    rowcount = int(result.count()/4)-1
+    for row=1 to rowcount step 1
+        '? "row "+Str(row+1)
+        list.push({ContentList : SelectTo(result, 4, row*4)})
+    end for
+    content = ParseXMLContent(list)
+    '? "manufacturing finished for key: "+subkey
+    return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
+End Function
+
 Function ManufactureVFeed(feed, subkey, dimensions)
     '? "manufacturing started for key: "+subkey
     mediaindex={}
@@ -91,6 +132,7 @@ Function ManufactureVFeed(feed, subkey, dimensions)
         item.stream = {url : item.url}
         item.streamFormat = "mp4"
         item.link = item.url
+        item.itemType = "video"
         item.source = "lbry"
         result.push(item)
         mediaindex[item.guid] = item

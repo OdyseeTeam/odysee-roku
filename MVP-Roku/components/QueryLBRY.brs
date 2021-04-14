@@ -26,10 +26,16 @@ sub master()
     ? "Was executed (queryLBRY)."
     if IsValid(m.top.method) AND m.top.method = "startup" 'The app is starting up
             m.top.output = {result: checkAccount()}
-    else if m.top.method = "lighthouse" 'Search Method (Lighthouse)
+    else if m.top.method = "lighthouse_search"
         ? "starting lighthouse"
         if IsValid(m.top.input.claimType) AND IsValid(m.top.input.mediaType) AND IsValid(m.top.input.size) AND IsValid(m.top.input.from) AND IsValid(m.top.input.expiration) AND IsValid(m.top.input.query)
-            m.top.output = {result: lighthouse(m.top.input.claimType, m.top.input.mediaType, m.top.input.size, m.top.input.from, m.top.input.expiration, m.top.input.query)}
+            m.top.output = {result: lighthouse_videos(m.top.input.claimType, m.top.input.mediaType, m.top.input.size, m.top.input.from, m.top.input.expiration, m.top.input.query)}
+        else if IsValid(m.top.input.claimType) AND IsValid(m.top.input.from) AND IsValid(m.top.input.size) AND IsValid(m.top.input.query) AND m.top.input.claimType = "channel"
+            m.top.output = {result: lighthouse_channels(m.top.input.claimType, m.top.input.size, m.top.input.from, m.top.input.query)}
+        end if
+    else if m.top.method = "lighthouse_channel"
+        if isValid(m.top.input.channelID) AND isValid(m.top.input.expiration)
+            m.top.output = {result: lighthouse_channel(m.top.input.channelID, m.top.input.expiration)}
         end if
     else if m.top.method = "exists" 'Checking if user exists
         if IsValid(m.top.input.email)
