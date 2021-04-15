@@ -27,7 +27,7 @@ End Function
 
 Function lighthouse_channels(claimtype, size, from, query)
   ? "in lighthouse"
-  input = GetURLEncoded("https://lighthouse.lbry.com/search", {s: query, claimType: claimtype, size: Str(size).Trim(), from: Str(from).Trim()})
+  input = GetURLEncoded("https://lighthouse.lbry.com/search", {s: query, claimType: "channel", size: Str(size).Trim(), from: Str(from).Trim(), sort_by: "effective_amount", nsfw: "false", free_only: "true"})
   if Type(input) = "roArray"
     if input.Count() < 1
       ? "No results."

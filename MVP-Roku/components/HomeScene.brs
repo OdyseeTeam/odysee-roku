@@ -252,7 +252,7 @@ end sub
 sub gotLighthouse()
   m.QueryLBRY.control = "STOP"
   m.QueryLBRY.unobserveField("output")
-  if isValid(m.QueryLBRY.output.result.noresults) OR m.QueryLBRY.output.result.content.getChildCount() < 2
+  if isValid(m.QueryLBRY.output.result.noresults) OR m.QueryLBRY.output.result.index.Count() < 2
       ? "got nothing"
       m.searchFailed = True
       failedSearch()
