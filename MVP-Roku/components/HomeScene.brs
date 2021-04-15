@@ -275,7 +275,6 @@ sub failedSearch()
   m.videoGrid.visible = false
   m.QueryLBRY.control = "STOP"
   ? "task stopped"
-
   Error("No results.", "Nothing found on Odysee.")
 end sub
 
@@ -288,6 +287,7 @@ sub backToKeyboard()
   m.searchKeyboardDialog.visible = True
   m.searchHistoryDialog.visible = True
   m.loadingText.visible = False
+  m.searchFailed = False
   m.loadingText.text = "Loading..."
   m.searchKeyboard.setFocus(true)
   m.focusedItem = 3
@@ -459,6 +459,8 @@ sub ErrorDismissed()
   m.searchKeyboard.text = ""
   if m.searchFailed = true
     backToKeyboard()
+  else
+    m.videoGrid.visible = True
   end if
 end sub
 
@@ -572,6 +574,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
           
           if m.focusedItem = 3 OR m.focusedItem = 4 'Exit (Keyboard/Search Button -> Bar)
+            ErrorDismissed() 'quick fix
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(false)
             m.searchHistoryBox.setFocus(false)
@@ -580,7 +583,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.categorySelector.setFocus(true)
             m.focusedItem = 1
           end if
-          if m.focusedItem = 5 'History - Keyboard
+          if m.focusedItem = 5 AND m.errorText.visible = false 'History - Keyboard
               switchRow = m.searchHistoryBox.itemFocused
               if m.searchHistoryBox.itemFocused > 6
                   switchRow = 6
@@ -592,6 +595,15 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
               switchRow = invalid
               m.focusedItem = 3
+          else if m.focusedItem = 5 AND m.errorText.visible = true
+            ErrorDismissed()
+            m.searchKeyboard.setFocus(false)
+            m.searchKeyboardDialog.setFocus(false)
+            m.searchHistoryBox.setFocus(false)
+            m.searchHistoryDialog.setFocus(false)
+            m.categorySelector.jumpToItem = 1
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1
           end if
           if m.focusedItem = 6 'Clear History -> Search
               m.searchHistoryDialog.setFocus(false)
@@ -646,6 +658,14 @@ end Function
 
 sub historySearch()
     ? "======HISTORY SEARCH======"
+    ? m.searchKeyboardDialog.itemFocused
+    if m.searchKeyboardDialog.itemFocused = 1
+      ? "video search"
+      m.searchType = "video"
+    else if m.searchKeyboardDialog.itemFocused = 0 OR m.searchKeyboardDialog.itemFocused = -1
+      ? "channel search"
+      m.searchType = "channel"
+    end if
     execSearch(m.searchHistoryContent.getChildren(-1, 0)[m.searchHistoryBox.itemSelected].TITLE, m.searchType)
     ? "======HISTORY SEARCH======"
 end sub
@@ -666,21 +686,30 @@ sub search()
     Error("Search too short", "Needs to be more than 2 characters long.")
   else
     ? "======SEARCH======"
-    if m.searchHistoryContent.getChildCount() >= 8
-        m.searchHistoryContent.removeChildIndex(8) 'removeChildIndex is basically pop
-        m.searchHistoryItems.pop()
-        item = createObject("roSGNode", "ContentNode")
-        item.title = m.searchKeyboard.text
-        m.searchHistoryContent.insertChild(item, 0) 'basically unshift
-        m.searchHistoryItems.unshift(m.searchKeyboard.text)
-    else
-        item = createObject("roSGNode", "ContentNode")
-        item.title = m.searchKeyboard.text
-        m.searchHistoryContent.insertChild(item, 0) 'basically unshift
-        m.searchHistoryItems.unshift(m.searchKeyboard.text)
+    if m.searchHistoryContent.getChildCount() = 0 OR m.searchHistoryContent.getChild(0).title <> m.searchKeyboard.text 'don't re-add items that already exist
+      if m.searchHistoryContent.getChildCount() >= 8
+          m.searchHistoryContent.removeChildIndex(8) 'removeChildIndex is basically pop
+          m.searchHistoryItems.pop()
+          item = createObject("roSGNode", "ContentNode")
+          item.title = m.searchKeyboard.text
+          m.searchHistoryContent.insertChild(item, 0) 'basically unshift
+          m.searchHistoryItems.unshift(m.searchKeyboard.text)
+      else
+          item = createObject("roSGNode", "ContentNode")
+          item.title = m.searchKeyboard.text
+          m.searchHistoryContent.insertChild(item, 0) 'basically unshift
+          m.searchHistoryItems.unshift(m.searchKeyboard.text)
+      end if
     end if
     ? "======SEARCH======"
     SetRegistry("searchHistory", FormatJSON(m.searchHistoryItems))
+    if m.searchKeyboardDialog.itemSelected = 1
+      ? "video search"
+      m.searchType = "video"
+    else if m.searchKeyboardDialog.itemSelected = 0 OR m.searchKeyboardDialog.itemSelected = -1
+      ? "channel search"
+      m.searchType = "channel"
+    end if
     execSearch(m.searchKeyboard.text, m.searchType)
   end if
 end sub

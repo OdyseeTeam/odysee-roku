@@ -122,9 +122,11 @@
 			id="searchKeyboardDialog"
 			itemSize="[510,65]"
 			translation="[35,707]"
+            vertFocusAnimationStyle="floatingFocus"
 			>
 			<ContentNode id="Dialog" role="content">
-				<ContentNode title="Search"/>
+				<ContentNode title="Search Channels"/>
+                <ContentNode title="Search Videos"/>
 			</ContentNode>
 		</LabelList>
 	</MiniKeyboard>
