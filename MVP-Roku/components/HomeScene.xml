@@ -118,17 +118,15 @@
 		showTextEditBox = "true"
 		translation="[290,160]"
 		>
-		<LabelList
-			id="searchKeyboardDialog"
-			itemSize="[510,65]"
-			translation="[35,707]"
-            vertFocusAnimationStyle="floatingFocus"
-			>
-			<ContentNode id="Dialog" role="content">
-				<ContentNode title="Search Channels"/>
-                <ContentNode title="Search Videos"/>
-			</ContentNode>
-		</LabelList>
+    	<MarkupGrid 
+    	    id="searchKeyboardDialog"
+    		itemComponentName="horizontalButton"
+    	    itemSpacing="[0, 20]"
+    		numColumns="2"
+    		numRows="1"
+    		translation="[16,710]"
+    	    drawFocusFeedback="false"
+    	/>
 	</MiniKeyboard>
 
 	<LabelList

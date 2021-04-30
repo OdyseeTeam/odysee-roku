@@ -29,6 +29,8 @@ Sub init()
     m.categorySelector.content = getselectorData()
     m.searchKeyboard = m.top.findNode("searchKeyboard")
     m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
+    m.searchKeyboardDialog.itemSize = [280,65]
+    m.searchKeyboardDialog.content = createTextItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
     m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
@@ -713,6 +715,21 @@ sub search()
     execSearch(m.searchKeyboard.text, m.searchType)
   end if
 end sub
+
+function createTextItems(buttons, items, itemSize) as object
+  data = CreateObject("roSGNode", "ContentNode")
+  buttons.numColumns = items.Count()
+  for each item in items
+      dataItem = data.CreateChild("horizontalButtonItemData")
+      dataItem.posterUrl = ""
+      dataItem.width=itemSize[0]
+      dataItem.height=itemSize[1]
+      dataItem.backgroundColor="0x00000000"
+      dataItem.outlineColor="0xFFFFFFFF"
+      dataItem.labelText = item
+  end for
+  return data
+end function
 
 'Registry+Utility Functions
 
