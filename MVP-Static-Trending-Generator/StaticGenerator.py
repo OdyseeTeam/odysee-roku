@@ -85,7 +85,6 @@ for line in sourcesContent:
 cids = {}
 queries = {}
 output = {}
-
 cids["PRIMARY_CONTENT_CHANNEL_IDS"] = find_subvar(content, "PRIMARY_CONTENT_CHANNEL_IDS")
 cids["CHEESE_CHANNEL_IDS"] = find_subvar(content, "CHEESE_CHANNEL_IDS")
 cids["BIG_HITS_CHANNEL_IDS"] = find_subvar(content, "BIG_HITS_CHANNEL_IDS")
@@ -95,7 +94,7 @@ cids["TECHNOLOGY_CHANNEL_IDS"] = find_subvar(content, "TECHNOLOGY_CHANNEL_IDS")
 cids["NEWS_CHANNEL_IDS"] = find_subvar(content, "NEWS_CHANNEL_IDS")
 cids["FINANCE_CHANNEL_IDS"] = find_subvar(content, "FINANCE_CHANNEL_IDS")
 cids["THE_UNIVERSE_CHANNEL_IDS"] = find_subvar(content, "THE_UNIVERSE_CHANNEL_IDS")
-cids["COMMUNITY_CHANNEL_IDS"] = find_subvar(content, "COMMUNITY_CHANNEL_IDS")
+cids["COMMUNITY_CHANNEL_IDS"] = find_subvar(content, "RABBIT_HOLE_CHANNEL_IDS")
 
 print(cids)
 qexp = ">"+str(round(time.time())-7776000)

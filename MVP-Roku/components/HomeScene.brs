@@ -724,7 +724,7 @@ function createTextItems(buttons, items, itemSize) as object
       dataItem.posterUrl = ""
       dataItem.width=itemSize[0]
       dataItem.height=itemSize[1]
-      dataItem.backgroundColor="0x00000000"
+      dataItem.backgroundColor="0x2B203700"
       dataItem.outlineColor="0xFFFFFFFF"
       dataItem.labelText = item
   end for
