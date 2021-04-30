@@ -6,6 +6,7 @@ import re
 import os.path
 import sys
 import urllib
+from numerize import numerize
 
 #Static Trending Generator
 #William Foster/S9260/CaffinatedCoder 2021
@@ -69,6 +70,7 @@ else:
         account = create_account()
         writeconfiguration("./account.json", account)
 uid = account[0]
+authtoken = account[1]
 
 
 for s in requests.get("https://odysee.com/").text.split('\n'):
@@ -142,8 +144,9 @@ for key in masterfeed:
                             thumburl = "https://image-optimizer.vanwanet.com/?address="+item['value']['thumbnail']['url']+"?quality=1&height=180&width=320"
                 except:
                     thumbnail = "pkg:\\images\\odyseeoops.png"
-                
-                entries.append([title, channelname, description, time.strftime('%a, %b %e %Y %I:%M:%S %p', time.localtime(item['timestamp'])), item['claim_id'], thumburl, "https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['hash'][:6],"https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['sd_hash'][:6]])
+                #https://api.lbry.com/file/view_count?auth_token=TOKEN&claim_id=CID
+                viewcount = numerize.numerize(json.loads(requests.get("https://api.lbry.com/file/view_count?auth_token="+authtoken+"&claim_id="+item['claim_id']).text)["data"][0],2)
+                entries.append([title, channelname, description, time.strftime('%a, %b %e %Y %I:%M:%S %p', time.localtime(item['timestamp'])), item['claim_id'], thumburl, "https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['hash'][:6],"https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['sd_hash'][:6], viewcount])
                 numkeyentries+=1
         #standard: name, desc, pubdate, id, thumb, url
         #Temporary Redirect Fix: Vanwanet doesn't redirect properly.
