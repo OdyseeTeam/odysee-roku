@@ -35,6 +35,7 @@
                     m.Background.height = m.top.height
                     m.Title.width = m.top.width-20
                     m.Views.width = m.top.width-20
+                    m.Published.width = m.top.width-20
                     m.Creator.width = m.top.width-20
                 End If
             End Sub]]>

@@ -265,12 +265,27 @@ sub gotLighthouse()
       m.mediaIndex = base["index"]
       handleDeepLink(m.global.deeplink)
       m.searchLoading = False
+      if m.QueryLBRY.method <> "lighthouse_search"
+        resetVideoGrid()
+      else
+        downsizeVideoGrid()
+      end if
       m.videoGrid.visible = true
       m.loadingText.visible = false
       'close observeField removed, add in input loop
       m.videoGrid.setFocus(true)
   end if
 end sub
+
+Sub resetVideoGrid()
+  m.videoGrid.itemSize= [1920,365]
+  m.videoGrid.rowitemSize=[[380,350]]
+End Sub
+
+Sub downsizeVideoGrid()
+  m.videoGrid.itemSize= [1920,305]
+  m.videoGrid.rowitemSize=[[380,290]]
+End Sub
 
 sub failedSearch()
   ? "search failed"
@@ -281,6 +296,8 @@ sub failedSearch()
 end sub
 
 sub backToKeyboard()
+  m.videoGrid.itemSize= [1920,365]
+  m.videoGrid.rowitemSize=[[380,350]]
   m.searchKeyboard.visible = True
   m.searchKeyboardDialog.visible = True
   m.searchKeyboardGrid.visible = True
@@ -351,6 +368,7 @@ sub categorySelectorFocusChanged(msg)
         m.searchHistoryDialog.visible = false
         m.searchKeyboard.visible = false
         m.searchKeyboardDialog.visible = false
+        resetVideoGrid()
         m.videoGrid.visible = true
       end if
       if m.categorySelector.itemFocused = 1

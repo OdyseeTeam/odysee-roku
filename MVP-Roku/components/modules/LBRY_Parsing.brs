@@ -47,6 +47,14 @@ Function ManufactureQueryFeed(query)
                 item.link = item.url
                 item.source = "lbry"
                 item.guid = claim.claim_id
+                item.Views = getViews(claim.claim_id).ToStr()+" views"
+                item.Views.Trim()
+                time = CreateObject("roDateTime")
+                time.FromSeconds(claim.timestamp)
+                timestr = time.AsDateString("short-month-short-weekday")+" "
+                timestr = timestr.Trim()
+                time = Invalid
+                item.ReleaseDate = timestr
                 item.itemType = "video"
                 result.push(item)
                 mediaindex[item.guid] = item
@@ -72,6 +80,18 @@ Function ManufactureQueryFeed(query)
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
 End Function
 
+Function getViews(claimId)
+    response = GetURLEncoded("https://api.lbry.com/file/view_count", {auth_token: m.top.authtoken, claim_id: claimId})
+    if IsValid(response.data)
+      return response.data[0]
+    else
+      ? "The API isn't responding correctly, we must have done something wrong."
+      ? response
+      ? response.error
+      STOP 'stop for debug
+    end if
+End Function
+
 Function ManufactureChannelGrid(feed)
     '? "manufacturing started for key: "+subkey
     mediaindex={}
@@ -80,9 +100,10 @@ Function ManufactureChannelGrid(feed)
     for each video in feed
         item = {}
         item.Title = video["realname"]
-        item.Creator = Str(video["subs"])+" following"
+        item.Creator = ""
+        item.Views = ""
         item.Description = item.Creator
-        item.ReleaseDate = "none"
+        item.ReleaseDate = StrI(video["subs"])+" following"
         item.guid = video["id"]
         thumbnail = video["thumbnail"]
         item.HDPosterURL = thumbnail
