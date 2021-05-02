@@ -265,7 +265,7 @@ sub gotLighthouse()
       m.mediaIndex = base["index"]
       handleDeepLink(m.global.deeplink)
       m.searchLoading = False
-      if m.QueryLBRY.method <> "lighthouse_search"
+      if m.QueryLBRY.method <> "lighthouse_search" or m.searchType = "video"
         resetVideoGrid()
       else
         downsizeVideoGrid()

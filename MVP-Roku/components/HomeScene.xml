@@ -92,7 +92,7 @@
             numColumns="1"
             numRows="11"
             vertFocusAnimationStyle="floatingFocus"
-            focusFootprintBlendColor="#2b2037"
+            focusFootprintBlendColor="#5d5d5d"
             columnWidths="[110,70]"
             visible = "false"
     />
