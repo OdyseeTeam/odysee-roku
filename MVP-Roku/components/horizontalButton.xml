@@ -29,11 +29,11 @@
     m.itemImage.height = m.top.itemContent.height - 4
     m.itemText.width = m.top.itemContent.width - 4
     m.itemText.height = m.top.itemContent.height - 4
-    m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"AA"
+    m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"99"
     m.itemOutline.color = m.top.itemContent.outlineColor
     m.top.itemContent.backgroundColor = Left(m.top.itemContent.backgroundColor, 8)
     m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
-    m.itemFocusBackground.color = m.top.itemContent.backgroundColor+"DD"
+    m.itemFocusBackground.color = m.top.itemContent.backgroundColor+"CC"
   end function
 
   function itemFocus()
@@ -49,7 +49,7 @@
       m.itemText.color = m.top.itemContent.outlineColor
     else
       m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
-      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"AA"
+      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"CC"
     end if
   end function
   function init() 

@@ -7,7 +7,7 @@ Sub init()
     m.searchFailed = False 'Has a search failed?
     m.failedSearchText = "" 'The previous, failed search (so the user can try again.)
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
-    m.focusedItem = 1 'set to External. This is just a workaround for legacy code here that I am planning on removing.
+    m.focusedItem = 1 'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
 
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
@@ -724,7 +724,7 @@ function createTextItems(buttons, items, itemSize) as object
       dataItem.posterUrl = ""
       dataItem.width=itemSize[0]
       dataItem.height=itemSize[1]
-      dataItem.backgroundColor="0x2B203700"
+      dataItem.backgroundColor="0x00000000"
       dataItem.outlineColor="0xFFFFFFFF"
       dataItem.labelText = item
   end for

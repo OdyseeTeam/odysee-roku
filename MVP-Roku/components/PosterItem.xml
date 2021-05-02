@@ -22,6 +22,7 @@
                 m.Poster.loadHeight = m.top.itemContent.thumbnailDimensions[1]
                 m.Poster.uri = m.top.itemContent.HDPOSTERURL
                 m.Title.text = m.top.itemContent.TITLE
+                m.Views.text = m.top.itemContent.VIEWS
                 m.Creator.text = m.top.itemContent.CREATOR
                 m.Published.text = m.top.itemContent.RELEASEDATE
                 updateLayout()
@@ -33,7 +34,7 @@
                     m.Background.width = m.top.width
                     m.Background.height = m.top.height
                     m.Title.width = m.top.width-20
-                    
+                    m.Views.width = m.top.width-20
                     m.Creator.width = m.top.width-20
                 End If
             End Sub]]>
@@ -48,10 +49,13 @@
         <Label id="title" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,210]" text="title">
         <Font role="font" uri = "pkg:/images/rofont.otf" size="24"/>
         </Label>
-        <Label id="published" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,245]" text="Date">
+        <Label id="published" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,245]" text="date">
         <Font role="font" uri = "pkg:/images/rofont.otf" size="24"/>
         </Label>
-        <Label id="creator" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,280]" text="publisher">
+        <Label id="views" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,277]" text="views">
+        <Font role="font" uri = "pkg:/images/rofont.otf" size="24"/>
+        </Label>
+        <Label id="creator" font="font:INTER LIGHT BETA" color="#ffffff" translation="[10,310]" text="publisher">
         <Font role="font" uri = "pkg:/images/rofont.otf" size="24"/>
         </Label>
     </children>

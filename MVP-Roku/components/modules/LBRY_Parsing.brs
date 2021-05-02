@@ -123,6 +123,7 @@ Function ManufactureVFeed(feed, subkey, dimensions)
         item.Creator = video[1]
         item.Description = video[2]
         item.ReleaseDate = video[3]
+        item.Views = video[8]+" views"
         item.guid = video[4]
         thumbnail = video[5]
         item.HDPosterURL = thumbnail
@@ -160,7 +161,7 @@ Function ParseXMLContent(list As Object)  'Formats content into content nodes so
         row.Title = rowAA.Title
         for each itemAA in rowAA.ContentList
             item = createObject("RoSGNode","ContentNode")
-            item.addFields({creator: "", thumbnailDimensions: [], itemType: ""}) 'thumbnailDimensions for display, Creator for the creator, itemType for handling Channels VS standard items
+            item.addFields({creator: "", thumbnailDimensions: [], itemType: "", views: ""}) 'thumbnailDimensions for display, Creator for the creator, itemType for handling Channels VS standard items
             'Don't do item.SetFields(itemAA), as it doesn't cast streamFormat to proper value
             'for each key in itemAA
 		' ?"key = ", key, itemAA[key]
