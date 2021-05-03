@@ -139,9 +139,9 @@ for key in masterfeed:
 
                 try:
                     if "spee.ch" in item['value']['thumbnail']['url']:
-                            thumburl = item['value']['thumbnail']['url']+"?quality=1&height=180&width=320"
+                            thumburl = item['value']['thumbnail']['url']+"?quality=1&height=220&width=390"
                     else:
-                            thumburl = "https://image-optimizer.vanwanet.com/?address="+item['value']['thumbnail']['url']+"?quality=1&height=180&width=320"
+                            thumburl = "https://image-optimizer.vanwanet.com/?address="+item['value']['thumbnail']['url']+"?quality=1&height=220&width=390"
                 except:
                     thumbnail = "pkg:\\images\\odyseeoops.png"
                 #https://api.lbry.com/file/view_count?auth_token=TOKEN&claim_id=CID
