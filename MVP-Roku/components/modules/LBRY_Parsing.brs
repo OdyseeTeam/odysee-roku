@@ -6,39 +6,6 @@ Function ManufactureQueryFeed(query)
     result = []  'Store all results inside an array.
     mediaindex={}
 
-    if isValid(query["params"]["channel_ids"][0]) AND isValid(m.top.method) 'if the user is streaming, shoehorn in their livestream.
-        if m.top.method = "lighthouse_channel"
-            if GetOdyseeIsStreaming(query["params"]["channel_ids"][0])
-                channelClaim = query["params"]["channel_ids"][0]
-                data = ParseJson(GetRawText("https://api.bitwave.tv/v1/odysee/live/"+channelClaim))
-                item = {}
-                streamlink = "https://cdn.odysee.live/hls/"+channelClaim+"/index.m3u8"
-                streamimage = data.data.thumbnail
-                item.Title = "LIVE NOW!"
-                item.claimId = channelClaim
-                item.source = "lbry"
-                item.guid = channelClaim
-                item.Views = data.data.viewCount.toStr()+" CURRENTLY WATCHING!"
-                item.Views.Trim()
-                time = CreateObject("roDateTime")
-                time.FromISO8601String(data.data.timestamp)
-                timestr = time.AsDateString("short-month-short-weekday")+" "
-                timestr = timestr.Trim()
-                time = Invalid
-                item.ReleaseDate = timestr
-                item.itemType = "stream"
-                item.stream = {url : streamlink}
-                item.url = streamlink
-                item.streamFormat = "hls"
-                item.HDPosterUrl = streamimage
-                item.hdBackgroundImageUrl = "pkg:/images/splash_fhd.jpg"
-                result.push(item)
-                mediaindex[item.guid] = item
-                item = Invalid
-            end if
-        end if
-    end if
-
     for each claim in lbryclaims.result.items
         if IsValid(claim.value.thumbnail.url)
             if Instr(claim.value.thumbnail.url, "spee.ch") > 0
