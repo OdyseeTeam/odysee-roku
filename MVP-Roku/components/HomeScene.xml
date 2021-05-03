@@ -159,6 +159,25 @@
         visible = "false"
     />
 
+    <Rectangle id = "chatBackground"
+        width = "600"
+        height = "675"
+        visible="false"
+        translation="[0, 405]"
+        color = "0x000000FF"/>
+
+    <ScrollableText id = "chatBox"
+        width = "600"
+        height = "600"
+        visible="false"
+        translation="[0, 412.5]"
+        font="font:INTER LIGHT BETA"
+        scrollbarTrackBitmapUri = "pkg:/images/placeholder1x1.png"
+        scrollbarThumbBitmapUri = "pkg:/images/placeholder1x1.png"
+        vertAlign = "bottom">
+        <Font role="font" uri = "pkg:/images/rofont.otf" size="32"/>
+    </ScrollableText>
+
 	<Button id="warningbutton" textcolor="#ffffff" minwidth="300" height="64" text="OK" showFocusFootprint="true" translation="[300,286]" visible="false"/>
     
     </children>

@@ -2,8 +2,43 @@
 Function ManufactureQueryFeed(query)
     ? "manufacturing started (search)"
     lbryclaims = QueryLBRYAPI(query)
+    
     result = []  'Store all results inside an array.
     mediaindex={}
+
+    if isValid(query["params"]["channel_ids"][0]) AND isValid(m.top.method) 'if the user is streaming, shoehorn in their livestream.
+        if m.top.method = "lighthouse_channel"
+            if GetOdyseeIsStreaming(query["params"]["channel_ids"][0])
+                channelClaim = query["params"]["channel_ids"][0]
+                data = ParseJson(GetRawText("https://api.bitwave.tv/v1/odysee/live/"+channelClaim))
+                item = {}
+                streamlink = "https://cdn.odysee.live/hls/"+channelClaim+"/index.m3u8"
+                streamimage = data.data.thumbnail
+                item.Title = "LIVE NOW!"
+                item.claimId = channelClaim
+                item.source = "lbry"
+                item.guid = channelClaim
+                item.Views = data.data.viewCount.toStr()+" CURRENTLY WATCHING!"
+                item.Views.Trim()
+                time = CreateObject("roDateTime")
+                time.FromISO8601String(data.data.timestamp)
+                timestr = time.AsDateString("short-month-short-weekday")+" "
+                timestr = timestr.Trim()
+                time = Invalid
+                item.ReleaseDate = timestr
+                item.itemType = "stream"
+                item.stream = {url : streamlink}
+                item.url = streamlink
+                item.streamFormat = "hls"
+                item.HDPosterUrl = streamimage
+                item.hdBackgroundImageUrl = "pkg:/images/splash_fhd.jpg"
+                result.push(item)
+                mediaindex[item.guid] = item
+                item = Invalid
+            end if
+        end if
+    end if
+
     for each claim in lbryclaims.result.items
         if IsValid(claim.value.thumbnail.url)
             if Instr(claim.value.thumbnail.url, "spee.ch") > 0
@@ -90,6 +125,77 @@ Function getViews(claimId)
       ? response.error
       STOP 'stop for debug
     end if
+End Function
+
+Function GetOdyseeIsStreaming(channelClaim)
+  data = ParseJson(GetRawText("https://api.bitwave.tv/v1/odysee/live/"+channelClaim))
+  if IsValid(data)
+    if IsValid(data.success)
+      if data.success = true
+        if IsValid(data.data)
+          if IsValid(data.data.url) AND IsValid(data.data.thumbnail)
+            data = invalid
+            return true
+          end if
+        end if
+      end if
+    end if
+  end if
+  return false
+End Function
+
+Function GetOdyseeStreamClaimID(channelid)
+    query = {"jsonrpc":"2.0","method":"claim_search","params":{"page": 1,"page_size":5,"no_totals":True,"any_tags":[],"channel_ids":[channelid],"not_channel_ids":[],"order_by":["trending_group","trending_mixed"],"fee_amount":"<=0","include_purchase_receipt":True},"id":m.top.uid}
+    data = QueryLBRYAPI(query)["result"]["items"]
+    for each subitem in data
+      if isValid(subitem["value"]["source"]) = false
+        return subitem["claim_id"]
+      end if
+    end for
+End Function
+
+Function GetOdyseeStream(channelClaim)
+    data = ParseJson(GetRawText("https://api.bitwave.tv/v1/odysee/live/"+channelClaim))
+    result = []
+    ''? children[i]
+        item = {}
+          'streamlink = ExtractMP4Embed(children[a].[0].link)
+          streamlink = "https://cdn.odysee.live/hls/"+channelClaim+"/index.m3u8"
+          streamimage = data.data.thumbnail
+          item.Title = "LIVE NOW!"
+          item.claimId = channelClaim
+          item.ReleaseDate = data.data.timestamp
+          item.description =  data.data.viewCount.toStr()+" CURRENTLY WATCHING!"
+          item.stream = {url : streamlink}
+          item.url = streamlink
+          item.streamFormat = "hls"
+          item.HDPosterUrl = streamimage
+          item.hdBackgroundImageUrl = "pkg:/images/splash_fhd.jpg"
+          result.push(item)
+    data = invalid
+    return result
+End Function
+
+Function GetOdyseeStreamDev(channelClaim)
+    data = ParseJson(GetRawText("https://api.bitwave.tv/v1/odysee/live/"+channelClaim))
+    result = []
+    ''? children[i]
+        item = {}
+          'streamlink = ExtractMP4Embed(children[a].[0].link)
+          streamlink = "https://cdn.odysee.live/hls/"+channelClaim+"/index.m3u8"
+          streamimage = data.data.thumbnail
+          item.Title = "LIVE NOW!"
+          item.claimId = channelClaim
+          item.ReleaseDate = data.data.timestamp
+          item.description =  data.data.viewCount.toStr()+" CURRENTLY WATCHING!"
+          item.stream = {url : streamlink}
+          item.url = streamlink
+          item.streamFormat = "hls"
+          item.HDPosterUrl = streamimage
+          item.hdBackgroundImageUrl = "pkg:/images/splash_fhd.jpg"
+          result.push(item)
+    data = invalid
+    return result
 End Function
 
 Function ManufactureChannelGrid(feed)

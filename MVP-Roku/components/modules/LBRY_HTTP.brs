@@ -68,6 +68,40 @@ function QueryLBRYcom(endpoint, json) as Object 'we need to vary the following: 
 return parsejson(response)
 End Function
 
+function QueryLBRYComments(json) as Object
+  http = CreateObject("roUrlTransfer")
+  messagePort = CreateObject("roMessagePort")
+  http.RetainBodyOnError(true)
+  http.SetPort(messagePort)
+  http.setCertificatesFile("common:/certs/ca-bundle.crt")
+  http.InitClientCertificates()
+  http.EnableCookies()
+  http.AddCookies(m.top.cookies)
+  http.SetUrl("https://comments.lbry.com/api/v2?m=comment.List") 
+  http.AddHeader("Content-Type", "application/json")
+  http.AddHeader("Accept", "application/json")
+  if IsValid(m.top.authtoken)
+    http.AddHeader("x-lbry-auth-token", m.top.authtoken) 'in some cases, this is actually needed!
+  end if
+  response=""
+  lastresponsecode = ""
+  lastresponsefailurereason = ""
+  responseheaders = []
+  if http.AsyncPostFromString(json) then
+    event = Wait(10000, http.GetPort())
+      if Type(event) = "roUrlEvent" Then
+        response = event.getString()
+        m.top.cookies = http.getCookies("", "/")
+      else if event = invalid then
+        http.asynccancel()
+      Else
+          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
+    end if
+  end if
+  ? response
+return parsejson(response)
+End Function
+
 function PostURLEncoded(URL, data) as Object
   http = CreateObject("roUrlTransfer")
   messagePort = CreateObject("roMessagePort")

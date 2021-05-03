@@ -36,6 +36,8 @@ Sub init()
     m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
     m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
     m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
+    m.chat = m.top.findNode("chatBox")
+    m.chatBackground = m.top.findNode("chatBackground")
 
     'UI Item observers
     m.video.observeField("state", "onVideoStateChanged")
@@ -51,8 +53,8 @@ Sub init()
     '=========Warnings=========
     m.DeviceInfo=createObject("roDeviceInfo")
     m.ModelNumber = m.DeviceInfo.GetModel()
-    m.maxThumbHeight=180
-    m.maxThumbWidth=320
+    m.maxThumbHeight=220
+    m.maxThumbWidth=390
     'Players that need LoRes Mode (MIPS):
     '2710X
     '2720X
@@ -127,6 +129,10 @@ Sub init()
     m.QueryLBRY.observeField("output", "startupRan")
     m.QueryLBRY.control = "RUN"
 
+    m.chatTask = createObject("roSGNode", "chatTask")
+    m.chatTask.observeField("chat", "setchat")
+    m.chatTask.control = "STOP"
+
     m.JSONTask = createObject("roSGNode", "JSONTask")
     m.JSONTask.setField("thumbnaildims", [m.maxThumbWidth, m.maxThumbHeight])
     m.JSONTask.observeField("output", "AppFinishedFirstLoad")
@@ -154,12 +160,28 @@ Sub startupRan()
     m.QueryLBRY.control = "STOP"
     m.QueryLBRY.unobserveField("output") 'for the next use
     m.authenticated = True
+    m.video.EnableCookies()
+    m.video.AddHeader("origin","https://bitwave.tv")
+    m.video.AddHeader("referer","https://bitwave.tv/")
+    m.video.AddHeader(":authority","https://cdn.odysee.live")
+    m.video.AddHeader(":method", "GET")
+    m.video.AddHeader(":path", "")
+    m.video.AddCookies(m.QueryLBRY.cookies)
+    m.chatTask.setField("uid", m.QueryLBRY.uid)
+    m.chatTask.setField("authtoken", m.QueryLBRY.authToken)
+    m.chatTask.setField("cookies", m.QueryLBRY.cookies)
 End Sub
+
+sub setchat()
+  m.chat.text = m.chatTask.chat
+  m.chat.visible = true
+  m.chatBackground.visible = true
+end sub
 
 function getselectorData() as object
   data = CreateObject("roSGNode", "ContentNode")
-  names = ["Search", "Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe", "Wild West"]
-  for i = 1 to 11
+  names = ["Search", "Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe"]
+  for i = 1 to 10
       dataItem = data.CreateChild("catselectordata")
       '? "creating item"
       dataItem.posterUrl = "pkg:/images/odysee/"+i.toStr()+".png"
@@ -407,10 +429,6 @@ sub categorySelectorFocusChanged(msg)
           base = m.JSONTask.output["THE_UNIVERSE"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
-      else if m.categorySelector.itemFocused = 10
-          base = m.JSONTask.output["COMMUNITY"]
-          m.videoGrid.content = base["content"]
-          m.mediaIndex = base["index"]
       end if
       'base = m.JSONTask.output["PRIMARY_CONTENT"]
       'm.videoGrid.content = base["content"]
@@ -494,6 +512,7 @@ Sub playVideo(url = invalid)
     if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "video"
       m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
       m.videoContent.streamFormat = "mp4"
+      m.videoContent.Live = false
       m.video.content = m.videoContent
       m.video.visible = "true"
       m.video.setFocus(true)
@@ -508,10 +527,27 @@ Sub playVideo(url = invalid)
       m.QueryLBRY.setField("input", {channelID: m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL, expiration: no_earlier})
       m.QueryLBRY.observeField("output", "gotLighthouse")
       m.QueryLBRY.control = "RUN"
+    else if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "stream"
+      m.chatTask.setField("stream", m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).UID)
+      m.chatTask.control = "RUN"
+      m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL   
+      m.videoContent.streamFormat = "hls"
+      m.videoContent.Live = true
+      m.video.content = m.videoContent
+      m.video.visible = "true"
+      m.video.setFocus(true)
+      m.focusedItem = 7
+      m.video.control = "play"
+      ? m.video.errorStr
+      ? m.video.videoFormat
+      ? m.video
     end if
 End Sub
 
 Function returnToUIPage()
+    m.chatTask.control = "STOP"
+    m.chat.visible = "false"
+    m.chatBackground.visible = "false"
     m.video.setFocus(false)
     m.video.visible = "false" 'Hide video
     m.video.control = "stop"  'Stop video from playing
