@@ -126,11 +126,14 @@ for key in masterfeed:
             if validvideo:
                 try: 
                     channelname = item['signing_channel']['value']['title']
+                    channelid = item['signing_channel']['channel_id']
                 except:
                     try:
                         channelname = item['signing_channel']['channel_id']
+                        channelid = item['signing_channel']['channel_id']
                     except:
                         channelname = "Anonymous"
+                        channelid = ""
                 try: title = item['value']['title']
                 except: title = "Unnamed Video"
 
@@ -146,7 +149,7 @@ for key in masterfeed:
                     thumbnail = "pkg:\\images\\odyseeoops.png"
                 #https://api.lbry.com/file/view_count?auth_token=TOKEN&claim_id=CID
                 viewcount = numerize.numerize(json.loads(requests.get("https://api.lbry.com/file/view_count?auth_token="+authtoken+"&claim_id="+item['claim_id']).text)["data"][0],2)
-                entries.append([title, channelname, description, time.strftime('%a %b %e, %Y', time.localtime(item['timestamp'])), item['claim_id'], thumburl, "https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['hash'][:6],"https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['sd_hash'][:6], viewcount])
+                entries.append([title, channelname, description, time.strftime('%a %b %e, %Y', time.localtime(item['timestamp'])), item['claim_id'], thumburl, "https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['hash'][:6],"https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['sd_hash'][:6], viewcount, channelid])
                 numkeyentries+=1
         #standard: name, desc, pubdate, id, thumb, url
         #Temporary Redirect Fix: Vanwanet doesn't redirect properly.

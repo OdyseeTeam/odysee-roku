@@ -4,6 +4,7 @@ Function ManufactureQueryFeed(query)
     lbryclaims = QueryLBRYAPI(query)
     result = []  'Store all results inside an array.
     mediaindex={}
+    ? lbryclaims.result.items
     for each claim in lbryclaims.result.items
         if IsValid(claim.value.thumbnail.url)
             if Instr(claim.value.thumbnail.url, "spee.ch") > 0
@@ -15,7 +16,7 @@ Function ManufactureQueryFeed(query)
             thumbnail = "pkg:/images/odysee_oops.png"
         end if
         item = {}
-        if IsValid(claim.value.title) AND IsValid(claim.normalized_name) AND IsValid(claim.claim_id) AND IsValid(claim.value.source.hash) AND IsValid(claim.signing_channel.value) OR IsValid(claim.value.title) AND IsValid(claim.normalized_name) AND IsValid(claim.claim_id) AND IsValid(claim.value.source.hash) AND IsValid(claim.signing_channel.channel_id)
+        if IsValid(claim.value.source) AND IsValid(claim.value.title) AND IsValid(claim.normalized_name) AND IsValid(claim.claim_id) AND IsValid(claim.value.source.hash) AND IsValid(claim.signing_channel.value) OR IsValid(claim.value.title) AND IsValid(claim.normalized_name) AND IsValid(claim.claim_id) AND IsValid(claim.value.source.hash) AND IsValid(claim.signing_channel.channel_id)
             item.Title = claim.value.title
             item.ReleaseDate = claim.timestamp
             if not IsValid(claim.value.description)
@@ -182,7 +183,8 @@ Function ParseXMLContent(list As Object)  'Formats content into content nodes so
         row.Title = rowAA.Title
         for each itemAA in rowAA.ContentList
             item = createObject("RoSGNode","ContentNode")
-            item.addFields({creator: "", thumbnailDimensions: [], itemType: "", views: ""}) 'thumbnailDimensions for display, Creator for the creator, itemType for handling Channels VS standard items
+            'thumbnailDimensions for display, Creator for the creator, itemType for handling Channels VS standard items. Channel for Options Channel Viewing.
+            item.addFields({creator: "", thumbnailDimensions: [], itemType: "", views: "", Channel: ""}) 
             'Don't do item.SetFields(itemAA), as it doesn't cast streamFormat to proper value
             'for each key in itemAA
 		' ?"key = ", key, itemAA[key]

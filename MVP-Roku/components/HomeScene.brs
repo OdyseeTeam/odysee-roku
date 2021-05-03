@@ -534,6 +534,11 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if m.video.visible
             returnToUIPage()
             return true
+        else if m.focusedItem = 2
+          formerFocus = m.categorySelector.itemFocused
+          m.categorySelector.jumpToItem = 1
+          m.categorySelector.jumpToItem = formerFocus 'better than re-implimenting focus, and uses existing code
+          formerFocus = invalid
         else if m.categorySelector.itemFocused <> 1
           ErrorDismissed()
           m.searchKeyboard.setFocus(false)
@@ -547,6 +552,17 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         else
           return false
         end if
+      end if
+      if key = "options"
+          if m.focusedItem = 2 'Options Key Channel Transition.
+            if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) AND m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
+              no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
+              m.QueryLBRY.setField("method", "lighthouse_channel")
+              m.QueryLBRY.setField("input", {channelID: m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL, expiration: no_earlier})
+              m.QueryLBRY.observeField("output", "gotLighthouse")
+              m.QueryLBRY.control = "RUN"
+            end if
+          end if
       end if
       if key = "up"
           if m.focusedItem = 4 'Search -> Keyboard
