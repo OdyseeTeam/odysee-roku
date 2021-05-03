@@ -126,11 +126,11 @@ for key in masterfeed:
             if validvideo:
                 try: 
                     channelname = item['signing_channel']['value']['title']
-                    channelid = item['signing_channel']['value']['channel_id']
+                    channelid = item['signing_channel']['address']
                 except:
                     try:
                         channelname = item['signing_channel']['value']['channel_id']
-                        channelid = item['signing_channel']['value']['channel_id']
+                        channelid = item['signing_channel']['address']
                     except:
                         channelname = "Anonymous"
                         channelid = ""
