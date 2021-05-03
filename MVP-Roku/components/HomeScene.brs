@@ -51,8 +51,8 @@ Sub init()
     '=========Warnings=========
     m.DeviceInfo=createObject("roDeviceInfo")
     m.ModelNumber = m.DeviceInfo.GetModel()
-    m.maxThumbHeight=220
-    m.maxThumbWidth=390
+    m.maxThumbHeight=180
+    m.maxThumbWidth=320
     'Players that need LoRes Mode (MIPS):
     '2710X
     '2720X
@@ -158,8 +158,8 @@ End Sub
 
 function getselectorData() as object
   data = CreateObject("roSGNode", "ContentNode")
-  names = ["Search", "Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe"]
-  for i = 1 to 10
+  names = ["Search", "Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe", "Wild West"]
+  for i = 1 to 11
       dataItem = data.CreateChild("catselectordata")
       '? "creating item"
       dataItem.posterUrl = "pkg:/images/odysee/"+i.toStr()+".png"
@@ -407,6 +407,10 @@ sub categorySelectorFocusChanged(msg)
           base = m.JSONTask.output["THE_UNIVERSE"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
+      else if m.categorySelector.itemFocused = 10
+          base = m.JSONTask.output["COMMUNITY"]
+          m.videoGrid.content = base["content"]
+          m.mediaIndex = base["index"]
       end if
       'base = m.JSONTask.output["PRIMARY_CONTENT"]
       'm.videoGrid.content = base["content"]
@@ -487,18 +491,7 @@ Sub vgridContentChanged(msg as Object)
 end Sub
 
 Sub playVideo(url = invalid)
-    if isValid(url) and isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType) <> True
-      m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
-      m.videoContent.streamFormat = "mp4"
-      m.video.content = m.videoContent
-      m.video.visible = "true"
-      m.video.setFocus(true)
-      m.focusedItem = 7
-      m.video.control = "play"
-      ? m.video.errorStr
-      ? m.video.videoFormat
-      ? m.video
-    else if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "video"
+    if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "video"
       m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
       m.videoContent.streamFormat = "mp4"
       m.video.content = m.videoContent
