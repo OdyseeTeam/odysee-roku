@@ -158,8 +158,8 @@ End Sub
 
 function getselectorData() as object
   data = CreateObject("roSGNode", "ContentNode")
-  names = ["Search", "Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe", "Wild West"]
-  for i = 1 to 11
+  names = ["Search", "Home", "Cheese", "Big Hits", "Gaming", "Lab", "Tech", "News & Politics", "Finance 2.0", "The Universe"]
+  for i = 1 to 10
       dataItem = data.CreateChild("catselectordata")
       '? "creating item"
       dataItem.posterUrl = "pkg:/images/odysee/"+i.toStr()+".png"
@@ -405,10 +405,6 @@ sub categorySelectorFocusChanged(msg)
           m.mediaIndex = base["index"]
       else if m.categorySelector.itemFocused = 9
           base = m.JSONTask.output["THE_UNIVERSE"]
-          m.videoGrid.content = base["content"]
-          m.mediaIndex = base["index"]
-      else if m.categorySelector.itemFocused = 10
-          base = m.JSONTask.output["COMMUNITY"]
           m.videoGrid.content = base["content"]
           m.mediaIndex = base["index"]
       end if
