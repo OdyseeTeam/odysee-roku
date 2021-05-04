@@ -9,7 +9,7 @@ Sub init()
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
     m.focusedItem = 1 'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
-
+    m.curDeepLink = {} 'current DeepLink to process.
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.switchRow = 0 'Row on History/Keyboard
 
@@ -173,7 +173,6 @@ sub indexloaded(msg as Object)
         m.mediaIndex = msg.getData()
         '? "m.mediaIndex= "; m.mediaIndex
     end if
-    handleDeepLink(m.global.deeplink)
     'get run time deeplink updates'
     'm.global.observeField("deeplink", handleRuntimeDeepLink)
     m.LoadTask.control = "STOP"
@@ -184,7 +183,6 @@ sub AppFinishedFirstLoad()
     base = m.JSONTask.output["PRIMARY_CONTENT"]
     m.videoGrid.content = base["content"]
     m.mediaIndex = base["index"]
-    handleDeepLink(m.global.deeplink)
     m.loadingText.visible = false
     m.loadingText.translation="[800,0]"
     m.loadingText.vertAlign="center" 
@@ -216,6 +214,7 @@ sub warningdismissed()
 end sub
 
 sub finishInit()
+  ? "init finished."
   m.header.visible = true
   m.sidebarTrim.visible = true
   m.sidebarBackground.visible = true
@@ -226,6 +225,15 @@ sub finishInit()
   m.loaded = True
   m.categorySelector.setFocus(true)
   m.global.scene.signalBeacon("AppLaunchComplete")
+  if isValid(m.global.deeplink)
+    if isValid(m.global.deeplink.contentId)
+      m.QueryLBRY.unobserveField("output")
+      m.QueryLBRY.setField("method", "resolve_video")
+      m.QueryLBRY.setField("input", m.global.deeplink)
+      m.QueryLBRY.observeField("output", "gotDeepLinkVideo")
+      m.QueryLBRY.control = "RUN"
+    end if
+  end if
 end sub
 
 sub execSearch(search, searchType)
@@ -263,7 +271,6 @@ sub gotLighthouse()
       base = m.QueryLBRY.output.result
       m.videoGrid.content = base["content"]
       m.mediaIndex = base["index"]
-      handleDeepLink(m.global.deeplink)
       m.searchLoading = False
       if m.QueryLBRY.method <> "lighthouse_search" or m.searchType = "video"
         resetVideoGrid()
@@ -313,11 +320,21 @@ sub backToKeyboard()
 end sub
 
 Function handleDeepLink(deeplink as object)
-  if validateDeepLink(deeplink)
-    playVideo(m.mediaIndex[deeplink.id].url)
+  if isValid(deeplink)
+    m.QueryLBRY.unobserveField("output")
+    m.QueryLBRY.setField("method", "resolve_video")
+    m.QueryLBRY.setField("input", deeplink)
+    m.QueryLBRY.observeField("output", "gotDeepLinkVideo")
+    m.QueryLBRY.control = "RUN"
   else
     print "deeplink not validated"
   end if
+end Function
+
+Function gotDeepLinkVideo()
+  m.QueryLBRY.control = "STOP"
+  m.QueryLBRY.unobserveField("output")
+  playVideo(m.QueryLBRY.output.result)
 end Function
 
 sub vgridFocusChanged(msg)
@@ -415,37 +432,16 @@ sub handleInputEvent(msg)
     if type(msg) = "roSGNodeEvent" and msg.getField() = "inputData"
         deeplink = msg.getData()
         if deeplink <> invalid
-            handleDeepLink(deeplink)
-        end if
-    end if
-end sub
-
-function validateDeepLink(deeplink as Object) as Boolean
-  mediatypes={movie:"movie",episode:"episode",season:"season",series:"series"}
-  if deeplink <> Invalid
-      '? "mediaType = "; deeplink.type
-      '? "contentId = "; deeplink.id
-      '? "content= "; m.mediaIndex[deeplink.id]
-      if deeplink.type <> invalid then
-        if mediatypes[deeplink.type]<> invalid
-          if m.mediaIndex[deeplink.id] <> invalid
-            if m.mediaIndex[deeplink.id].url <> invalid
-              return true
+            ? "Got deeplink"
+            ? deeplink
+            if m.loaded
+              handleDeepLink(deeplink)
             else
-                print "invalid deep link url"
+              m.global.deeplink = deeplink
             end if
-          else
-            print "bad deep link contentId"
           end if
-        else
-          print "unknown media type"
-        end if
-      else
-        print "deeplink.type string is invalid"
-      end if
-  end if
-  return false
-end function
+     end if
+end sub
 
 sub Error(title, error)
   m.searchKeyboard.visible = False
@@ -483,7 +479,18 @@ Sub vgridContentChanged(msg as Object)
 end Sub
 
 Sub playVideo(url = invalid)
-    if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "video"
+    if type(url) = "roAssociativeArray"
+      m.videoContent.url = url.url
+      m.VideoContent.streamFormat = "mp4"
+      m.video.content = m.videoContent
+      m.video.visible = "true"
+      m.video.setFocus(true)
+      m.focusedItem = 7
+      m.video.control = "play"
+      ? m.video.errorStr
+      ? m.video.videoFormat
+      ? m.video
+    else if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "video"
       m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
       m.videoContent.streamFormat = "mp4"
       m.video.content = m.videoContent
