@@ -532,19 +532,14 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           m.searchKeyboardDialog.setFocus(false)
           m.searchHistoryBox.setFocus(false)
           m.searchHistoryDialog.setFocus(false)
-          m.categorySelector.jumpToItem = 1
           m.categorySelector.setFocus(true)
           m.focusedItem = 1
           return true
         else if m.videoGrid.visible AND m.QueryLBRY.method = "lighthouse_channel_options"
-          m.categorySelector.jumpToItem = m.categorySelector.itemFocused
           m.videoGrid.setFocus(false)
           m.categorySelector.setFocus(true)
           m.videoGrid.setFocus(true)
           m.categorySelector.setFocus(false)
-          ? m.previousVideoGridItem
-          m.videoGrid.jumpToItem = m.previousVideoGridItem
-          m.previousVideoGridItem = invalid
           return true
         else
           return false
@@ -552,8 +547,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       end if
       if key = "options"
           if m.focusedItem = 2 'Options Key Channel Transition.
-            m.previousVideoGridItem = m.videoGrid.itemFocused
-            ? m.previousVideoGridItem
             if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) AND m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> "" AND m.QueryLBRY.state = "stop"
               no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
               m.QueryLBRY.setField("method", "lighthouse_channel_options")
