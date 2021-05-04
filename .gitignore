@@ -1,4 +1,5 @@
 out/roku-deploy.zip
+out/*
 MVP-Static-Trending-Generator/out/trending.json
 MVP-Static-Trending-Generator/account.json
 .vscode

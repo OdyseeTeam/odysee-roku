@@ -37,6 +37,10 @@ sub master()
         if isValid(m.top.input.channelID) AND isValid(m.top.input.expiration)
             m.top.output = {result: lighthouse_channel(m.top.input.channelID, m.top.input.expiration)}
         end if
+    else if m.top.method = "resolve_video"
+        if isValid(m.top.input.contentId) AND isValid(m.top.input.mediaType)
+            m.top.output = {result: resolve_video(m.top.input.contentId)}
+        end if
     else if m.top.method = "exists" 'Checking if user exists
         if IsValid(m.top.input.email)
             m.top.output = {result: exists(m.top.input.email)}
