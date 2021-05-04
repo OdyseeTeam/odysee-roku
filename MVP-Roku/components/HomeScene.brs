@@ -534,11 +534,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if m.video.visible
             returnToUIPage()
             return true
-        else if m.focusedItem = 2
-          formerFocus = m.categorySelector.itemFocused
-          m.categorySelector.jumpToItem = 1
-          m.categorySelector.jumpToItem = formerFocus 'better than re-implimenting focus, and uses existing code
-          formerFocus = invalid
         else if m.categorySelector.itemFocused <> 1
           ErrorDismissed()
           m.searchKeyboard.setFocus(false)
