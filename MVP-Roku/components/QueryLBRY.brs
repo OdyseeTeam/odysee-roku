@@ -33,7 +33,7 @@ sub master()
         else if IsValid(m.top.input.claimType) AND IsValid(m.top.input.from) AND IsValid(m.top.input.size) AND IsValid(m.top.input.query) AND m.top.input.claimType = "channel"
             m.top.output = {result: lighthouse_channels(m.top.input.claimType, m.top.input.size, m.top.input.from, m.top.input.query)}
         end if
-    else if m.top.method = "lighthouse_channel"
+    else if m.top.method = "lighthouse_channel" OR m.top.method = "lighthouse_channel_options"
         if isValid(m.top.input.channelID) AND isValid(m.top.input.expiration)
             m.top.output = {result: lighthouse_channel(m.top.input.channelID, m.top.input.expiration)}
         end if
