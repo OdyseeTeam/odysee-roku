@@ -21,7 +21,7 @@ Function lighthouse_videos(claimtype, mediatype, size, from, expiration, query)
   else
     ? "The API isn't responding correctly, we must have done something wrong."
     ? input
-    STOP 'stop for debug
+    'STOP 'stop for debug
   end if
 End Function
 
@@ -60,7 +60,7 @@ Function lighthouse_channels(claimtype, size, from, query)
   else
     ? "The API isn't responding correctly, we must have done something wrong."
     ? input
-    STOP 'stop for debug
+    'STOP 'stop for debug
   end if
 End Function
 

@@ -14,7 +14,7 @@ Function createAccount()
       else
         ? "The API isn't responding correctly, we must have done something wrong."
         ? input
-        STOP 'stop for debug
+        'STOP 'stop for debug
       end if
     end if
 End Function
@@ -77,12 +77,12 @@ if input.success = true
     ? "The check account and create account functions should be the first thing to run in QueryLBRY. If your seeing this, either the API is broken,"
     ? "or, more likely, this spaghetti code broke somewhere. Returning the data so you can debug it."
     ? input
-    STOP 'stop for debug
+    'STOP 'stop for debug
   end if
 else
   ? "The API isn't responding correctly, we must have done something wrong."
   ? input
-  STOP 'stop for debug
+  'STOP 'stop for debug
 end if
 End Function
 
@@ -98,7 +98,7 @@ if response.success = true AND isValid(response.data.primary_email)
 else
   ? "The API isn't responding correctly, we must have done something wrong."
   ? response
-  STOP 'stop for debug
+  'STOP 'stop for debug
 end if
 End Function
 
@@ -112,7 +112,7 @@ else
   ? "The API isn't responding correctly, we must have done something wrong."
   ? response
   ? response.error
-  STOP 'stop for debug
+  'STOP 'stop for debug
 end if
 End Function
 
@@ -124,7 +124,7 @@ Function logout()
     else
       ? "The API isn't responding correctly, we must have done something wrong."
       ? input
-      STOP 'stop for debug
+      'STOP 'stop for debug
     end if
   end if
 End Function
