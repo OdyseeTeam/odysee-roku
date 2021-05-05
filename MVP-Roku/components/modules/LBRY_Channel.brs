@@ -40,7 +40,7 @@ if isValid(response)
       ? "The API isn't responding correctly, we must have done something wrong."
       ? response
       ? response.error
-      STOP 'stop for debug
+      'STOP 'stop for debug
     else
       ? "Invalid channel. Skipping!"
       return {invalidchannel: true}
