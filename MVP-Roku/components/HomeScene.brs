@@ -46,8 +46,6 @@ Sub init()
     m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
     m.searchKeyboardDialog.observeField("itemSelected", "search")
 
-    '=========Initialization Phase=========
-
     '=========Warnings=========
     m.DeviceInfo=createObject("roDeviceInfo")
     m.ModelNumber = m.DeviceInfo.GetModel()
