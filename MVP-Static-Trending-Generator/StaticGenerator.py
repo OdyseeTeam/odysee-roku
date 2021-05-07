@@ -139,8 +139,8 @@ for key in masterfeed:
 
                 #try: description = item['value']['description']
                 #except: description = " "
-                description = ""
-                
+                description = "d"
+
                 try:
                     if "spee.ch" in item['value']['thumbnail']['url']:
                             thumburl = item['value']['thumbnail']['url']+"?quality=1&height=220&width=390"
