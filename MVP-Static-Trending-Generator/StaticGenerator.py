@@ -137,9 +137,10 @@ for key in masterfeed:
                 try: title = item['value']['title']
                 except: title = "Unnamed Video"
 
-                try: description = item['value']['description']
-                except: description = "No Description"
-
+                #try: description = item['value']['description']
+                #except: description = " "
+                description = ""
+                
                 try:
                     if "spee.ch" in item['value']['thumbnail']['url']:
                             thumburl = item['value']['thumbnail']['url']+"?quality=1&height=220&width=390"
