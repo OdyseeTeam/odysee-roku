@@ -25,6 +25,16 @@ Function lighthouse_videos(claimtype, mediatype, size, from, expiration, query)
   end if
 End Function
 
+Function lighthouse_videos_placeholder(amount)
+    final_output = ManufacturePlaceholderVideoGrid(amount)
+    return final_output
+End Function
+
+Function lighthouse_channels_placeholder(amount)
+    final_output = ManufacturePlaceholderChannelGrid(amount)
+    return final_output
+End Function
+
 Function lighthouse_channels(claimtype, size, from, query)
   ? "in lighthouse"
   input = GetURLEncoded("https://lighthouse.lbry.com/search", {s: query, claimType: "channel", size: Str(size).Trim(), from: Str(from).Trim(), sort_by: "effective_amount", nsfw: "false", free_only: "true"})
