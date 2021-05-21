@@ -200,6 +200,8 @@ Function ManufacturePlaceholderChannelGrid(amount) 'Create Placeholder Grid with
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
 End Function
 
+'asdf
+
 Function ManufacturePlaceholderVideoGrid(amount) 'Create Placeholder Grid with Amount items.
     mediaindex={}
     result = []
