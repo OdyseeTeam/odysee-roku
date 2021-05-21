@@ -161,12 +161,12 @@ Function getViews(claimId)
     end if
 End Function
 
-Function ManufacturePlaceholderVideoGrid(amount) 'Create Placeholder Grid with Amount items.
+Function ManufacturePlaceholderChannelGrid(amount) 'Create Placeholder Grid with Amount items.
     mediaindex={}
     result = []
     For i=1 To amount Step 1 
         item = {}
-        item.Title = "placeholder"+Str(i)
+        item.Title = "placeholder channel #"+Str(i)
         item.Creator = ""
         item.Views = ""
         item.Description = "placeholder description"
@@ -176,12 +176,51 @@ Function ManufacturePlaceholderVideoGrid(amount) 'Create Placeholder Grid with A
         item.HDPosterURL = thumbnail
         item.HDBackgroundImageUrl = thumbnail
         item.thumbnailDimensions = [360, 240]
-        item.url = "https://cdn.lbryplayer.xyz/api/v4/streams/free/gaylegos/7ce07b772749b3e37673ad2c5752e6a010a73efc/00ced8"
+        item.url = "placeholder channel"
         item.stream = {url : "none"}
         item.streamFormat = "none"
         item.link = item.url
         item.source = "lbry"
         item.itemType = "channel"
+        result.push(item)
+        mediaindex[item.guid] = item
+    end for
+    list = [
+        {
+            ContentList : SelectTo(result, 4)
+        }
+    ]
+    rowcount = int(result.count()/4)-1
+    for row=1 to rowcount step 1
+        '? "row "+Str(row+1)
+        list.push({ContentList : SelectTo(result, 4, row*4)})
+    end for
+    content = ParseXMLContent(list)
+    '? "manufacturing finished for key: "+subkey
+    return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
+End Function
+
+Function ManufacturePlaceholderVideoGrid(amount) 'Create Placeholder Grid with Amount items.
+    mediaindex={}
+    result = []
+    For i=1 To amount Step 1 
+        item = {}
+        item.Title = "placeholder video #"+Str(i)
+        item.Creator = "placeholder creator"
+        item.Views = "placeholder views"
+        item.Description = "placeholder description"
+        item.ReleaseDate = "placeholder following"
+        item.guid = i+"GUIDPlaceholder"
+        thumbnail = "pkg:/images/odysee_oops.png"
+        item.HDPosterURL = thumbnail
+        item.HDBackgroundImageUrl = thumbnail
+        item.thumbnailDimensions = [360, 240]
+        item.url = "https://cdn.lbryplayer.xyz/api/v4/streams/free/gaylegos/7ce07b772749b3e37673ad2c5752e6a010a73efc/00ced8"
+        item.stream = {url : item.url}
+        item.streamFormat = "mp4"
+        item.link = item.url
+        item.source = "lbry"
+        item.itemType = "video"
         result.push(item)
         mediaindex[item.guid] = item
     end for
