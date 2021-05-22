@@ -1,5 +1,47 @@
 'All parsing functions (creating feed, etc)
 
+Function ManufactureVFeed(feed, subkey, dimensions)
+    '? "manufacturing started for key: "+subkey
+    mediaindex={}
+    result = []
+    '? dimensions
+    for each video in feed[subkey]
+        item = {}
+        item.Title = video[0]
+        item.Creator = video[1]
+        item.Description = video[2]
+        item.ReleaseDate = video[3]
+        item.Views = video[8]+" views"
+        item.Channel = video[9]
+        item.guid = video[4]
+        thumbnail = video[5]
+        item.HDPosterURL = thumbnail
+        item.HDBackgroundImageUrl = thumbnail
+        item.thumbnailDimensions = dimensions
+        item.url = video[6]
+        item.stream = {url : item.url}
+        item.streamFormat = "mp4"
+        item.link = item.url
+        item.itemType = "video"
+        item.source = "lbry"
+        result.push(item)
+        mediaindex[item.guid] = item
+    end for
+    list = [
+        {
+            ContentList : SelectTo(result, 4)
+        }
+    ]
+    rowcount = int(result.count()/4)-1
+    for row=1 to rowcount step 1
+        '? "row "+Str(row+1)
+        list.push({ContentList : SelectTo(result, 4, row*4)})
+    end for
+    content = ParseXMLContent(list)
+    '? "manufacturing finished for key: "+subkey
+    return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
+End Function
+
 Function ManufacturePlaceholderChannelGrid(amount) 'Create Placeholder Grid with Amount items.
     mediaindex={}
     result = []
@@ -10,7 +52,7 @@ Function ManufacturePlaceholderChannelGrid(amount) 'Create Placeholder Grid with
         item.Views = ""
         item.Description = "placeholder description"
         item.ReleaseDate = "placeholder following"
-        item.guid = i+"GUIDPlaceholder"
+        item.guid = Str(i)+"GUIDPlaceholder"
         thumbnail = "pkg:/images/odysee_oops.png"
         item.HDPosterURL = thumbnail
         item.HDBackgroundImageUrl = thumbnail
@@ -49,7 +91,7 @@ Function ManufacturePlaceholderVideoGrid(amount) 'Create Placeholder Grid with A
         item.Views = "placeholder views"
         item.Description = "placeholder description"
         item.ReleaseDate = "placeholder following"
-        item.guid = i+"GUIDPlaceholder"
+        item.guid = Str(i)+"GUIDPlaceholder"
         thumbnail = "pkg:/images/odysee_oops.png"
         item.HDPosterURL = thumbnail
         item.HDBackgroundImageUrl = thumbnail
