@@ -20,9 +20,5 @@
             <field id="cookies" type="roArray"/>
     </interface>
     <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Account.brs" />
-    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Parsing.brs" />
-    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_HTTP.brs" />
-    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Channel.brs" />
-    <script type="text/brightscript" uri="pkg:/components/modules/LBRY_Lighthouse.brs" />
     <script type="text/brightscript" uri="pkg:/components/QueryLBRY.brs" />
 </component>
