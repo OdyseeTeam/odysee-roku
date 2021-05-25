@@ -81,12 +81,17 @@ Function ManufacturePlaceholderChannelGrid(amount) 'Create Placeholder Grid with
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
 End Function
 
-Function ManufacturePlaceholderVideoGrid(amount) 'Create Placeholder Grid with Amount items.
+Function ManufacturePlaceholderVideoGrid(amount, category) 'Create Placeholder Grid with Amount items.
     mediaindex={}
     result = []
-    For i=1 To amount Step 1 
+    For i=1 To amount Step 1
         item = {}
-        item.Title = "placeholder video #"+Str(i)
+        if Type(category) <> "<uninitialized>" And category <> invalid And category <> ""
+            item.Title = category+" placeholder video #"+Str(i)
+        else
+            category = ""
+            item.Title = "placeholder video #"+Str(i)
+        end if
         item.Creator = "placeholder creator"
         item.Views = "placeholder views"
         item.Description = "placeholder description"
