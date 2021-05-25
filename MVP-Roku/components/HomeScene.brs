@@ -88,19 +88,10 @@ Sub init()
     end if
 
 
-    '=========Registry+UID+Account Check=========
-    m.registry = CreateObject("roRegistrySection", "Authentication")
-    m.QueryLBRY = createObject("roSGNode", "QueryLBRY")
-    m.date = CreateObject("roDateTime")
-    if IsValid(GetRegistry("uid")) AND IsValid(GetRegistry("authtoken")) AND IsValid(GetRegistry("cookies"))
-        ? "found account with UID"+GetRegistry("uid")
-        m.uid = StrToI(GetRegistry("uid"))
-        m.authToken = GetRegistry("authtoken")
-        m.cookies = ParseJSON(GetRegistry("cookies"))
-        m.QueryLBRY.setField("uid", m.uid)
-        m.QueryLBRY.setField("authtoken", m.authToken)
-        m.QueryLBRY.setField("cookies", m.cookies)  
-      end if
+  '=========Registry+Date+QueryLBRY=========
+  m.registry = CreateObject("roRegistrySection", "Authentication")
+  m.QueryLBRY = createObject("roSGNode", "QueryLBRY")
+  m.date = CreateObject("roDateTime")
 
     '=========Search History=========
     if IsValid(GetRegistry("searchHistory"))
@@ -118,12 +109,6 @@ Sub init()
     end for
 
     'Tasks
-    m.QueryLBRY.setField("method", "startup")
-    m.QueryLBRY.observeField("uid", "gotUID")
-    m.QueryLBRY.observeField("authtoken", "gotAuth")
-    m.QueryLBRY.observeField("cookies", "gotCookies")
-    m.QueryLBRY.observeField("output", "startupRan")
-    m.QueryLBRY.control = "RUN"
 
     m.JSONTask = createObject("roSGNode", "JSONTask")
     m.JSONTask.setField("thumbnaildims", [m.maxThumbWidth, m.maxThumbHeight])
@@ -133,25 +118,6 @@ Sub init()
     m.InputTask=createObject("roSgNode","inputTask")
     m.InputTask.observefield("inputData","handleInputEvent")
     m.InputTask.control="RUN"
-End Sub
-
-Sub gotUID()
-  SetRegistry("uid", m.QueryLBRY.uid.toStr())
-End Sub
-
-Sub gotAuth()
-    SetRegistry("authtoken", m.QueryLBRY.authtoken)
-End Sub
-
-sub gotCookies()
-    SetRegistry("cookies", FormatJSON(m.QueryLBRY.cookies))
-End Sub
-
-Sub startupRan()
-    ? "got AuthToken "+m.queryLBRY.authtoken+" with ID "+m.queryLBRY.uid.toStr()
-    m.QueryLBRY.control = "STOP"
-    m.QueryLBRY.unobserveField("output") 'for the next use
-    m.authenticated = True
 End Sub
 
 function getselectorData() as object
@@ -185,6 +151,7 @@ sub AppFinishedFirstLoad()
     m.loadingText.translation="[800,0]"
     m.loadingText.vertAlign="center" 
     m.loadingText.horizAlign="left"
+    m.authenticated = True 'stub
     if m.modelWarning
       modelWarning()
     else

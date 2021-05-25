@@ -101,7 +101,7 @@ Function ManufacturePlaceholderVideoGrid(amount, category) 'Create Placeholder G
         item.HDPosterURL = thumbnail
         item.HDBackgroundImageUrl = thumbnail
         item.thumbnailDimensions = [360, 240]
-        item.url = "https://cdn.lbryplayer.xyz/api/v4/streams/free/gaylegos/7ce07b772749b3e37673ad2c5752e6a010a73efc/00ced8"
+        item.url = "https://cdn.lbryplayer.xyz/api/v4/streams/free/psychological-warfare-reeeeee-stream-5/c9acf7c329e3345f01840479d9a3c279fdf0c505/3e5760"
         item.stream = {url : item.url}
         item.streamFormat = "mp4"
         item.link = item.url

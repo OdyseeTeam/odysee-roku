@@ -15,9 +15,7 @@ sub master()
     '<field id="cookies" type="roArray"/>
 
     ? "Was executed (queryLBRY)."
-    if IsValid(m.top.method) AND m.top.method = "startup" 'The app is starting up
-            m.top.output = {result: checkAccount()}
-    else if m.top.method = "lighthouse_search"
+    if IsValid(m.top.method) AND m.top.method = "lighthouse_search"
         ? "starting lighthouse"
         ? "DEBUG:"
         ? m.top.input
@@ -36,3 +34,7 @@ sub master()
         end if
     end if
 End Sub
+
+Function IsValid(value As Dynamic) As Boolean 'TheEndless Roku Development forums
+    Return Type(value) <> "<uninitialized>" And value <> invalid
+End Function
