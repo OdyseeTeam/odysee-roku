@@ -1,7 +1,10 @@
-# Odysee MVP
+# Odysee MVP (UI Branch)
 
-A roku app that displays content from the static trending generator.
-Complete refactor planned. Please do not make small changes.
+This is the UI branch. This only contains a stripped version of the Roku app for planning and integration purposes.
+The code will not make any HTTP requests and will use placeholders. This is to allow planning endpoints for upcoming features.
+UI Elements will be defined identically to the production app and this branch will (hopefully) eventually be referenced as a dependency by the indev branch.
+
+This should hopefully allow UI contributions without breaking existing code.
 
 ## Roku App Build Instructions
 https://sdkdocs-archive.roku.com/Loading-and-Running-Your-Application_3737091.html
