@@ -12,6 +12,7 @@ Sub init()
     m.curDeepLink = {} 'current DeepLink to process.
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.switchRow = 0 'Row on History/Keyboard
+    m.streamFormat = "mp4"
 
     'UI Items
     m.errorText = m.top.findNode("warningtext")
@@ -476,29 +477,37 @@ Sub vgridContentChanged(msg as Object)
     end if
 end Sub
 
+sub gotRedirect() 'the new playVideo, added because m3u8 might come in.
+  m.QueryLBRY.control = "STOP"
+  m.QueryLBRY.unobserveField("output")
+  m.streamFormat = m.QueryLBRY.output.result
+  m.videoContent.streamFormat = m.streamFormat
+  m.video.content = m.videoContent
+  m.video.visible = "true"
+  m.video.setFocus(true)
+  m.focusedItem = 7
+  m.video.control = "play"
+  ? m.video.errorStr
+  ? m.video.videoFormat
+  ? m.video
+end sub
+
 Sub playVideo(url = invalid)
     if type(url) = "roAssociativeArray"
+      m.QueryLBRY.setField("method", "fuzzy_video_redirect_check")
+      m.QueryLBRY.setField("input", {URL: url.url})
+      m.QueryLBRY.observeField("output", "gotRedirect")
+      m.QueryLBRY.control = "RUN"
       m.videoContent.url = url.url
-      m.VideoContent.streamFormat = "mp4"
-      m.video.content = m.videoContent
-      m.video.visible = "true"
-      m.video.setFocus(true)
-      m.focusedItem = 7
-      m.video.control = "play"
-      ? m.video.errorStr
-      ? m.video.videoFormat
-      ? m.video
     else if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "video"
-      m.videoContent.url = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
-      m.videoContent.streamFormat = "mp4"
-      m.video.content = m.videoContent
-      m.video.visible = "true"
-      m.video.setFocus(true)
-      m.focusedItem = 7
-      m.video.control = "play"
-      ? m.video.errorStr
-      ? m.video.videoFormat
-      ? m.video
+      vurl = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).URL
+      'vurl = "https://cdn.lbryplayer.xyz/api/v4/streams/free/gaylegos/7ce07b772749b3e37673ad2c5752e6a010a73efc/00ced8"
+      m.QueryLBRY.setField("method", "fuzzy_video_redirect_check")
+      m.QueryLBRY.setField("input", {URL: vurl})
+      m.QueryLBRY.observeField("output", "gotRedirect")
+      m.QueryLBRY.control = "RUN"
+      m.videoContent.url = vurl
+      vurl = Invalid
     else if m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).itemType = "channel"
       no_earlier = ">"+stri(m.date.AsSeconds()-7776000).Replace(" ", "").Trim()
       m.QueryLBRY.setField("method", "lighthouse_channel")

@@ -81,6 +81,24 @@ Function ManufactureQueryFeed(query)
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
 End Function
 
+Function fuzzy_video_redirect_check(URL)
+    headers = resolveRedirect(URL)
+    ? headers
+    if isValid(headers)
+        if isValid(headers["content-type"])
+            if isValid(headers["location"])
+                if Instr(headers["location"], "m3u8") > 0
+                    return "hls"
+                else
+                    return "mp4"
+                end if
+            else
+                return "mp4"
+            end if
+        end if
+    end if
+End Function
+
 Function resolve_video(claimid)
     ? "manufacturing started (search)"
     lbryclaims = QueryLBRYAPI({"jsonrpc":"2.0","method":"claim_search","params":{"page": 1,"page_size":1,"claim_type":["stream"],"no_totals":True,"any_tags":[],"not_tags":["porn","porno","nsfw","mature","xxx","sex","creampie","blowjob","handjob","vagina","boobs","big boobs","big dick","pussy","cumshot","anal","hard fucking","ass","fuck","hentai"],"claim_ids":[claimid],"stream_types":["video"],"fee_amount":"<=0","limit_claims_per_channel":1,"include_purchase_receipt":True},"id":m.top.uid})

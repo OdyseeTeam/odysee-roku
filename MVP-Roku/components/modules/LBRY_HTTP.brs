@@ -141,6 +141,36 @@ function urlencode(data)
   return encoded
 end function
 
+function resolveRedirect(URL) as Object 'get redirect headers, parse, see if redirect contains m3u8
+  http = CreateObject("roUrlTransfer")
+  messagePort = CreateObject("roMessagePort")
+  http.RetainBodyOnError(true)
+  http.SetPort(messagePort)
+  http.SetRequest("HEAD")
+  http.setCertificatesFile("common:/certs/ca-bundle.crt")
+  http.InitClientCertificates()
+  http.EnableCookies()
+  http.AddCookies(m.top.cookies)
+  http.SetUrl(URL)
+  response=""
+  if http.AsyncGetToString() then
+    event = Wait(10000, http.GetPort())
+      if Type(event) = "roUrlEvent" Then
+        response = event.GetResponseHeaders()
+        if isValid(response)
+          return response
+        else
+          return false
+        end if
+        parent = m.top.functionName
+      else if event = invalid then
+        http.asynccancel()
+      Else
+        ? "[LBRY_HTTP] AsyncGetToString unknown event"
+    end if
+  end if
+End Function
+
 function GetRawText(URL) as Object
   http = CreateObject("roUrlTransfer")
   messagePort = CreateObject("roMessagePort")
