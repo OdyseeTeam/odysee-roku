@@ -48,7 +48,7 @@ Function ManufactureQueryFeed(query)
                 item.link = item.url
                 item.source = "lbry"
                 item.guid = claim.claim_id
-                item.Views = getViews(claim.claim_id).ToStr()+" views"
+                item.Views = pseudoNumerize(claim.meta.effective_amount)+" LBC"
                 item.Views.Trim()
                 time = CreateObject("roDateTime")
                 time.FromSeconds(claim.timestamp)
@@ -79,6 +79,60 @@ Function ManufactureQueryFeed(query)
     content = ParseXMLContent(list)
     ? "manufacturing finished (search)"
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
+End Function
+
+Function pseudoNumerize(input)
+number = input.ToFloat()
+numstr = number.toStr()
+numbegin = numstr.split(".")[0].Left(1)
+if len(numbegin) >= 0
+    notation = ""
+    numbegin = numstr.split(".")[0]
+    numstr = number.toStr()
+    if isValid(numstr.split(".")[1])
+        numend = numstr.split(".")[1].Left(3)
+    else
+        numend = 0
+    end if
+end if
+if len(numbegin) >= 4
+    notation = "K"
+    snumber = number / 1000
+    numstr = snumber.toStr()
+    numend = numstr.split(".")[1]
+    numend = numstr.Left(3)
+end if
+if len(numbegin) >= 7
+    notation = invalid
+    notation = "M"
+    snumber = number / 1000000
+    numstr = snumber.toStr()
+    numend = numstr.split(".")[1]
+    numend = numstr.Left(3)
+end if
+if len(numbegin) >= 10
+    notation = invalid
+    notation = "B"
+    snumber = number / 1000000000
+    numstr = snumber.toStr()
+    numend = numstr.split(".")[1]
+    numend = numstr.Left(3)
+end if
+if len(numbegin) >= 13
+    notation = invalid
+    notation = "t"
+    snumber = number / 1000000000000
+    numstr = snumber.toStr()
+    numend = numstr.split(".")[1]
+    numend = numstr.Left(3)
+end if
+completed = numbegin+"."+numend+notation
+numstr = invalid
+numbegin = invalid
+numend = invalid
+notation = invalid
+snumber = invalid
+return completed
 End Function
 
 Function fuzzy_video_redirect_check(URL)
@@ -147,7 +201,7 @@ Function resolve_video(claimid)
             item.link = item.url
             item.source = "lbry"
             item.guid = claim.claim_id
-            item.Views = getViews(claim.claim_id).ToStr()+" views"
+            item.Views = claim.amount.ToStr()+" LBC"
             item.Views.Trim()
             time = CreateObject("roDateTime")
             time.FromSeconds(claim.timestamp)
