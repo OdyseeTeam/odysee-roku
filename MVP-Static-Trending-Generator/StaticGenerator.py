@@ -107,7 +107,7 @@ for key in cids:
     masterfeed[key] = []
     for pagenum in range(numpages):
         print("current page number is", pagenum+1, "for key", key)
-        queries[key] = str({"jsonrpc":"2.0","method":"claim_search","params":{"page": pagenum+1,"page_size":numitems,"claim_type":["stream","channel"],"no_totals":True,"any_tags":[],"not_tags":["porn","porno","nsfw","mature","xxx","sex","creampie","blowjob","handjob","vagina","boobs","big boobs","big dick","pussy","cumshot","anal","hard fucking","ass","fuck","hentai"],"channel_ids":cids[key],"not_channel_ids":[],"order_by":["trending_group","trending_mixed", "release_time"],"stream_types":["video"],"release_time":qexp,"fee_amount":"<=0","limit_claims_per_channel":1,"include_purchase_receipt":True},"id":uid}).replace("True", "true").replace("'",'"')
+        queries[key] = str({"jsonrpc":"2.0","method":"claim_search","params":{"page": pagenum+1,"page_size":numitems,"claim_type":["stream","channel"],"no_totals":True,"any_tags":[],"not_tags":["porn","porno","nsfw","mature","xxx","sex","creampie","blowjob","handjob","vagina","boobs","big boobs","big dick","pussy","cumshot","anal","hard fucking","ass","fuck","hentai"],"channel_ids":cids[key],"not_channel_ids":[],"order_by":["trending_group","trending_mixed"],"stream_types":["video"],"release_time":qexp,"fee_amount":"<=0","limit_claims_per_channel":1,"include_purchase_receipt":True},"id":uid}).replace("True", "true").replace("'",'"')
         subfeed = json.loads(requests.post("https://api.lbry.tv/api/v1/proxy", data = queries[key]).text)
         masterfeed[key].extend(subfeed['result']['items'])
         #print(masterfeed[key])
@@ -149,7 +149,8 @@ for key in masterfeed:
                 except:
                     thumbnail = "pkg:\\images\\odyseeoops.png"
                 #https://api.lbry.com/file/view_count?auth_token=TOKEN&claim_id=CID
-                viewcount = numerize.numerize(float(item['meta']['effective_amount']),3)+" LBC"
+                #viewcount = numerize.numerize(float(item['meta']['effective_amount']),3)+" LBC"
+                viewcount = numerize.numerize(json.loads(requests.get("https://api.lbry.com/file/view_count?auth_token="+authtoken+"&claim_id="+item['claim_id']).text)["data"][0],2)
                 entries.append([title, channelname, description, time.strftime('%a %b %e, %Y', time.localtime(item['timestamp'])), item['claim_id'], thumburl, "https://cdn.lbryplayer.xyz/api/v3/streams/free/"+item['normalized_name']+"/"+item['claim_id']+"/"+item['value']['source']['hash'][:6],"u", viewcount, channelid])
                 numkeyentries+=1
         #standard: name, desc, pubdate, id, thumb, url
