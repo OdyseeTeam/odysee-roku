@@ -285,7 +285,7 @@ Function ManufactureVFeed(feed, subkey, dimensions)
         item.Creator = video[1]
         item.Description = video[2]
         item.ReleaseDate = video[3]
-        item.Views = video[8]+" views"
+        item.Views = video[8]
         item.Channel = video[9]
         item.guid = video[4]
         thumbnail = video[5]
