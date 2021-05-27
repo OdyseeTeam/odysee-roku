@@ -1,4 +1,4 @@
-<h1 align="center">Odysee Roku App</h1>
+<h1 align="center">Odysee Roku App (Unofficial)</h1>
 <div align="center">
   <strong>Video stonks.</strong>
 </div>
@@ -31,7 +31,7 @@
 
 ## Installation
 <div align="center">
-  <a href="http://comingsoon.io/">
+  <a href="https://channelstore.roku.com/details/9c8df00ea3b378467cfced954e1aa40e/odysee-unofficial">
    <img src="https://img.shields.io/badge/-Download%20via%20Roku%20Channel%20Store-lightgrey?logo=Roku&color=662d91"/>
   </a>
 </div>
@@ -45,7 +45,7 @@ Contributions to this project are welcome, encouraged, and compensated. For more
 > Currently, the developer dosen't accept commits yet, because it is in development. You can see it [here.](https://github.com/lbryio/odysee-roku/issues/7)
 
 ## License
-This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
+This project is GPL 3.0 licensed. For the full license, see [LICENSE](LICENSE).
 
 ## Security
 We take security seriously. Please contact security@lbry.com regarding any security issues. Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it. All releases are signed by [Sean Yesmunt](https://keybase.io/seanyesmunt/key.asc).
