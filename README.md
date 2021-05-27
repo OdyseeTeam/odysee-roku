@@ -10,7 +10,7 @@
 </div>
 
 <div align="center">
-  Official Roku app for <a href="https://odysee.com">Odysee</a>.
+  Unofficial Roku app for <a href="https://odysee.com">Odysee</a>.
 </div>
 
 
