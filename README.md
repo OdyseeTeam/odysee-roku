@@ -5,7 +5,7 @@
 
 <div align="center">
  <a href="https://odysee.com">
- <img src="https://user-images.githubusercontent.com/24932514/113259982-55945680-9300-11eb-8665-4dff44f7c84d.jpg">
+ <img src="https://user-images.githubusercontent.com/24932514/119749488-c489c800-bec9-11eb-9a95-70b8cf212c75.jpg">
  </a>
 </div>
 
@@ -58,3 +58,4 @@ The maintainer for this project is [@s9260](https://github.com/s9260).
 - [Discord Chat](https://chat.lbry.com) - A chat room for Odyseenauts
 - [Email us](mailto:hello@odysee.com) - Odysee Support email
 - [Twitter](https://twitter.com/@odysee) - Odysee Twitter page
+![dev]
