@@ -45,7 +45,7 @@ Contributions to this project are welcome, encouraged, and compensated. For more
 > Currently, the developer dosen't accept commits yet, because it is in development. You can see it [here.](https://github.com/lbryio/odysee-roku/issues/7)
 
 ## License
-This project is GPL 3.0 licensed. For the full license, see [LICENSE](LICENSE).
+This project is licensed under the GNU General Public License Version 3.0. For the full license, see [LICENSE](LICENSE).
 
 ## Security
 We take security seriously. Please contact security@lbry.com regarding any security issues. Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it. All releases are signed by [Sean Yesmunt](https://keybase.io/seanyesmunt/key.asc).
