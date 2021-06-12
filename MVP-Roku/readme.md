@@ -1,7 +1,7 @@
 # Odysee MVP
 
 A roku app that displays content from the static trending generator.
-Complete refactor planned due to https://github.com/lbryio/hub/tree/claim_search_port
+Complete refactor planned due to [Hub (claim_search_port)](https://github.com/lbryio/hub/tree/claim_search_port).
 
 ## Roku App Build Instructions
 https://sdkdocs-archive.roku.com/Loading-and-Running-Your-Application_3737091.html
