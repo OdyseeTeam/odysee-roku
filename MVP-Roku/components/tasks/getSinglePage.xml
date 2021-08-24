@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Parser for a single page (homepage)-->
+<component name="getSinglePage" extends="Task">
+    <interface>
+            <!--Universal (determined) constants-->
+            <field id="constants" type="assocarray"/>
+            <!--Channels to get in query-->
+            <field id="channels" type="roArray"/>
+            <field id="rawname" type="String"/>
+            <!--Account-Specific Vars-->
+            <field id="uid" type="Int"/>
+            <field id="authtoken" type="String"/>
+            <field id="cookies" type="roArray"/>
+            <!--Universal Output-->
+            <field id="output" type="assocarray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/getSinglePage.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>

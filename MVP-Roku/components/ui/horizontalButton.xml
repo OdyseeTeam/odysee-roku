@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<component name="horizontalButton" extends="Group">
+ 
+<interface> 
+  <field id="itemContent" type="node" onChange="itemContentChanged"/>
+  <field id="focusPercent" type="float" onChange="itemFocus"/>
+  <field id="isFocused" type="bool" onChange="gotFocus"/>
+</interface>
+ 
+<script type="text/brightscript" >
+<![CDATA[ 
+  function itemContentChanged()
+    if m.top.itemContent.posterUrl <> ""
+      m.itemImage.uri = m.top.itemContent.posterUrl
+      m.itemImage.visible = true
+    end if
+    if m.top.itemContent.labelText <> ""
+      m.itemText.text = m.top.itemContent.labelText
+      m.itemText.visible = true
+    end if
+    m.itemOutline.width = m.top.itemContent.width
+    m.itemOutline.height = m.top.itemContent.height
+    m.itemBackground.width = m.top.itemContent.width - 4
+    m.itemBackground.height = m.top.itemContent.height - 4
+    m.itemFocusBackground.width = m.top.itemContent.width - 4
+    m.itemFocusBackground.height = m.top.itemContent.height - 4
+    m.itemImage.width = m.top.itemContent.width - 4
+    m.itemImage.height = m.top.itemContent.height - 4
+    m.itemText.width = m.top.itemContent.width - 4
+    m.itemText.height = m.top.itemContent.height - 4
+    m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"99"
+    m.itemOutline.color = m.top.itemContent.outlineColor
+    m.top.itemContent.backgroundColor = Left(m.top.itemContent.backgroundColor, 8)
+    m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
+    m.itemFocusBackground.color = m.top.itemContent.backgroundColor+"CC"
+  end function
+
+  function itemFocus()
+    if m.top.focusPercent > .5
+      m.top.isFocused = true
+    else
+      m.top.isFocused = false
+    end if
+  end function
+  function gotFocus()
+    if m.top.isFocused
+      m.itemBackground.color = m.top.itemContent.backgroundColor+"00"
+      m.itemText.color = m.top.itemContent.outlineColor
+    else
+      m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
+      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"CC"
+    end if
+  end function
+  function init() 
+    m.itemImage = m.top.findNode("itemImage")
+    m.itemText = m.top.findNode("itemText")
+    m.itemOutline = m.top.findNode("outline")
+    m.itemBackground = m.top.findNode("background")
+    m.itemFocusBackground = m.top.findNode("focusBackground")
+  end function
+
+]]>
+</script>
+
+<children>
+  <Rectangle id="outline"/>
+  <Rectangle id="focusBackground" translation="[2,2]"/>
+  <Rectangle id="background" translation="[2,2]"/>
+  <Poster id="itemImage" width="30" height="30" visible="false" loadDisplayMode="scaleToFill" translation="[2,2]"/>
+  <Label id="itemText" font="font:INTER LIGHT BETA" width="150" height="50" visible="false" horizAlign="center" vertAlign="center" translation="[2,2]">
+    <Font role="font" uri = "pkg:/components/generic/fonts/rofont.otf" size="35"/>
+  </Label>
+</children>
+
+</component>

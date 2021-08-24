@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<component name="horizontalButtonItemData" extends="ContentNode">
+
+<interface> 
+  <field id="labelText" type="string" />
+  <field id="posterUrl" type="string" />
+  <field id="outlineColor" type="string"/>
+  <field id="backgroundColor" type="string"/>
+  <field id="width" type="int"/>
+  <field id="height" type="int"/>
+</interface>
+
+</component>

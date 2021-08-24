@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="getChannelIDs" extends="Task">
+    <interface>
+            <field id="channelids" type="assocarray"/>
+            <field id="categoryselectordata" type="node"/>
+            <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/getChannelIDs.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>

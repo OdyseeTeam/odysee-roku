@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   size="16"
+   class="icon icon--Science"
+   aria-hidden="true"
+   viewBox="-3 0 24 24"
+   width="16"
+   height="16"
+   fill="none"
+   stroke-width="1.5"
+   stroke-linecap="round"
+   stroke-linejoin="round"
+   version="1.1"
+   id="svg13"
+   sodipodi:docname="Science.svg"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
+  <metadata
+     id="metadata19">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs17" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1918"
+     inkscape:window-height="1052"
+     id="namedview15"
+     showgrid="false"
+     inkscape:zoom="14.75"
+     inkscape:cx="-6.4745763"
+     inkscape:cy="8"
+     inkscape:window-x="0"
+     inkscape:window-y="26"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg13" />
+  <path
+     d="M0.767018182,20.022 C0.300109091,20.6874545 0.243381818,21.558 0.618654545,22.2801818 C0.995018182,23.0012727 1.7412,23.454 2.55501818,23.454 L14.8997455,23.454 C15.7135636,23.454 16.4597455,23.0012727 16.8350182,22.2801818 C17.2113818,21.558 17.1535636,20.6874545 16.6877455,20.022 L11.4546545,11.454 L11.4546545,2.72672727 L6.00010909,2.72672727 L6.00010909,11.454 L0.767018182,20.022 L0.767018182,20.022 Z"
+     id="path2"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <path
+     d="M13.6363636,1.63636364 C13.6363636,2.23963636 13.1487273,2.72727273 12.5454545,2.72727273 L4.90909091,2.72727273 C4.30581818,2.72727273 3.81818182,2.23963636 3.81818182,1.63636364 C3.81818182,1.03309091 4.30581818,0.545454545 4.90909091,0.545454545 L12.5454545,0.545454545 C13.1487273,0.545454545 13.6363636,1.03309091 13.6363636,1.63636364 L13.6363636,1.63636364 Z"
+     id="path4"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <line
+     x1="11.4545455"
+     y1="4.90909091"
+     x2="9.27272727"
+     y2="4.90909091"
+     id="Stroke-8219"
+     stroke-linecap="round"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <line
+     x1="11.4545455"
+     y1="9.27272727"
+     x2="9.27272727"
+     y2="9.27272727"
+     id="Stroke-8220"
+     stroke-linecap="round"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <line
+     x1="11.4545455"
+     y1="7.09090909"
+     x2="8.18181818"
+     y2="7.09090909"
+     id="Stroke-8221"
+     stroke-linecap="round"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <line
+     x1="3.27272727"
+     y1="15.8181818"
+     x2="14.1818182"
+     y2="15.8181818"
+     id="Stroke-8222"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <path
+     d="M13.0909091,21.2727273 C13.0909091,21.5738182 12.8465455,21.8181818 12.5454545,21.8181818 C12.2443636,21.8181818 12,21.5738182 12,21.2727273 C12,20.9716364 12.2443636,20.7272727 12.5454545,20.7272727 C12.8465455,20.7272727 13.0909091,20.9716364 13.0909091,21.2727273 L13.0909091,21.2727273 Z"
+     id="Stroke-8223"
+     stroke-linecap="round"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <path
+     d="M10.3636364,18.2727273 C10.3636364,18.4232727 10.2414545,18.5454545 10.0909091,18.5454545 C9.94036364,18.5454545 9.81818182,18.4232727 9.81818182,18.2727273 C9.81818182,18.1221818 9.94036364,18 10.0909091,18 C10.2414545,18 10.3636364,18.1221818 10.3636364,18.2727273 L10.3636364,18.2727273 Z"
+     id="Stroke-8224"
+     stroke-linecap="round"
+     style="stroke:#ffffff;stroke-opacity:1" />
+  <path
+     d="M7.63636364,19.6363636 C7.63636364,20.5396364 6.90327273,21.2727273 6,21.2727273 C5.09672727,21.2727273 4.36363636,20.5396364 4.36363636,19.6363636 C4.36363636,18.7330909 5.09672727,18 6,18 C6.90327273,18 7.63636364,18.7330909 7.63636364,19.6363636 L7.63636364,19.6363636 Z"
+     id="Stroke-8225"
+     stroke-linecap="round"
+     style="stroke:#ffffff;stroke-opacity:1" />
+</svg>

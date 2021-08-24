@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+ 
+<component name="catselectordata" extends="ContentNode">
+ 
+<interface> 
+  <field id="labelText" type="string" />
+  <field id="posterUrl" type="string" />
+  <!--Used to reference actual items within CID ARRAY-->
+  <field id="trueName" type="string" />
+</interface>
+
+</component>

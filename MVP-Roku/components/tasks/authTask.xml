@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="authTask" extends="Task">
+    <interface>
+            <!--Universal Output-->
+            <field id="output" type="assocarray"/>
+            <!--Account-Specific Vars-->
+            <field id="uid" type="Int"/>
+            <field id="authtoken" type="String"/>
+            <field id="cookies" type="roArray"/>
+            <!--All queries based on input constants-->
+            <field id="constants" type="assocarray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/authTask.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>

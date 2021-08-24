@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="getConstants" extends="Task">
+    <interface>
+            <field id="constants" type="assocarray"/>
+            <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/getConstants.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>
