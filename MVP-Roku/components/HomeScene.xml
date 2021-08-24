@@ -26,8 +26,8 @@
         width="1920"
         height="1080"
         translation="[0,0]" />
-    <Label id="loadingtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="1080" vertAlign="center" horizAlign="center" text="Loading....">
-        <Font role="font" uri = "pkg:/components/generic/fonts/rofont.otf" size="64"/>
+    <Label id="loadingtext" font="font:Inter-Emoji" color="#ffffff" width="1920" height="1080" vertAlign="center" horizAlign="center" text="Loading....">
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="64"/>
     </Label>
     <Rectangle
         id="headerrectangle"
@@ -64,21 +64,21 @@
     <Label
 		id="searchHistoryLabel"
         visible="false"
-		font="font:INTER LIGHT BETA"
+		font="font:Inter-Emoji"
 		color="#ffffff" 
 		width="500" 
 		height="64" 
 		text="Search History"
 		translation="[1080,160]"
 		>
-        <Font role="font" uri = "pkg:/components/generic/fonts/rofont.otf" size="64"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="64"/>
     </Label>
     
-    <Label id="warningtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1920" height="80" text="Warning!" translation="[300,106]" visible="false">
-			<Font role="font" uri = "pkg:/components/generic/fonts/rofont.otf" size="64"/>
+    <Label id="warningtext" font="font:Inter-Emoji" color="#ffffff" width="1920" height="80" text="Warning!" translation="[300,106]" visible="false">
+			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="64"/>
 	</Label>
-	<Label id="warningsubtext" font="font:INTER LIGHT BETA" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[300,186]" visible="false">
-		<Font role="font" uri = "pkg:/components/generic/fonts/rofont.otf" size="32"/>
+	<Label id="warningsubtext" font="font:Inter-Emoji" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[300,186]" visible="false">
+		<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="32"/>
 	</Label>
     
     <!--Interactive Items-->
@@ -174,12 +174,12 @@
         height = "980"
         visible="false"
         translation="[1460, 55]"
-        font="font:UnifontEmoji"
+        font="font:Inter-Emoji"
         scrollbarTrackBitmapUri = "pkg:/images/placeholder1x1.png"
         scrollbarThumbBitmapUri = "pkg:/images/placeholder1x1.png"
         vertAlign = "bottom"
         color = "0x000000FF">
-        <Font role="font" uri = "pkg:/components/generic/fonts/UnifontEmoji.otf" size="35"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="35"/>
     </ScrollableText>
 
     <ScrollingLabel id = "SuperChatBox"
@@ -189,9 +189,9 @@
     visible="false"
     translation="[0, 0]"
     vertAlign="center"
-    font="font:UnifontEmoji"
+    font="font:Inter-Emoji"
     color = "0xFFDD91FF">
-    <Font role="font" uri = "pkg:/components/generic/fonts/UnifontEmoji.otf" size="60"/>
+    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="60"/>
     </ScrollingLabel>
 
     <!--DEV USE ONLY-->

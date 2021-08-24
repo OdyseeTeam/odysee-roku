@@ -23,8 +23,8 @@
 
 <children> 
     <Poster id="itemImage" width="48" height="48"/>
-    <Label id="itemText" font="font:INTER LIGHT BETA" color="#ffffff" translation="[0,47]">
-    <Font role="font" uri = "pkg:/components/generic/fonts/rofont.otf" size="16"/>
+    <Label id="itemText" font="font:Inter-Emoji" color="#ffffff" translation="[0,47]">
+    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="16"/>
     </Label>
 </children>
 
