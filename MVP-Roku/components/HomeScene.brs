@@ -361,14 +361,6 @@ sub failedSearch()
   Error("No results.", "Nothing found on Odysee.")
 end sub
 
-Function handleDeepLink(deeplink as object)
-  if isValid(deeplink)
-    resolveVideo(deeplink)
-  else
-    print "deeplink not validated"
-  end if
-end Function
-
 sub categorySelectorFocusChanged(msg)
   '? "[Selector] focus changed from:"
   '? m.categorySelector.itemUnfocused
@@ -414,11 +406,7 @@ sub handleInputEvent(msg)
         if deeplink <> invalid
             ? "Got deeplink"
             ? deeplink
-            if m.loaded
-              handleDeepLink(deeplink)
-            else
-              m.global.deeplink = deeplink
-            end if
+            m.global.deeplink = deeplink
           end if
      end if
 end sub
@@ -475,6 +463,7 @@ Sub vgridContentChanged(msg as Object)
 end Sub
 
 Sub resolveVideo(url = invalid) 
+  ? type(url)
   if type(url) = "roSGNodeEvent" 'we might actually pass a URL (string) through to this as well.
     incomingData = url.getData()
     if type(incomingData) = "roArray"
@@ -519,6 +508,11 @@ Sub resolveVideo(url = invalid)
         end if
       end if
     end if
+  else if type(url) = "roString"
+    ? "Resolving a Video (deeplink direct)"
+    m.urlResolver.setFields({constants: m.constants, url: url, title: "deeplink video", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+    m.urlResolver.observeField("output", "playResolvedVideo")
+    m.urlResolver.control = "RUN"
   end if
 End Sub
 
@@ -784,7 +778,7 @@ sub indexloaded(msg as Object)
       '? "m.mediaIndex= "; m.mediaIndex
   end if
   'get run time deeplink updates'
-  'm.global.observeField("deeplink", handleRuntimeDeepLink)
+  'm.global.observeField("deeplink", handleDeepLink)
   m.LoadTask.control = "STOP"
 end sub
 
@@ -959,7 +953,11 @@ sub finishInit()
   m.global.scene.signalBeacon("AppLaunchComplete")
   if isValid(m.global.deeplink)
     if isValid(m.global.deeplink.contentId)
-      'STUB: Resolve DeepLink
+      'TODO: create reverse livestream resolver so that livestreams can be deeplinked
+      'for now, if you try to play a livestream, this will break.
+      if instr(m.global.deeplink.contentId, "http") < 1
+        resolveVideo(m.global.deeplink.contentId)
+      end if
     end if
   end if
 end sub
