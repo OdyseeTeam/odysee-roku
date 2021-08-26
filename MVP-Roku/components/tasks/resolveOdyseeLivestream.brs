@@ -59,7 +59,7 @@ Function resolve(channelid)
                 item.Creator = livestreamData["claimData"].name
                 item.Description = livestreamQuery.result.items[0].value.title
                 item.Channel = livestreamData["claimId"]
-                item.lbc = livestreamQuery.result.items[0].meta.effective_amount+"LBC"
+                item.lbc = livestreamQuery.result.items[0].meta.effective_amount+" LBC"
                 time = CreateObject("roDateTime")
                 time.FromISO8601String(livestreamData["timestamp"])
                 timestr = time.AsDateString("short-month-short-weekday")+" "
