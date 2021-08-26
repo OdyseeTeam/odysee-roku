@@ -239,6 +239,31 @@ function getRawText(url) as Object
 end function
 
 Function resolveRedirect(url As String) As String
+url = url.Unescape()
+if instr(url, m.top.constants["VIDEO_API"]) > 0
+  'Unicode video fix, because the video API doesn't accept escaped unicode correctly.
+  spliturl = url.split("/")
+  spliturlcount = spliturl.Count()
+  vurlarray = []
+  cleanvurlarray = []
+  vurlarray[0] = spliturl[spliturlcount-3]
+  vurlarray[1] = spliturl[spliturlcount-2]
+  vurlarray[2] = spliturl[spliturlcount-1]
+  vregex = CreateObject("roRegex", "[^a-zA-Z0-9\s]", "")
+  for i = 0 to vurlarray.Count()-1
+    cleanurl = vregex.ReplaceAll(vurlarray[i], "")
+    if cleanurl = ""
+      cleanurl = "roku"
+    end if
+    if instr(cleanurl, " ") > 0
+      cleanurl = "roku"
+    end if
+    cleanvurlarray.push(cleanurl)
+  end for
+  vregex = invalid
+  ? cleanvurlarray
+  url = m.top.constants["VIDEO_API"]+"/api/v4/streams/free/"+cleanvurlarray.Join("/")
+end if
 http = CreateObject("roUrlTransfer")
 http.AddHeader("User-Agent", m.global.constants["userAgent"])
 messagePort = CreateObject("roMessagePort")
@@ -256,9 +281,11 @@ if http.AsyncHead() then
       headers = event.GetResponseHeaders()
       try
         redirect = headers.location
+        ? "Redirect is: "+redirect
         m.top.cookies = http.getCookies("", "/")
         return redirect
       catch e
+        ? "No Redirect: "+url
         return url
       end try
     else if event = invalid then

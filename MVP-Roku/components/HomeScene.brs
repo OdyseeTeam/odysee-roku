@@ -519,6 +519,16 @@ End Sub
 sub durationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
   ? m.video.position
   ? m.video.duration
+  if m.refreshes = 0
+    m.video.width = 1430
+    m.ChatBackground.visible = true
+    m.chatBox.visible = true
+    m.chatArray = ["chat initialized, waiting for messages.."]
+    m.ChatBox.text = m.chatArray.join(Chr(10))
+    'TODO:
+    'https://comments.odysee.com/api/v2?m=comment.List
+    'https://comments.odysee.com/api/v2?m=comment.SuperChatList
+  end if
   m.refreshes += 1
   if m.video.duration > 0 and m.videoContent.Live and m.video.position < m.video.duration and m.refreshes < 4
     m.video.seek = m.video.duration+80
@@ -526,14 +536,18 @@ sub durationChanged() 'ported from salt app, this (mostly) fixes the problem tha
   if m.refreshes > 4
     m.video.unobserveField("duration")
     m.refreshes = invalid
+    m.video.width = 1430
   end if
 end sub
 
 Sub playResolvedVideo(msg as Object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
-    m.videoContent.url = data.videourl
-    m.VideoContent.streamFormat = data.videotype
+    ? "VPLAYDEBUG:"
+    ? formatJSON(data)
+    m.videoContent.url = data.videourl.Unescape()
+    ? m.videoContent.url
+    m.videoContent.streamFormat = data.videotype
     m.videoContent.title = data.title 'passthrough title
     m.videoContent.Live = false
     m.video.content = m.videoContent
@@ -559,13 +573,16 @@ end Function
 
 Function returnToUIPage()
     m.video.setFocus(false)
-    m.video.width = 1920
     m.ws.unobserveField("on_close")
     m.ws.unobserveField("on_message")
     m.ws.unobserveField("on_error")
     m.superChatBox.visible = false
     m.chatBox.visible = false
     m.ChatBackground.visible = false
+    m.superChatArray = []
+    m.superChatBox.text = ""
+    m.chatArray = []
+    m.chatBox.text = ""
     if m.videoContent.streamFormat = "hls"
       m.ws.reinitialize = false
       m.ws.close = [1000, "livestreamStopped"]
@@ -575,6 +592,7 @@ Function returnToUIPage()
     m.video.control = "stop"  'Stop video from playing
     m.videoGrid.setFocus(true)
     m.focusedItem = 2
+    m.video.width = 1920
 end Function
 
 sub search()
@@ -799,7 +817,8 @@ function on_message(event as object) as void
     jsonMessage = ParseJson(message)
       try
         curComment = jsonMessage.data.comment.comment
-        curMessage = "["+m.chatRegex.Replace(jsonMessage.data.comment.channel_name.Replace("@","")+"]: "+curComment, "") 'add newline
+        curChannel = jsonMessage.data.comment.channel_name
+        curMessage = "["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment, "") 'add newline
         if instr(curComment, "![") > 0 'TODO: find a proper way to parse Markdown on Roku
           if instr(curComment, "](") > 0
             message_valid = false
@@ -822,12 +841,11 @@ function on_message(event as object) as void
         else
           if message_supported = true and message_valid = true
             m.superChatBox.visible = true
-            m.superChatArray.push(curComment.replace("\n", " ").Trim())
+            m.superChatArray.push("["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment.replace("\n", " ").Trim()))
             m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
             m.ChatBox.visible = true
             m.superChatBox.visible = true
             m.ChatBackground.visible = true
-            m.video.width = 1430 ' Chat's up!
             m.lastMessage = curMessage
             m.reinitChat = False
             m.superChatBox.text = m.superchatArray.join(" | ")
@@ -839,7 +857,6 @@ function on_message(event as object) as void
             m.ChatBox.visible = true
             m.superChatBox.visible = true
             m.ChatBackground.visible = true
-            m.video.width = 1430 ' Chat's up!
             m.lastMessage = curMessage
             m.reinitChat = False
           end if
