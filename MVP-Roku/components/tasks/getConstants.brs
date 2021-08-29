@@ -12,6 +12,7 @@ sub master()
     'Grab+Parse
     for each line in globalAPIConstantsRaw.split(Chr(10)) 'Extract 1 (see OdyseeLogicDiagram.dia)
         if instr(line, "API") > 0
+            ? line.split("=")[0]
             if instr(line, "WEB_API") > 0
                 globalAPIConstants["QUERY_API"] = line.split("=")[1]
                 dotlen = line.split("=")[1].split(".").Count()
@@ -23,12 +24,12 @@ sub master()
             if instr(line, "SEARCH_SERVER_API") > 0 
                 globalAPIConstants["LIGHTHOUSE_API"] = line.split("=")[1]
             end if
+            if instr(line, "COMMENT_SERVER_API") > 0 
+                globalAPIConstants["COMMENT_API"] = line.split("=")[1]
+            end if
             if instr(line, "SOCKETY_SERVER_API") > 0 
                 globalAPIConstants["CHAT_API"] = line.split("=")[1].replace("wss", "ws")
             end if
-        end if
-        if globalAPIConstants.Keys().Count() = 5
-            exit for
         end if
     end for
 
@@ -41,9 +42,6 @@ sub master()
             else if instr(line, "REPLAY_API") > 0 
                 globalAPIConstants["LIVE_REPLAY_API"] = line.split("=")[1].replace(" ","").replace("'","").replace(";","")
             end if
-        end if
-        if globalAPIConstants.Keys().Count() = 6
-            exit for
         end if
     end for
 

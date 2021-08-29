@@ -11,8 +11,9 @@ Sub init()
     m.focusedItem = 1 'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
-    m.lastChatMessage = "" 'Used for chat Tempfix (checks if message = last message)
+    m.lastChatMessage = ""
     m.reinitChat = False
+    m.chatID = ""
     'UI Items
     m.errorText = m.top.findNode("warningtext")
     m.errorSubtext = m.top.findNode("warningsubtext")
@@ -86,6 +87,7 @@ Sub init()
   m.channelResolver = createObject("roSGNode", "getSingleChannel")
   m.videoSearch = createObject("roSGNode", "getVideoSearch")
   m.channelSearch = createObject("roSGNode", "getChannelSearch")
+  m.chatHistory = createObject("roSGNode", "getChatHistory")
   m.InputTask=createObject("roSgNode","inputTask")
   m.InputTask.observefield("inputData","handleInputEvent")
   m.InputTask.control="RUN"
@@ -483,6 +485,7 @@ Sub resolveVideo(url = invalid)
         end if
         if curItem.itemType = "livestream"
           ? "Playing a livestream"
+          m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
           m.videoContent.streamFormat = curItem.streamFormat
           m.videoContent.title = curItem.description
@@ -497,14 +500,9 @@ Sub resolveVideo(url = invalid)
           ? m.video.errorStr
           ? m.video.videoFormat
           ? m.video
-          m.ws.observeField("on_close", "on_close")
-          m.ws.observeField("on_message", "on_message")
-          m.ws.observeField("on_error", "on_error")
-          m.ws.protocols = []
-          m.ws.headers = []
-          m.SERVER = m.constants["CHAT_API"]+"/commentron?id="+curItem.guid+"&category="+curItem.guid
-          m.ws.open = m.SERVER
-          m.ws.control = "RUN"
+          m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:uid:m.uid:authtoken:m.authtoken:cookies:m.cookies})
+          m.chatHistory.observeField("output", "gotChatHistory")
+          m.chatHistory.control = "RUN"
         end if
       end if
     end if
@@ -516,6 +514,32 @@ Sub resolveVideo(url = invalid)
   end if
 End Sub
 
+sub gotChatHistory(msg as Object)
+  if type(msg) = "roSGNodeEvent"
+    m.chatHistory.control = "STOP"
+    data = msg.getData()
+    ? "Got Chat History:"
+    try
+      m.chatArray = data.chat
+      m.ChatBox.text = m.chatArray.join(Chr(10))
+    catch e
+    end try
+    try
+      m.superChatArray = data.superchat
+      m.superChatBox.text = m.superchatArray.join(" | ")
+    catch e
+    end try
+    m.ws.observeField("on_close", "on_close")
+    m.ws.observeField("on_message", "on_message")
+    m.ws.observeField("on_error", "on_error")
+    m.ws.protocols = []
+    m.ws.headers = []
+    m.SERVER = m.constants["CHAT_API"]+"/commentron?id="+m.chatID+"&category="+m.chatID
+    m.ws.open = m.SERVER
+    m.ws.control = "RUN"
+  end if
+end sub
+
 sub durationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
   ? m.video.position
   ? m.video.duration
@@ -523,8 +547,7 @@ sub durationChanged() 'ported from salt app, this (mostly) fixes the problem tha
     m.video.width = 1430
     m.ChatBackground.visible = true
     m.chatBox.visible = true
-    m.chatArray = ["chat initialized, waiting for messages.."]
-    m.ChatBox.text = m.chatArray.join(Chr(10))
+    m.superChatBox.visible = true
     'TODO:
     'https://comments.odysee.com/api/v2?m=comment.List
     'https://comments.odysee.com/api/v2?m=comment.SuperChatList
@@ -536,7 +559,6 @@ sub durationChanged() 'ported from salt app, this (mostly) fixes the problem tha
   if m.refreshes > 4
     m.video.unobserveField("duration")
     m.refreshes = invalid
-    m.video.width = 1430
   end if
 end sub
 
@@ -551,6 +573,7 @@ Sub playResolvedVideo(msg as Object)
     m.videoContent.title = data.title 'passthrough title
     m.videoContent.Live = false
     m.video.content = m.videoContent
+    m.video.width = 1920
     m.video.visible = "true"
     m.video.setFocus(true)
     m.focusedItem = 7
@@ -584,7 +607,7 @@ Function returnToUIPage()
     m.chatArray = []
     m.chatBox.text = ""
     if m.videoContent.streamFormat = "hls"
-      m.ws.reinitialize = false
+      m.reinitialize = false
       m.ws.close = [1000, "livestreamStopped"]
       m.ws.control = "STOP"
     end if
@@ -804,7 +827,7 @@ function on_close(event as object) as void
   print "WebSocket closed"
   if m.reinitialize
       m.ws.open = m.SERVER
-      m.ws.reinitialize = false
+      m.reinitialize = false
   end if
 end function
 
@@ -824,7 +847,15 @@ function on_message(event as object) as void
             message_valid = false
           end if
         end if
-        try
+
+        try 'validate message not empty
+          if m.chatRegex.Replace(curComment) = ""
+            message_valid = false
+          end if
+        catch e
+        end try
+
+        try 'check if supported
           support_amount = jsonMessage.data.comment.support_amount
           if support_amount > 0
             message_supported = true
@@ -832,7 +863,7 @@ function on_message(event as object) as void
         catch e
         end try
         if curMessage = m.lastMessage and m.reinitChat = False 'Restart webSocket to prevent duplicate connections.
-          m.ws.reinitialize = false
+          m.reinitialize = false
           m.ws.close = [1000, "livestreamStopped"]
           m.ws.control = "STOP"
           m.ws.open = m.SERVER
