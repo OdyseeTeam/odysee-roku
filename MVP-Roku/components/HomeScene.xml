@@ -190,7 +190,8 @@
     translation="[0, 0]"
     vertAlign="center"
     font="font:Inter-Emoji"
-    color = "0xFFDD91FF">
+    color = "0xFFDD91FF"
+    scrollSpeed="200">
     <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="60"/>
     </ScrollingLabel>
 

@@ -77,7 +77,7 @@ Function ChannelToVideoGrid(channel)
         item.Channel = channel
         item.Description = streamStatus.chatData.result.items[0].value.title
         item.Channel = streamStatus.data["claimId"]
-        item.lbc = streamStatus.chatData.result.items[0].meta.effective_amount+"LBC"
+        item.lbc = streamStatus.chatData.result.items[0].meta.effective_amount+" LBC"
         item.ReleaseDate = "LIVE NOW"
         item.guid = streamStatus.chatData.result.items[0].claim_id
         thumbnail = m.global.constants.imageProcessor+streamStatus.chatData.result.items[0].value.thumbnail.url

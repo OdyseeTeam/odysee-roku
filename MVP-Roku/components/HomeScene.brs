@@ -7,8 +7,9 @@ Sub init()
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
     m.searchFailed = False 'Has a search failed?
+    m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
-    m.focusedItem = 1 'actually, this works better than what I was doing before.
+    m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
     m.lastChatMessage = ""
@@ -164,68 +165,63 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if m.video.visible
             returnToUIPage()
             return true
-        else if m.categorySelector.itemFocused <> 1
+        else if m.categorySelector.itemFocused <> 1 AND m.taskRunning = False
           ErrorDismissed()
           m.searchKeyboard.setFocus(false)
           m.searchKeyboardDialog.setFocus(false)
           m.searchHistoryBox.setFocus(false)
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
-          m.focusedItem = 1
+          m.focusedItem = 1 '[selector] 
           return true
-        'else if m.videoGrid.visible AND m.QueryLBRY.method = "lighthouse_channel_options"
-        '  m.videoGrid.setFocus(false)
-        '  m.categorySelector.setFocus(true)
-        '  m.videoGrid.setFocus(true)
-        '  m.categorySelector.setFocus(false)
-        '  return true
         else
           return false
         end if
       end if
-      if key = "options"
-          if m.focusedItem = 2 'Options Key Channel Transition.
+      if key = "options" AND m.taskRunning = False
+          if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
             if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) AND m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
               curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
               m.channelResolver.setFields({constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
               m.channelResolver.observeField("output", "gotResolvedChannel")
               m.channelResolver.control = "RUN"
+              m.taskRunning = True
             end if
           end if
       end if
-      if key = "up"
-          if m.focusedItem = 4 'Search -> Keyboard
+      if key = "up" AND m.taskRunning = False
+          if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
               m.searchKeyboardDialog.setFocus(false)
               m.searchKeyboard.setFocus(true)
               m.searchKeyboardGrid.jumpToItem = 37
-              m.focusedItem = 3
+              m.focusedItem = 3 '[search keyboard] 
           end if
-          if m.focusedItem = 6 'Clear History -> History
+          if m.focusedItem = 6 '[clear history]  'Clear History -> History
               if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
                   m.searchHistoryDialog.setFocus(false)
                   m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
                   m.searchHistoryBox.setFocus(true)
-                  m.focusedItem = 5
+                  m.focusedItem = 5 '[search history list] 
               end if
           end if
       end if
   
-      if key = "down"
-          if m.focusedItem = 3
+      if key = "down" AND m.taskRunning = False
+          if m.focusedItem = 3 '[search keyboard] 
               m.searchKeyboard.setFocus(false)
               m.searchKeyboardDialog.setFocus(true)
-              m.focusedItem = 4
+              m.focusedItem = 4 '[confirm search] 
           end if
   
-          if m.focusedItem = 5 'History -> Clear
+          if m.focusedItem = 5 '[search history list]  'History -> Clear
               m.searchHistoryBox.setFocus(false)
               m.searchHistoryDialog.setFocus(true)
-              m.focusedItem = 6
+              m.focusedItem = 6 '[clear history] 
           end if
   
       end if
-      if key = "left"
-          if m.focusedItem = 2
+      if key = "left" AND m.taskRunning = False
+          if m.focusedItem = 2 '[video grid] 
             if m.categorySelector.itemFocused = 0
               m.videoGrid.setFocus(false)
               m.videoGrid.visible = false
@@ -235,15 +231,15 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.searchKeyboard.visible = true
               m.searchKeyboardDialog.visible = true
               m.categorySelector.setFocus(true)
-              m.focusedItem = 1
+              m.focusedItem = 1 '[selector] 
             else
               m.videoGrid.setFocus(false)
               m.categorySelector.setFocus(true)
-              m.focusedItem = 1
+              m.focusedItem = 1 '[selector] 
             end if
           end if
           
-          if m.focusedItem = 3 OR m.focusedItem = 4 'Exit (Keyboard/Search Button -> Bar)
+          if m.focusedItem = 3 '[search keyboard]  OR m.focusedItem = 4 '[confirm search]  'Exit (Keyboard/Search Button -> Bar)
             ErrorDismissed() 'quick fix
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(false)
@@ -251,9 +247,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.searchHistoryDialog.setFocus(false)
             m.categorySelector.jumpToItem = 0
             m.categorySelector.setFocus(true)
-            m.focusedItem = 1
+            m.focusedItem = 1 '[selector] 
           end if
-          if m.focusedItem = 5 AND m.errorText.visible = false 'History - Keyboard
+          if m.focusedItem = 5 '[search history list]  AND m.errorText.visible = false 'History - Keyboard
               switchRow = m.searchHistoryBox.itemFocused
               if m.searchHistoryBox.itemFocused > 6
                   switchRow = 6
@@ -261,11 +257,11 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.searchHistoryBox.setFocus(false)
               ? "itemArray:", m.searchKeyboardItemArray[switchRow-1]
               m.searchKeyboard.setFocus(true)
-              m.focusedItem = 3
+              m.focusedItem = 3 '[search keyboard] 
               m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
               switchRow = invalid
-              m.focusedItem = 3
-          else if m.focusedItem = 5 AND m.errorText.visible = true
+              m.focusedItem = 3 '[search keyboard] 
+          else if m.focusedItem = 5 '[search history list]  AND m.errorText.visible = true
             ErrorDismissed()
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(false)
@@ -273,33 +269,33 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.searchHistoryDialog.setFocus(false)
             m.categorySelector.jumpToItem = 1
             m.categorySelector.setFocus(true)
-            m.focusedItem = 1
+            m.focusedItem = 1 '[selector] 
           end if
-          if m.focusedItem = 6 'Clear History -> Search
+          if m.focusedItem = 6 '[clear history]  'Clear History -> Search
               m.searchHistoryDialog.setFocus(false)
               m.searchKeyboardDialog.setFocus(true)
-              m.focusedItem = 4
+              m.focusedItem = 4 '[confirm search] 
           end if
       end if
-      if key = "right"
-          if m.focusedItem = 1 AND m.categorySelector.itemFocused = 0
-            m.focusedItem = 3
+      if key = "right" AND m.taskRunning = False
+          if m.focusedItem = 1 '[selector]  AND m.categorySelector.itemFocused = 0
+            m.focusedItem = 3 '[search keyboard] 
             m.categorySelector.setFocus(false)
             m.searchKeyboard.setFocus(true)
-            m.focusedItem = 3
+            m.focusedItem = 3 '[search keyboard] 
           else if m.categorySelector.itemFocused <> 0
             m.categorySelector.setFocus(false)
             m.videoGrid.setFocus(true)
-            m.focusedItem = 2
+            m.focusedItem = 2 '[video grid] 
           end if
   
-          if m.focusedItem = 4 'Search -> Clear History
+          if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
               m.searchKeyboardDialog.setFocus(false)
               m.searchHistoryDialog.setFocus(true)
-              m.focusedItem = 6
+              m.focusedItem = 6 '[clear history] 
           end if
   
-          if m.focusedItem = 3 'Keyboard -> Search History
+          if m.focusedItem = 3 '[search keyboard]  'Keyboard -> Search History
               column = Int(m.searchKeyboardGrid.currFocusColumn)
               row = Int(m.searchKeyboardGrid.currFocusRow)
               itemFocused = m.searchKeyboardGrid.itemFocused
@@ -315,7 +311,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                       end if
                       m.searchKeyboard.setFocus(false)
                       m.searchHistoryBox.setFocus(true)
-                      m.focusedItem = 5
+                      m.focusedItem = 5 '[search history list] 
                   end if
               end if
               column = Invalid 'free memory
@@ -455,7 +451,7 @@ sub backToKeyboard()
   m.searchFailed = False
   m.loadingText.text = "Loading..."
   m.searchKeyboard.setFocus(true)
-  m.focusedItem = 3
+  m.focusedItem = 3 '[search keyboard] 
 end sub
 
 Sub vgridContentChanged(msg as Object)
@@ -476,12 +472,14 @@ Sub resolveVideo(url = invalid)
           m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.urlResolver.observeField("output", "playResolvedVideo")
           m.urlResolver.control = "RUN"
+          m.taskRunning = True
         end if
         if curItem.itemType = "channel"
           ? "Resolving a Channel"
           m.channelResolver.setFields({constants: m.constants, channel: curitem.channel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.channelResolver.observeField("output", "gotResolvedChannel")
           m.channelResolver.control = "RUN"
+          m.taskRunning = True
         end if
         if curItem.itemType = "livestream"
           ? "Playing a livestream"
@@ -493,7 +491,7 @@ Sub resolveVideo(url = invalid)
           m.video.content = m.videoContent
           m.video.visible = "true"
           m.video.setFocus(true)
-          m.focusedItem = 7
+          m.focusedItem = 7 '[video player/overlay] 
           m.video.control = "play"
           m.refreshes = 0
           m.video.observeField("duration", "durationChanged")
@@ -503,6 +501,7 @@ Sub resolveVideo(url = invalid)
           m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:uid:m.uid:authtoken:m.authtoken:cookies:m.cookies})
           m.chatHistory.observeField("output", "gotChatHistory")
           m.chatHistory.control = "RUN"
+          m.taskRunning = True
         end if
       end if
     end if
@@ -511,6 +510,7 @@ Sub resolveVideo(url = invalid)
     m.urlResolver.setFields({constants: m.constants, url: url, title: "deeplink video", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
     m.urlResolver.observeField("output", "playResolvedVideo")
     m.urlResolver.control = "RUN"
+    m.taskRunning = True
   end if
 End Sub
 
@@ -576,7 +576,7 @@ Sub playResolvedVideo(msg as Object)
     m.video.width = 1920
     m.video.visible = "true"
     m.video.setFocus(true)
-    m.focusedItem = 7
+    m.focusedItem = 7 '[video player/overlay] 
     m.video.control = "play"
     ? m.video.errorStr
     ? m.video.videoFormat
@@ -584,6 +584,7 @@ Sub playResolvedVideo(msg as Object)
   end if
   m.urlResolver.unobserveField("output")
   m.urlResolver.control = "STOP"
+  m.taskRunning = False
 End Sub
 
 Function onVideoStateChanged(msg as Object)
@@ -614,7 +615,7 @@ Function returnToUIPage()
     m.video.visible = "false" 'Hide video
     m.video.control = "stop"  'Stop video from playing
     m.videoGrid.setFocus(true)
-    m.focusedItem = 2
+    m.focusedItem = 2 '[video grid] 
     m.video.width = 1920
 end Function
 
@@ -660,6 +661,7 @@ sub execSearch(search, searchType)
     m.videoSearch.setFields({constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
     m.videoSearch.observeField("output", "gotVideoSearch")
     m.videoSearch.control = "RUN"
+    m.taskRunning = True
     m.searchKeyboard.visible = False
     m.searchHistoryDialog.visible = False
     m.searchKeyboardDialog.visible = false
@@ -673,6 +675,7 @@ sub execSearch(search, searchType)
     m.channelSearch.setFields({constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
     m.channelSearch.observeField("output", "gotChannelSearch")
     m.channelSearch.control = "RUN"
+    m.taskRunning = True
     m.searchKeyboard.visible = False
     m.searchHistoryDialog.visible = False
     m.searchKeyboardDialog.visible = false
@@ -691,9 +694,10 @@ sub gotVideoSearch(msg as Object)
       'if msg
       m.videoGrid.content = data.result.content
       m.videoSearch.control = "STOP"
+      m.taskRunning = False
       m.videoGrid.visible = true
       m.loadingText.visible = false
-      m.focusedItem = 2
+      m.focusedItem = 2 '[video grid] 
       m.videoGrid.setFocus(true)
     else
       m.searchFailed = true
@@ -712,9 +716,10 @@ sub gotChannelSearch(msg as Object)
       'if msg
       m.videoGrid.content = data.content
       m.channelSearch.control = "STOP"
+      m.taskRunning = False
       m.videoGrid.visible = true
       m.loadingText.visible = false
-      m.focusedItem = 2
+      m.focusedItem = 2 '[video grid] 
       m.videoGrid.setFocus(true)
     else
       m.searchFailed = true
@@ -730,7 +735,8 @@ sub gotResolvedChannel(msg as Object)
     m.videoSearch.unobserveField("output")
     m.videoGrid.content = data.content
     m.channelResolver.control = "STOP"
-    m.focusedItem = 2
+    m.taskRunning = False
+    m.focusedItem = 2 '[video grid] 
   end if
 end sub
 
