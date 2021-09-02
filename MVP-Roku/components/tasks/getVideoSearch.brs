@@ -53,11 +53,7 @@ Function ClaimsToVideoGrid(claims)
         item = {}
         item.Title = items[i].value.title
         item.Creator = items[i].signing_channel.name
-        try
-            item.Description = items[i].value.description.replace("|||||", Chr(10))
-        catch e
-            item.Description = "none"
-        end try
+        item.Description = ""
         item.Channel = items[i].signing_channel.claim_id
         item.lbc = items[i].meta.effective_amount+" LBC"
         time = CreateObject("roDateTime")

@@ -12,6 +12,8 @@ Sub init()
     m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
+    m.uiLayer = 0 '0=Base (Channel Grid/Search), 1=First search layer, 2=Second search layer
+    m.uiLayers = [] 'directly correlates with m.uiLayer-1. Layer 0 is managed by the sidebar/categorySelector.
     m.lastChatMessage = ""
     m.reinitChat = False
     m.chatID = ""
@@ -159,13 +161,54 @@ Sub init()
 End Sub
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
-    if press
+    if press AND m.taskRunning = False
       ? "key", key, "pressed with focus", m.focusedItem
+      ? "current ui layer:", m.uiLayer
+      ? "current ui array:"
+      ? m.uiLayers
       if key = "back"  'If the back button is pressed
         if m.video.visible
             returnToUIPage()
             return true
-        else if m.categorySelector.itemFocused <> 1 AND m.taskRunning = False
+        else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
+          'set focus to selector
+          ErrorDismissed()
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(false)
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector] 
+          return true
+        else if m.uiLayer > 0
+          'go back a UI layer
+          ? "popping layer"
+          if m.uiLayers.Count() > 0
+            m.uiLayers.pop()
+            m.videoGrid.content = m.uiLayers[m.uiLayers.Count()-1]
+            m.uiLayer=m.uiLayer-1
+            ? "went back to", m.uiLayer
+          end if
+          if m.categorySelector.itemFocused = 0 AND m.uiLayers.Count() = 0
+            m.uiLayer=0
+            ? "(search) went back to", m.uiLayer
+            backToKeyboard()
+          end if
+          if m.categorySelector.itemFocused <> 0 AND m.uiLayers.Count() = 0 'not search, on category.
+            'set focus to selector
+            m.uiLayer=0
+            ? "(catsel) went back to", m.uiLayer
+            ErrorDismissed()
+            m.searchKeyboard.setFocus(false)
+            m.searchKeyboardDialog.setFocus(false)
+            m.searchHistoryBox.setFocus(false)
+            m.searchHistoryDialog.setFocus(false)
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1 '[selector] 
+          end if
+          return true
+        else if m.uiLayer = 0
+          'set focus to selector
           ErrorDismissed()
           m.searchKeyboard.setFocus(false)
           m.searchKeyboardDialog.setFocus(false)
@@ -178,7 +221,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           return false
         end if
       end if
-      if key = "options" AND m.taskRunning = False
+      if key = "options"
           if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
             if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) AND m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
               curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
@@ -189,7 +232,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
           end if
       end if
-      if key = "up" AND m.taskRunning = False
+      if key = "up"
           if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
               m.searchKeyboardDialog.setFocus(false)
               m.searchKeyboard.setFocus(true)
@@ -206,7 +249,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
       end if
   
-      if key = "down" AND m.taskRunning = False
+      if key = "down"
           if m.focusedItem = 3 '[search keyboard] 
               m.searchKeyboard.setFocus(false)
               m.searchKeyboardDialog.setFocus(true)
@@ -220,7 +263,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
   
       end if
-      if key = "left" AND m.taskRunning = False
+      if key = "left"
           if m.focusedItem = 2 '[video grid] 
             if m.categorySelector.itemFocused = 0
               m.videoGrid.setFocus(false)
@@ -232,7 +275,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.searchKeyboardDialog.visible = true
               m.categorySelector.setFocus(true)
               m.focusedItem = 1 '[selector] 
-            else
+            else if m.uiLayer = 0 'check to make sure we are in UI Layer 0, otherwise, don't bother going back.
               m.videoGrid.setFocus(false)
               m.categorySelector.setFocus(true)
               m.focusedItem = 1 '[selector] 
@@ -249,7 +292,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector] 
           end if
-          if m.focusedItem = 5 '[search history list]  AND m.errorText.visible = false 'History - Keyboard
+          if m.focusedItem = 5 AND m.errorText.visible = false 'History - Keyboard '[search history list]
               switchRow = m.searchHistoryBox.itemFocused
               if m.searchHistoryBox.itemFocused > 6
                   switchRow = 6
@@ -261,7 +304,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
               switchRow = invalid
               m.focusedItem = 3 '[search keyboard] 
-          else if m.focusedItem = 5 '[search history list]  AND m.errorText.visible = true
+          else if m.focusedItem = 5 AND m.errorText.visible = true '[search history list]  
             ErrorDismissed()
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(false)
@@ -277,8 +320,8 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.focusedItem = 4 '[confirm search] 
           end if
       end if
-      if key = "right" AND m.taskRunning = False
-          if m.focusedItem = 1 '[selector]  AND m.categorySelector.itemFocused = 0
+      if key = "right"
+          if m.focusedItem = 1 AND m.categorySelector.itemFocused = 0 '[selector]  
             m.focusedItem = 3 '[search keyboard] 
             m.categorySelector.setFocus(false)
             m.searchKeyboard.setFocus(true)
@@ -286,7 +329,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           else if m.categorySelector.itemFocused <> 0
             m.categorySelector.setFocus(false)
             m.videoGrid.setFocus(true)
-            m.focusedItem = 2 '[video grid] 
+            m.focusedItem = 2 '[video grid]
           end if
   
           if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
@@ -319,6 +362,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               itemFocused = Invalid
           end if
       end if
+    else
+      ? "task running, denying user input"
+      return true
     end if
 end Function
 
@@ -447,6 +493,7 @@ sub backToKeyboard()
   m.searchHistoryBox.visible = True
   m.searchKeyboardDialog.visible = True
   m.searchHistoryDialog.visible = True
+  m.videoGrid.visible = False
   m.loadingText.visible = False
   m.searchFailed = False
   m.loadingText.text = "Loading..."
@@ -697,7 +744,20 @@ sub gotVideoSearch(msg as Object)
       m.taskRunning = False
       m.videoGrid.visible = true
       m.loadingText.visible = false
-      m.focusedItem = 2 '[video grid] 
+      m.focusedItem = 2 '[video grid]
+      if isValid(m.uiLayers[m.uiLayers.Count()-1])
+        previousData = m.uiLayers[m.uiLayers.Count()-1]
+        currentData = data.result.content
+        previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        if previousDataChildTitle <> currentDataChildTitle
+          m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
+          m.uiLayer = m.uiLayer+1
+        end if
+      else
+        m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
+        m.uiLayer = m.uiLayer+1
+      end if
       m.videoGrid.setFocus(true)
     else
       m.searchFailed = true
@@ -719,7 +779,20 @@ sub gotChannelSearch(msg as Object)
       m.taskRunning = False
       m.videoGrid.visible = true
       m.loadingText.visible = false
-      m.focusedItem = 2 '[video grid] 
+      m.focusedItem = 2 '[video grid]
+      if isValid(m.uiLayers[m.uiLayers.Count()-1])
+        previousData = m.uiLayers[m.uiLayers.Count()-1]
+        currentData = data.content
+        previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        if previousDataChildTitle <> currentDataChildTitle
+          m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
+          m.uiLayer = m.uiLayer+1
+        end if
+      else
+        m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
+        m.uiLayer = m.uiLayer+1
+      end if
       m.videoGrid.setFocus(true)
     else
       m.searchFailed = true
@@ -736,7 +809,20 @@ sub gotResolvedChannel(msg as Object)
     m.videoGrid.content = data.content
     m.channelResolver.control = "STOP"
     m.taskRunning = False
-    m.focusedItem = 2 '[video grid] 
+    m.focusedItem = 2 '[video grid]
+    if isValid(m.uiLayers[m.uiLayers.Count()-1])
+      previousData = m.uiLayers[m.uiLayers.Count()-1]
+      currentData = data.content
+      previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+      currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+      if previousDataChildTitle <> currentDataChildTitle
+        m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
+        m.uiLayer = m.uiLayer+1
+      end if
+    else
+      m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
+      m.uiLayer = m.uiLayer+1
+    end if
   end if
 end sub
 
