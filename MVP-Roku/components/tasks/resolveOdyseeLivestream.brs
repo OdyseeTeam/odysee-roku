@@ -52,9 +52,18 @@ Function resolve(channelid)
                     ? FormatJson(livestreamQuery)
                     ? "[resolveOdyseeLivestream]"
                 end if
-                if IsValid(livestreamQuery.error)
-                    STOP
-                end if
+                retries = 0
+                while true
+                    if IsValid(livestreamQuery.error)
+                        livestreamQuery = postJSON(queryJSON, queryURL, invalid)
+                        retries+=1
+                    else
+                        exit while
+                    end if
+                    if retries > 5
+                        STOP
+                    end if
+                end while
                 item.Title = livestreamQuery.result.items[0].value.title
                 item.Creator = livestreamData["claimData"].name
                 item.Description = livestreamQuery.result.items[0].value.title

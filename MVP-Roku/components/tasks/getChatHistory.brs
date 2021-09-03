@@ -14,24 +14,23 @@ sub master()
 End Sub
 
 Function getChatHistory(channel, channelName, streamClaim)
-    'queryOutput = "placeholder"
-    'date = CreateObject("roDateTime")
-    'max = 48
-    'queryURL = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=claim_search"
-    'queryJSON = FormatJson({"jsonrpc":"2.0","method":"claim_search","params":{"page_size":max,"claim_type":"stream","media_types":["video/mp4"],"no_totals":true,"any_tags":[],"not_tags":["porn","porno","nsfw","mature","xxx","sex","creampie","blowjob","handjob","vagina","boobs","big boobs","big dick","pussy","cumshot","anal","hard fucking","ass","fuck","hentai"],"channel_ids":channels,"not_channel_ids":[],"order_by":["release_time"],"has_no_source":false,"include_purchase_receipt":false, "has_channel_signature":true,"valid_channel_signature":true, "has_source": true},"id":m.top.uid})
-    'response = postJSON(queryJSON, queryURL, invalid)
-    'if IsValid(response.error)
-    '    STOP
-    'end if
-
-
     'get superchat
     queryURL = m.top.constants["COMMENT_API"]+"?m=comment.SuperChatList"
     queryJSON = FormatJson({"jsonrpc":"2.0","id":1,"method":"comment.List","params":{"page":1,"claim_id":streamClaim,"page_size":75,"top_level":true,"channel_id":channel,"channel_name":channelName,"sort_by":0}})
     superchatResponse = postJSON(queryJSON, queryURL, invalid)
-    if IsValid(superchatResponse.error)
-        STOP
-    end if
+    retries = 0
+    while true
+        if IsValid(superchatResponse.error)
+            superchatResponse = postJSON(queryJSON, queryURL, invalid)
+            retries+=1
+        else
+            exit while
+        end if
+        if retries > 5
+            STOP
+        end if
+    end while
+
     ? channel
     ? streamClaim
 
@@ -74,9 +73,18 @@ Function getChatHistory(channel, channelName, streamClaim)
     queryURL = m.top.constants["COMMENT_API"]+"?m=comment.List"
     queryJSON = FormatJson({"jsonrpc":"2.0","id":1,"method":"comment.List","params":{"page":1,"claim_id":streamClaim,"page_size":75,"top_level":true,"channel_id":channel,"channel_name":channelName,"sort_by":0}})
     chatResponse = postJSON(queryJSON, queryURL, invalid)
-    if IsValid(chatResponse.error)
-        STOP
-    end if
+    retries = 0
+    while true
+        if IsValid(chatResponse.error)
+            chatResponse = postJSON(queryJSON, queryURL, invalid)
+            retries+=1
+        else
+            exit while
+        end if
+        if retries > 5
+            STOP
+        end if
+    end while
     'parse chat
     try
     for each comment in chatResponse.result.items

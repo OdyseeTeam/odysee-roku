@@ -40,9 +40,18 @@ Function ClaimsToVideoGrid(claims)
     queryURL = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=claim_search"
     queryJSON = FormatJson({"jsonrpc":"2.0","method":"claim_search","params":{"page_size":max,"claim_type":"stream","media_types":["video/mp4"],"no_totals":true,"any_tags":[],"not_tags":["porn","porno","nsfw","mature","xxx","sex","creampie","blowjob","handjob","vagina","boobs","big boobs","big dick","pussy","cumshot","anal","hard fucking","ass","fuck","hentai"],"claim_ids":claims,"not_channel_ids":[],"order_by":["release_time"],"has_no_source":false,"include_purchase_receipt":false, "has_channel_signature":true,"valid_channel_signature":true, "has_source": true},"id":m.top.uid})
     response = postJSON(queryJSON, queryURL, invalid)
-    if IsValid(response.error)
-        STOP
-    end if
+    retries = 0
+    while true
+        if IsValid(response.error)
+            response = postJSON(queryJSON, queryURL, invalid)
+            retries+=1
+        else
+            exit while
+        end if
+        if retries > 5
+            STOP
+        end if
+    end while
     items = response.result.items
     mediaindex={}
     result=[]

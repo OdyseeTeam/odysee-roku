@@ -186,6 +186,11 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           if m.uiLayers.Count() > 0
             m.uiLayers.pop()
             m.videoGrid.content = m.uiLayers[m.uiLayers.Count()-1]
+            if isValid(m.uiLayers[m.uiLayers.Count()-1])
+              if m.videoGrid.content.getChildren(1,0)[0].getChildren(1,0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
+                downsizeVideoGrid()
+              end if
+            end if
             m.uiLayer=m.uiLayer-1
             ? "went back to", m.uiLayer
           end if
@@ -229,6 +234,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.channelResolver.observeField("output", "gotResolvedChannel")
               m.channelResolver.control = "RUN"
               m.taskRunning = True
+              m.videoGrid.setFocus(false)
             end if
           end if
       end if
@@ -520,6 +526,7 @@ Sub resolveVideo(url = invalid)
           m.urlResolver.observeField("output", "playResolvedVideo")
           m.urlResolver.control = "RUN"
           m.taskRunning = True
+          m.videoGrid.setFocus(false)
         end if
         if curItem.itemType = "channel"
           ? "Resolving a Channel"
@@ -527,6 +534,7 @@ Sub resolveVideo(url = invalid)
           m.channelResolver.observeField("output", "gotResolvedChannel")
           m.channelResolver.control = "RUN"
           m.taskRunning = True
+          m.videoGrid.setFocus(false)
         end if
         if curItem.itemType = "livestream"
           ? "Playing a livestream"
@@ -558,6 +566,7 @@ Sub resolveVideo(url = invalid)
     m.urlResolver.observeField("output", "playResolvedVideo")
     m.urlResolver.control = "RUN"
     m.taskRunning = True
+    m.videoGrid.setFocus(false)
   end if
 End Sub
 
@@ -668,6 +677,7 @@ end Function
 
 sub search()
   if m.searchKeyboard.text = "" OR Len(m.searchKeyboard.text) < 3
+    m.searchFailed = true
     Error("Search too short", "Needs to be more than 2 characters long.")
   else
     ? "======SEARCH======"
@@ -823,6 +833,7 @@ sub gotResolvedChannel(msg as Object)
       m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
       m.uiLayer = m.uiLayer+1
     end if
+    m.videoGrid.setFocus(true)
   end if
 end sub
 
@@ -856,8 +867,8 @@ sub historySearch()
 end sub
 
 sub clearHistory()
-  searchHistoryItems = []
-  SetRegistry("searchHistoryRegistry", "searchHistory", FormatJSON(searchHistoryItems))
+  m.searchHistoryItems.Clear()
+  SetRegistry("searchHistoryRegistry", "searchHistory", FormatJSON(m.searchHistoryItems))
   if m.searchHistoryContent.removeChildrenIndex(-1, 0) <> true
       cCount = m.searchHistoryContent.getChildCount()
       for item = 0 to cCount
