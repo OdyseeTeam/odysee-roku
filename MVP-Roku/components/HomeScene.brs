@@ -407,6 +407,8 @@ sub failedSearch()
   ? "search failed"
   m.videoGrid.visible = false
   m.videoSearch.control = "STOP"
+  m.channelSearch.control = "STOP"
+  m.taskRunning = False
   ? "task stopped"
   Error("No results.", "Nothing found on Odysee.")
 end sub
