@@ -22,19 +22,18 @@
                 m.Poster.loadHeight = m.top.itemContent.thumbnailDimensions[1]
                 m.Poster.uri = m.top.itemContent.HDPOSTERURL
                 m.Title.text = m.top.itemContent.TITLE
-                m.LBC.text = m.top.itemContent.LBC
                 m.Creator.text = m.top.itemContent.CREATOR
                 m.Published.text = m.top.itemContent.RELEASEDATE
-                updateLayout()
             End Sub
             Sub updateLayout()
                 If m.top.height > 0 And m.top.width > 0 Then
                     m.Poster.width  = m.top.width-20
+                    m.Poster.loadwidth  = m.poster.width
                     m.Poster.height = 197
+                    m.poster.loadHeight = m.poster.height
                     m.Background.width = m.top.width
                     m.Background.height = m.top.height
                     m.Title.width = m.top.width-20
-                    m.LBC.width = m.top.width-20
                     m.Published.width = m.top.width-20
                     m.Creator.width = m.top.width-20
                 End If
@@ -45,19 +44,24 @@
         <Rectangle
         id="ibackground"
         color="0x1f1f1f" />
-        <Poster id="poster" loadDisplayMode="limitSize" loadWidth="320" loadheight="180" translation="[10,10]">
+        <Poster id="poster" loadDisplayMode="limitSize" loadWidth="320" loadHeight="180" translation="[10,10]">
         </Poster>
-        <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,210]" text="title">
-        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="24"/>
+        <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,210]" wrap = "true" numLines = "2" lineSpacing = "3" text="title">
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
+        <Label id="published" font="font:Inter-Emoji" color="#ffffff" translation="[10,277]" text="date">
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
+        </Label>
+        <!--
         <Label id="published" font="font:Inter-Emoji" color="#ffffff" translation="[10,245]" text="date">
-        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="24"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
         <Label id="lbc" font="font:Inter-Emoji" color="#ffffff" translation="[10,277]" text="lbc">
-        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="24"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
+        -->
         <Label id="creator" font="font:Inter-Emoji" color="#ffffff" translation="[10,310]" text="publisher">
-        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="24"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
     </children>
 </component>

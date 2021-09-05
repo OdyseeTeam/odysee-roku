@@ -400,7 +400,7 @@ End Sub
 
 Sub downsizeVideoGrid()
   m.videoGrid.itemSize= [1920,305]
-  m.videoGrid.rowitemSize=[[380,290]]
+  m.videoGrid.rowitemSize=[[380,250]]
 End Sub
 
 sub failedSearch()
@@ -546,7 +546,7 @@ Sub resolveVideo(url = invalid)
           m.video.content = m.videoContent
           m.video.visible = "true"
           m.video.setFocus(true)
-          m.focusedItem = 7 '[video player/overlay] 
+          m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
           m.refreshes = 0
           m.video.observeField("duration", "durationChanged")
@@ -557,6 +557,7 @@ Sub resolveVideo(url = invalid)
           m.chatHistory.observeField("output", "gotChatHistory")
           m.chatHistory.control = "RUN"
           m.taskRunning = True
+          m.videoGrid.setFocus(false)
         end if
       end if
     end if

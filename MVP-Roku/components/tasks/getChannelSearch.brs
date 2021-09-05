@@ -99,9 +99,8 @@ Function ClaimsToChannelGrid(claims)
             item.Description = ""
             item.Channel = channel.claim_id
             item.guid = channel.claim_id
-            item.ReleaseDate = channel.meta.effective_amount+" LBC" 'Date is LBC due to downsizing.
             try
-                thumbnail = m.global.constants.imageProcessor+channel.value.thumbnail.url
+                thumbnail = m.top.constants["IMAGE_PROCESSOR"]+channel.value.thumbnail.url
             catch e
                 thumbnail = "pkg:/images/frontpage/bad_icon_requires_usage_rights.png"
             end try

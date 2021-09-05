@@ -56,7 +56,7 @@ Function ChannelsToVideoGrid(channels)
         item.ReleaseDate = timestr
         item.guid = items[i].claim_id
         try
-            thumbnail = m.global.constants.imageProcessor+items[i].value.thumbnail.url
+            thumbnail = m.top.constants["IMAGE_PROCESSOR"]+items[i].value.thumbnail.url
         catch e
             thumbnail = "pkg:/images/frontpage/bad_icon_requires_usage_rights.png"
         end try

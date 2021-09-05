@@ -69,7 +69,7 @@
   <Rectangle id="background" translation="[2,2]"/>
   <Poster id="itemImage" width="30" height="30" visible="false" loadDisplayMode="scaleToFill" translation="[2,2]"/>
   <Label id="itemText" font="font:Inter-Emoji" width="150" height="50" visible="false" horizAlign="center" vertAlign="center" translation="[2,2]">
-    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="35"/>
+    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="35"/>
   </Label>
 </children>
 

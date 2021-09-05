@@ -12,19 +12,25 @@
     itemData = m.top.itemContent
     m.itemImage.uri = itemData.posterUrl
     m.itemText.text = itemData.labelText
+    ' isTextEllipsized has a significant lag between the text being ellipsized and the determination that it is.
+    ' see https://forums.roku.com/viewtopic.php?t=104425&p=565559#p565638 for more information on why this has to be done this way.
+    if m.itemText.text.split("").Count() > 12
+      m.itemFont.size = m.itemFont.size - (m.itemText.text.split("").Count() / 12)
+    end if
   end function
   
   function init() 
     m.itemImage = m.top.findNode("itemImage") 
-   m.itemText = m.top.findNode("itemText") 
+    m.itemText = m.top.findNode("itemText")
+    m.itemFont = m.itemText.font
   end function
 ]]>
 </script>
 
-<children> 
-    <Poster id="itemImage" width="48" height="48"/>
-    <Label id="itemText" font="font:Inter-Emoji" color="#ffffff" translation="[0,47]">
-    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="16"/>
+<children>
+    <Poster id="itemImage" width="48" height="48" translation="[30,0]"/>
+    <Label id="itemText" width="100" maxLines="1" horizAlign="center" font="font:Inter-Emoji" color="#ffffff" translation="[0,47]">
+    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="16"/>
     </Label>
 </children>
 

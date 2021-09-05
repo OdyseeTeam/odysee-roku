@@ -77,7 +77,7 @@ Function resolve(channelid)
                 time = Invalid
                 item.ReleaseDate = timestr
                 item.guid = livestreamQuery.result.items[0].claim_id
-                thumbnail = m.global.constants.imageProcessor+livestreamQuery.result.items[0].value.thumbnail.url
+                thumbnail = m.top.constants["IMAGE_PROCESSOR"]+livestreamQuery.result.items[0].value.thumbnail.url
                 item.HDPosterURL = thumbnail
                 item.thumbnailDimensions = [360, 240]
                 'unneeded as we directly recieve the URL from the page

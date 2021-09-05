@@ -11,7 +11,7 @@ sub master()
 
     'Grab+Parse
     for each line in globalAPIConstantsRaw.split(Chr(10)) 'Extract 1 (see OdyseeLogicDiagram.dia)
-        if instr(line, "API") > 0
+        if instr(line, "API") > 0 OR instr(line, "CDN") > 0
             ? line.split("=")[0]
             if instr(line, "WEB_API") > 0
                 globalAPIConstants["QUERY_API"] = line.split("=")[1]
@@ -29,6 +29,16 @@ sub master()
             end if
             if instr(line, "SOCKETY_SERVER_API") > 0 
                 globalAPIConstants["CHAT_API"] = line.split("=")[1].replace("wss", "ws")
+            end if
+            if instr(line, "THUMBNAIL_CDN_URL") > 0
+                iproc = line.split("=")[1]
+                iprocsplit = iproc.split("")
+                iprocargs = "s:390:220/quality:85/plain/"
+                if iprocsplit[iprocsplit.Count()-1] = "/"
+                    globalAPIConstants["IMAGE_PROCESSOR"] = iproc+iprocargs
+                else
+                    globalAPIConstants["IMAGE_PROCESSOR"] = iproc+"/"+iprocargs
+                end if
             end if
         end if
     end for

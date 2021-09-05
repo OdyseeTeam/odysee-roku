@@ -27,7 +27,7 @@
         height="1080"
         translation="[0,0]" />
     <Label id="loadingtext" font="font:Inter-Emoji" color="#ffffff" width="1920" height="1080" vertAlign="center" horizAlign="center" text="Loading....">
-        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="64"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
     </Label>
     <Rectangle
         id="headerrectangle"
@@ -71,14 +71,14 @@
 		text="Search History"
 		translation="[1080,160]"
 		>
-        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="64"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
     </Label>
     
     <Label id="warningtext" font="font:Inter-Emoji" color="#ffffff" width="1920" height="80" text="Warning!" translation="[300,106]" visible="false">
-			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="64"/>
+			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
 	</Label>
 	<Label id="warningsubtext" font="font:Inter-Emoji" color="#ffffff" width="1534" height="300" wrap="true" text="Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur." translation="[300,186]" visible="false">
-		<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="32"/>
+		<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="32"/>
 	</Label>
     
     <!--Interactive Items-->
@@ -179,7 +179,7 @@
         scrollbarThumbBitmapUri = "pkg:/images/placeholder1x1.png"
         vertAlign = "bottom"
         color = "0x000000FF">
-        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="35"/>
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="35"/>
     </ScrollableText>
 
     <ScrollingLabel id = "SuperChatBox"
@@ -192,7 +192,7 @@
     font="font:Inter-Emoji"
     color = "0xFFDD91FF"
     scrollSpeed="200">
-    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" size="60"/>
+    <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="60"/>
     </ScrollingLabel>
 
     <!--DEV USE ONLY-->

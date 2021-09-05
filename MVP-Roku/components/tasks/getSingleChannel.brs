@@ -94,7 +94,7 @@ Function ChannelToVideoGrid(channel)
         item.lbc = streamStatus.chatData.result.items[0].meta.effective_amount+" LBC"
         item.ReleaseDate = "LIVE NOW"
         item.guid = streamStatus.chatData.result.items[0].claim_id
-        thumbnail = m.global.constants.imageProcessor+streamStatus.chatData.result.items[0].value.thumbnail.url
+        thumbnail = m.top.constants["IMAGE_PROCESSOR"]+streamStatus.chatData.result.items[0].value.thumbnail.url
         item.HDPosterURL = thumbnail
         item.thumbnailDimensions = [360, 240]
         'unneeded as we directly recieve the URL from the page
@@ -154,7 +154,7 @@ Function ChannelToVideoGrid(channel)
         item.ReleaseDate = timestr
         item.guid = items[i].claim_id
         try
-            thumbnail = m.global.constants.imageProcessor+items[i].value.thumbnail.url
+            thumbnail = m.top.constants["IMAGE_PROCESSOR"]+items[i].value.thumbnail.url
         catch e
             thumbnail = "pkg:/images/frontpage/bad_icon_requires_usage_rights.png"
         end try
