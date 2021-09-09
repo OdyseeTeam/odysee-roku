@@ -9,12 +9,27 @@ sub master()
     globalLivestreamConstantsRaw = getRawText(m.global.constants.livestreamconstantsurl)
     globalAPIConstants = {}
 
+    'for future reference:
+    '{
+    '    CHAT_API: "ws://sockety.odysee.com/ws"
+    '    COMMENT_API: "https://comments.odysee.com/api/v2"
+    '    IMAGE_PROCESSOR: "https://image-processor.vanwanet.com/optimize/s:390:220/quality:85/plain/"
+    '    LIGHTHOUSE_API: "https://lighthouse.odysee.com/search"
+    '    LIVE_API: "https://api.live.odysee.com/v1/odysee/live"
+    '    LIVE_REPLAY_API: "https://api.live.odysee.com/v1/replays/odysee"
+    '    QUERY_API: "https://api.na-backend.odysee.com"
+    '    ROOT_API: "https://api.odysee.com"
+    '    VIDEO_API: "https://cdn.lbryplayer.xyz"
+    '    WATCHMAN: "https://watchman.na-backend.odysee.com"
+    '}
+
     'Grab+Parse
     for each line in globalAPIConstantsRaw.split(Chr(10)) 'Extract 1 (see OdyseeLogicDiagram.dia)
         if instr(line, "API") > 0 OR instr(line, "CDN") > 0
             ? line.split("=")[0]
             if instr(line, "WEB_API") > 0
                 globalAPIConstants["QUERY_API"] = line.split("=")[1]
+                globalAPIConstants["WATCHMAN"] = "https://watchman.na-backend.odysee.com" 'not added to .env.defaults in place of LBRY_WEB_BUFFER_API
                 dotlen = line.split("=")[1].split(".").Count()
                 globalAPIConstants["ROOT_API"] = "https://api."+line.split("=")[1].split(".")[dotlen-2]+"."+line.split("=")[1].split(".")[dotlen-1] 'Extract root domain
             end if

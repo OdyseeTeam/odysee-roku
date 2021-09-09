@@ -1,6 +1,12 @@
 Sub init()
     m.appTimer = CreateObject("roTimeSpan")
     m.appTimer.Mark()
+    if m.global.constants.enableStatistics
+      m.vStatsTimer = CreateObject("roTimeSpan")
+      m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
+      m.watchman.observeField("output", "watchmanRan")
+      m.rokuInstall = createObject("roSGNode", "rokuInstall") 'analytics (install)
+    end if
     m.maxThreads = 2
     m.runningThreads = []
     m.threads = []
@@ -17,6 +23,7 @@ Sub init()
     m.lastChatMessage = ""
     m.reinitChat = False
     m.chatID = ""
+    m.totalVideoPings = 0 'analytics
     'UI Items
     m.errorText = m.top.findNode("warningtext")
     m.errorSubtext = m.top.findNode("warningsubtext")
@@ -112,9 +119,7 @@ Sub init()
     m.uid = StrToI(GetRegistry("authRegistry", "uid"))
     m.authToken = GetRegistry("authRegistry", "authtoken")
     m.cookies = ParseJSON(GetRegistry("authRegistry", "cookies"))
-    m.authTask.setField("uid", m.uid)
-    m.authTask.setField("authtoken", m.authToken)
-    m.authTask.setField("cookies", m.cookies)  
+    m.authTask.setFields({uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
   end if
   'Get current search history
   if IsValid(GetRegistry("searchHistoryRegistry", "searchHistory"))
@@ -142,9 +147,7 @@ Sub init()
       SetRegistry("legacyRegistry", "uid", "legacy")
       SetRegistry("legacyRegistry", "authtoken", "")
       SetRegistry("legacyRegistry", "cookies", "")
-      m.authTask.setField("uid", m.uid)
-      m.authTask.setField("authtoken", m.authToken)
-      m.authTask.setField("cookies", m.cookies)  
+      m.authTask.setFields({uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})  
     end if
   end if
   'Migrate Search History
@@ -161,7 +164,7 @@ Sub init()
 End Sub
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
-    if press AND m.taskRunning = False
+    if m.taskRunning = False
       ? "key", key, "pressed with focus", m.focusedItem
       ? "current ui layer:", m.uiLayer
       ? "current ui array:"
@@ -170,6 +173,10 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if m.video.visible
             returnToUIPage()
             return true
+        else if (m.uiLayer = 0 AND m.focusedItem = 1) OR (m.uiLayer=0 AND m.focusedItem = 2)
+            'TODO: add "are you sure you want to exit Odysee" screen
+            'for now, re-add old behavior
+            return false
         else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
           'set focus to selector
           ErrorDismissed()
@@ -222,8 +229,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector] 
           return true
-        else
-          return false
         end if
       end if
       if key = "options"
@@ -369,8 +374,8 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
       end if
     else
-      ? "task running, denying user input"
-      return true
+        ? "task running, denying user input"
+        return true
     end if
 end Function
 
@@ -492,6 +497,28 @@ sub ErrorDismissed()
   end if
 end sub
 
+sub cleanupToUIPage() 'more aggressive returnToUIPage, until I recreate the UI loop
+  m.urlResolver.control = "STOP"
+  m.channelResolver.control = "STOP"
+  m.constantsTask.control = "STOP"
+  m.chatHistory.control = "STOP"
+  m.ws.control = "STOP"
+  m.videoSearch.control = "STOP"
+  m.channelSearch.control = "STOP"
+  m.authTask.control = "STOP"
+  m.cidsTask.control = "STOP"
+  if m.video.visible
+    returnToUIPage()
+    ErrorDismissed()
+  else
+    ErrorDismissed()
+    returnToUIPage()
+  end if
+  m.taskRunning = false
+  m.categorySelector.jumpToItem = 1
+  m.categorySelector.setFocus(true)
+end sub
+
 sub backToKeyboard()
   resetVideoGrid()
   m.searchKeyboard.visible = True
@@ -551,7 +578,7 @@ Sub resolveVideo(url = invalid)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
           m.refreshes = 0
-          m.video.observeField("duration", "durationChanged")
+          m.video.observeField("duration", "liveDurationChanged")
           ? m.video.errorStr
           ? m.video.videoFormat
           ? m.video
@@ -599,7 +626,7 @@ sub gotChatHistory(msg as Object)
   end if
 end sub
 
-sub durationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
+sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
   ? m.video.position
   ? m.video.duration
   if m.refreshes = 0
@@ -607,9 +634,6 @@ sub durationChanged() 'ported from salt app, this (mostly) fixes the problem tha
     m.ChatBackground.visible = true
     m.chatBox.visible = true
     m.superChatBox.visible = true
-    'TODO:
-    'https://comments.odysee.com/api/v2?m=comment.List
-    'https://comments.odysee.com/api/v2?m=comment.SuperChatList
   end if
   m.refreshes += 1
   if m.video.duration > 0 and m.videoContent.Live and m.video.position < m.video.duration and m.refreshes < 4
@@ -620,6 +644,28 @@ sub durationChanged() 'ported from salt app, this (mostly) fixes the problem tha
     m.refreshes = invalid
   end if
 end sub
+
+sub vstatsChanged() 'if position/duration changes, report if vStats are turned on.
+  if m.vStatsTimer.TotalSeconds() > 5
+    m.vStatsTimer.Mark()
+    if m.video.playStartInfo.prebuf_dur > 10
+      cache = "miss"
+    else
+      cache = "player"
+    end if
+    watchmanFields = {constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies,bandwidth:m.video.streamInfo.measuredBitrate,cache:cache,duration:m.urlResolver.output.length,player:m.urlResolver.output.player,position:m.video.position,protocol:m.urlResolver.output.videotype.replace("mp4", "stb"),rebuf_count:0,rebuf_duration:0,url:m.urlResolver.url,uid:m.uid}
+    m.watchman.setFields(watchmanFields)
+    m.watchman.control = "RUN"
+  end if
+end sub
+
+Sub watchmanRan(msg as Object)
+  if type(msg) = "roSGNodeEvent"
+    data = msg.getData()
+    ? formatJson(data)
+    m.watchman.control = "STOP"
+  end if
+End Sub
 
 Sub playResolvedVideo(msg as Object)
   if type(msg) = "roSGNodeEvent"
@@ -637,6 +683,9 @@ Sub playResolvedVideo(msg as Object)
     m.video.setFocus(true)
     m.focusedItem = 7 '[video player/overlay] 
     m.video.control = "play"
+    if m.global.constants.enableStatistics
+      m.video.observeField("position", "vStatsChanged")
+    end if
     ? m.video.errorStr
     ? m.video.videoFormat
     ? m.video
@@ -649,6 +698,10 @@ End Sub
 Function onVideoStateChanged(msg as Object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "state"
       if msg.getData() = "finished"
+          if m.global.constants.enableStatistics
+            m.video.unobserveField("position")
+          end if
+          m.video.unobserveField("duration")
           returnToUIPage()
       end if
   end if
@@ -888,6 +941,10 @@ Sub gotConstants()
   m.constants = m.constantsTask.constants
   m.authTask.setFields({constants: m.constants})
   m.authTask.observeField("output", "authDone")
+  'uid, authtoken, cookies
+  m.authTask.observeField("uid", "gotUID")
+  m.authTask.observeField("auth", "gotAuth")
+  m.authTask.observeField("cookies", "gotCookies")
   ? "Constants are done, running auth"
   ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
   m.authTask.control = "RUN"
@@ -901,7 +958,12 @@ Sub authDone()
   m.authtoken = m.authTask.authtoken
   m.cookies = m.authTask.cookies
   ? "AUTH IS DONE!"
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+  if m.global.constants.enableStatistics
+    m.rokuInstall.setFields({constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
+    m.rokuInstall.observeField("output", "didInstall")
+    m.rokuInstall.control = "RUN"
+  end if
   m.authenticated = True
   m.video.EnableCookies()
   m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
@@ -918,6 +980,16 @@ Sub authDone()
   'm.getSinglePageTask.control = "RUN"
   m.cidsTask.control = "RUN"
 End Sub
+
+sub didInstall(msg as Object)
+  if type(msg) = "roSGNodeEvent" 
+    ? "============================GOT ACCT DATA:======================================="
+    ? formatJSON(msg.getData())
+    m.rokuInstall.control = "STOP"
+    m.rokuInstall.unobserveField("output")
+    ? "============================GOT ACCT DATA:======================================="
+  end if
+end sub
 
 sub indexloaded(msg as Object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "mediaIndex"
@@ -1103,6 +1175,7 @@ sub finishInit()
   m.categorySelector.jumpToItem = 1
   m.categorySelector.visible = true
   m.loaded = True
+  m.taskRunning = false
   m.categorySelector.setFocus(true)
   m.global.scene.signalBeacon("AppLaunchComplete")
   if isValid(m.global.deeplink)

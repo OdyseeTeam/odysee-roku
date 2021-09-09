@@ -3,27 +3,31 @@ Sub Init()
 End Sub
 
 sub master()
-    '? m.top.constants
-    '? m.top.cookies
-    '? m.top.uid
-    '? m.top.authtoken
-    '? m.top.channels
-    '? m.top.rawname
-    m.top.output = resolve(m.top.url)
+    'm.top.bandwidth
+    'm.top.cache
+    'm.top.device
+    'm.top.player
+    'm.top.position
+    'm.top.protocol
+    'm.top.rebuf_count
+    'm.top.rebuf_duration
+    'm.top.url
+    m.top.output = report()
 End Sub
 
-Function resolve(lbry_url)
-    resolveRequestJSON = FormatJson({"jsonrpc":"2.0","method":"get","params":{"uri":lbry_url,"save_file":false},"id":m.top.uid})
-    resolveRequestURL = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=get"
-    resolveRequestOutput = postJSON(resolveRequestJSON,resolveRequestURL,invalid)
-    vurl = resolveRequestOutput["result"]["streaming_url"]
-    vresolvedRedirectURL = resolveRedirect(vurl)
-    vresolvedRedirect = vresolvedRedirectURL.split(".")
-    vresolvedRedirectLen = vresolvedRedirect.Count()
-    if vresolvedRedirect[vresolvedRedirectLen-1] = "m3u8"
-        vtype = "hls"
+Function report()
+    if m.top.position > 0 AND m.top.duration > 0
+        rel_position = Fix((m.top.position/m.top.duration)*100)
     else
-        vtype = "mp4"
+        rel_position = Fix((1/m.top.duration)*100)
     end if
-    return {videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title} 'Returns the array
+    APIQueryJSON = formatJSON({"rebuf_count":m.top.rebuf_count,"rebuf_duration":m.top.rebuf_duration,"url":m.top.url,"device":"web","duration":5000,"protocol":m.top.protocol,"player":m.top.player,"user_id":StrI(m.top.uid),"position":m.top.position,"rel_position":rel_position})
+    APIWatchmanURL = m.top.constants["WATCHMAN"]+"/reports/playback"
+    watchmanQuery = postJSONResponseOut(APIQueryJSON,APIWatchmanURL, invalid)
+    if watchmanQuery <> 201
+        return {success: false, error: true}
+    else
+        return {success: true, error: false}
+    end if
+
 End Function

@@ -7,6 +7,7 @@ sub Main(args)
     scene = screen.CreateScene("HomeScene")  'Create HomeScene
     m.global = screen.getGlobalNode()
     constants = {}
+    constants.enableStatistics = true 'allows user preference, easy location of related code, and quick debugging if stats cause problems indev. will be added to user settings later.
     constants.APIConstantsURL = "https://raw.githubusercontent.com/lbryio/lbry-desktop/master/.env.defaults"
     constants.livestreamConstantsURL = "https://raw.githubusercontent.com/lbryio/lbry-desktop/master/ui/constants/livestream.js"
     constants.userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36" 'Used in all HTTP/s requests.

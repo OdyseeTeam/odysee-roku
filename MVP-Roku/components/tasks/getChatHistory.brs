@@ -45,12 +45,12 @@ Function getChatHistory(channel, channelName, streamClaim)
             try
                 if chatRegex.Replace(superchat["comment"].Trim(), "") <> ""
                     if superchat["support_amount"] > 0
-                        superChatArray.push("["+chatRegex.Replace(superchat["channel_name"].Replace("@","")+"]: "+superchat["comment"].replace("\n", " ").Trim(),""))
-                        superChatLength += 1
-                        if superChatLength > 5
+                        if superChatLength > 4
                             superchat = invalid
                             exit for
                         end if
+                        superChatArray.push("["+chatRegex.Replace(superchat["channel_name"].Replace("@","")+"]: "+superchat["comment"].replace("\n", " ").Trim(),""))
+                        superChatLength += 1
                     end if
                 end if
                 superchat = invalid
@@ -90,12 +90,12 @@ Function getChatHistory(channel, channelName, streamClaim)
     for each comment in chatResponse.result.items
         try
         if chatRegex.Replace(comment["comment"].Trim(), "") <> ""
-            chatArray.push("["+chatRegex.Replace(comment["channel_name"].Replace("@","")+"]: "+comment["comment"], ""))
-            chatLength += 1
-            if chatLength > 20
+            if chatLength > 19
                 comment = invalid
                 exit for
             end if
+            chatArray.push("["+chatRegex.Replace(comment["channel_name"].Replace("@","")+"]: "+comment["comment"], ""))
+            chatLength += 1
         end if
         comment = invalid
         catch e

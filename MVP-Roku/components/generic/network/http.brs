@@ -48,6 +48,54 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
   return response
 end function
 
+function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: {header: headerdata}
+  response = {}
+  errorcount = 0
+  http = CreateObject("roUrlTransfer")
+  http.AddHeader("User-Agent", m.global.constants["userAgent"])
+  messagePort = CreateObject("roMessagePort")
+  while true
+    http.RetainBodyOnError(true)
+    http.SetPort(messagePort)
+    http.setCertificatesFile("common:/certs/ca-bundle.crt")
+    http.InitClientCertificates()
+    http.EnableCookies()
+    http.AddCookies(m.top.cookies)
+    http.SetUrl(url)
+    if IsValid(headers)
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
+    http.AddHeader("Content-Type", "application/json")
+    http.AddHeader("Accept", "application/json")
+    response=""
+    responseheaders = []
+    if http.AsyncPostFromString(json) then
+      event = Wait(30000, http.GetPort())
+        if Type(event) = "roUrlEvent" Then
+          response = event.GetResponseCode()
+          m.top.cookies = http.getCookies("", "/")
+          if isValid(response)
+            exit while
+          else
+            sleep(3000)
+            errorcount+=1
+            if errorcount > 5
+              exit while
+            end if
+          end if
+        else if event = invalid then
+          http.asynccancel()
+        Else
+            ? "[LBRY_HTTP] AsyncPostFromString unknown event"
+      end if
+    end if
+  end while
+  if errorcount > 5
+    STOP 'debug
+  end if
+  return response
+end function
+
 function postURLEncoded(data, url, headers) as Object
   response = {}
   http = CreateObject("roUrlTransfer")

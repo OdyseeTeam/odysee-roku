@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--Resolve single LBRY URL-->
-<component name="resolveLBRYURL" extends="Task">
+<component name="watchman" extends="Task">
     <interface>
             <!--Universal (determined) constants-->
             <field id="constants" type="assocarray"/>
-            <!--URL to resolve-->
+            <!--Input data for watchman-->
+            <field id="bandwidth" type="Int"/>
+            <field id="cache" type="String"/>
+            <field id="player" type="String"/>
+            <field id="position" type="Int"/>
+            <field id="duration" type="Int"/>
+            <field id="protocol" type="String"/>
+            <field id="rebuf_count" type="Int"/>
+            <field id="rebuf_duration" type="Int"/>
             <field id="url" type="String"/>
-            <!--Passthrough Item Title-->
-            <field id="title" type="String"/>
             <!--Account-Specific Vars-->
-            <field id="uid" type="Int"/>
+            <field id="uid" type="Int"/> <!--Also used for user_id-->
             <field id="authtoken" type="String"/>
             <field id="cookies" type="roArray"/>
             <!--Universal Output-->

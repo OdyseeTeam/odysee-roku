@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Resolve single LBRY URL-->
+<component name="rokuInstall" extends="Task">
+    <interface>
+            <!--Universal (determined) constants-->
+            <field id="constants" type="assocarray"/>
+            <!--Account-Specific Vars-->
+            <field id="uid" type="Int"/>
+            <field id="authtoken" type="String"/>
+            <field id="cookies" type="roArray"/>
+            <!--Universal Output-->
+            <field id="output" type="assocarray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/rokuInstall.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>
