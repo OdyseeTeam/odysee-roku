@@ -6,6 +6,8 @@ Sub init()
       m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
       m.watchman.observeField("output", "watchmanRan")
       m.rokuInstall = createObject("roSGNode", "rokuInstall") 'analytics (install)
+      m.watchman.observeField("cookies", "gotCookies")
+      m.rokuInstall.observeField("cookies", "gotCookies")
     end if
     m.maxThreads = 2
     m.runningThreads = []
@@ -101,6 +103,14 @@ Sub init()
   m.InputTask=createObject("roSgNode","inputTask")
   m.InputTask.observefield("inputData","handleInputEvent")
   m.InputTask.control="RUN"
+
+  'forgot that cookies should be universal throughout application
+  m.urlResolver.observeField("cookies", "gotCookies")
+  m.livestreamResolver.observeField("cookies", "gotCookies")
+  m.channelResolver.observeField("cookies", "gotCookies")
+  m.videoSearch.observeField("cookies", "gotCookies")
+  m.channelSearch.observeField("cookies", "gotCookies")
+  m.chatHistory.observeField("cookies", "gotCookies")
 
   m.constantsTask = createObject("roSGNode", "getConstants")
   m.constantsTask.observeField("constants", "gotConstants")
@@ -1197,8 +1207,9 @@ Sub gotAuth()
     SetRegistry("authRegistry","authtoken", m.authTask.authtoken)
 End Sub
 
-sub gotCookies()
-    SetRegistry("authRegistry","cookies", FormatJSON(m.authTask.cookies))
+sub gotCookies(msg as Object)
+    cookies = msg.getData()
+    SetRegistry("authRegistry","cookies", FormatJSON(cookies))
 End Sub
 
 Function GetRegistry(registry, key) As Dynamic

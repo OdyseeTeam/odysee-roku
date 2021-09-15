@@ -21,7 +21,7 @@ Function report()
     else
         rel_position = Fix((1/m.top.duration)*100)
     end if
-    APIQueryJSON = formatJSON({"rebuf_count":m.top.rebuf_count,"rebuf_duration":m.top.rebuf_duration,"url":m.top.url,"device":"web","duration":5000,"protocol":m.top.protocol,"player":m.top.player,"user_id":StrI(m.top.uid),"position":m.top.position,"rel_position":rel_position})
+    APIQueryJSON = formatJSON({"rebuf_count":m.top.rebuf_count,"rebuf_duration":m.top.rebuf_duration,"url":m.top.url,"device":"stb","duration":5000,"protocol":m.top.protocol,"player":m.top.player,"user_id":StrI(m.top.uid),"position":m.top.position,"rel_position":rel_position})
     APIWatchmanURL = m.top.constants["WATCHMAN"]+"/reports/playback"
     watchmanQuery = postJSONResponseOut(APIQueryJSON,APIWatchmanURL, invalid)
     if watchmanQuery <> 201

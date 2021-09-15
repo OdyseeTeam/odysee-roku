@@ -25,8 +25,8 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
       event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           response = parsejson(event.getString().replace("\n","|||||"))
-          m.top.cookies = http.getCookies("", "/")
           if isValid(response)
+            m.top.cookies = http.getCookies("", "/")
             exit while
           else
             sleep(3000)
@@ -73,8 +73,8 @@ function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: 
       event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           response = event.GetResponseCode()
-          m.top.cookies = http.getCookies("", "/")
           if isValid(response)
+            m.top.cookies = http.getCookies("", "/")
             exit while
           else
             sleep(3000)
@@ -122,8 +122,8 @@ function postURLEncoded(data, url, headers) as Object
       event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           response = parsejson(event.getString().replace("\n","|||||"))
-          m.top.cookies = http.getCookies("", "/")
           if isValid(response)
+            m.top.cookies = http.getCookies("", "/")
             exit while
           else
             sleep(3000)
@@ -166,6 +166,7 @@ function getURLEncoded(data, url, headers) as Object
         if Type(event) = "roUrlEvent" Then
           response = parsejson(event.getString().replace("\n","|||||"))
           if isValid(response)
+            m.top.cookies = http.getCookies("", "/")
             exit while
           else
             sleep(3000)
@@ -174,7 +175,6 @@ function getURLEncoded(data, url, headers) as Object
               exit while
             end if
           end if
-          m.top.cookies = http.getCookies("", "/")
         else if event = invalid then
           http.asynccancel()
         Else
@@ -221,8 +221,8 @@ function getJSON(url) as Object
       event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           response = event.getString()
-          m.top.cookies = http.getCookies("", "/")
           if isValid(response)
+            m.top.cookies = http.getCookies("", "/")
             exit while
           else
             sleep(3000)
@@ -263,8 +263,8 @@ function getRawText(url) as Object
       event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           response = event.getString()
-          m.top.cookies = http.getCookies("", "/")
           if isValid(response)
+            m.top.cookies = http.getCookies("", "/")
             exit while
           else
             sleep(3000)
@@ -334,6 +334,7 @@ if http.AsyncHead() then
         return redirect
       catch e
         ? "No Redirect: "+url
+        m.top.cookies = http.getCookies("", "/")
         return url
       end try
     else if event = invalid then
