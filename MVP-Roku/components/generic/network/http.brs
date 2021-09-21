@@ -1,179 +1,125 @@
 function postJSON(json, url, headers) as Object 'json, url, headers: {header: headerdata}
-  response = {}
-  errorcount = 0
-  http = CreateObject("roUrlTransfer")
-  http.AddHeader("User-Agent", m.global.constants["userAgent"])
-  messagePort = CreateObject("roMessagePort")
-  while true
-    http.RetainBodyOnError(true)
-    http.SetPort(messagePort)
-    http.setCertificatesFile("common:/certs/ca-bundle.crt")
-    http.InitClientCertificates()
-    http.EnableCookies()
-    http.AddCookies(m.top.cookies)
-    http.SetUrl(url)
-    if IsValid(headers)
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
-    end if
-    http.AddHeader("Content-Type", "application/json")
-    http.AddHeader("Accept", "application/json")
-    response=""
-    lastresponsecode = ""
-    lastresponsefailurereason = ""
-    responseheaders = []
-    if http.AsyncPostFromString(json) then
-      event = Wait(30000, http.GetPort())
-        if Type(event) = "roUrlEvent" Then
-          response = parsejson(event.getString().replace("\n","|||||"))
-          if isValid(response)
-            m.top.cookies = http.getCookies("", "/")
-            exit while
-          else
-            sleep(3000)
-            errorcount+=1
-            if errorcount > 5
-              exit while
-            end if
-          end if
-        else if event = invalid then
-          http.asynccancel()
-        Else
-            ? "[LBRY_HTTP] AsyncPostFromString unknown event"
-      end if
-    end if
-  end while
-  if errorcount > 5
-    STOP 'debug
+  http = httpPreSetup(url)
+  if IsValid(headers)
+    http.SetHeaders(headers) 'in some cases, this is actually needed!
   end if
+  http.AddHeader("Content-Type", "application/json")
+  http.AddHeader("Accept", "application/json")
+  response=""
+  if http.AsyncPostFromString(json) then
+    event = Wait(5000, http.GetPort())
+      if Type(event) = "roUrlEvent" Then
+        responseCode = event.GetResponseCode()
+        if responseCode <= 299 AND responseCode >= 200
+          m.top.cookies = http.getCookies("", "/")
+          response = parsejson(event.getString().replace("\n","|||||"))
+        end if
+        if responseCode <= 399 AND responseCode >= 300
+          headers = event.GetResponseHeaders()
+          redirect = headers.location
+          return postJSON(json, redirect, headers)
+        end if
+        if responseCode <= 499 AND responseCode >= 400
+          STOP 'debug
+        end if
+        if responseCode <= 599 AND responseCode >= 500
+          return postJSON(json, url, headers)
+        end if
+      else if event = invalid then
+        http.asynccancel()
+        return postJSON(json, url, headers)
+      Else
+          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
+    end if
+  end if
+  cleanup()
   return response
 end function
 
 function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: {header: headerdata}
-  response = {}
-  errorcount = 0
-  http = CreateObject("roUrlTransfer")
-  http.AddHeader("User-Agent", m.global.constants["userAgent"])
-  messagePort = CreateObject("roMessagePort")
-  while true
-    http.RetainBodyOnError(true)
-    http.SetPort(messagePort)
-    http.setCertificatesFile("common:/certs/ca-bundle.crt")
-    http.InitClientCertificates()
-    http.EnableCookies()
-    http.AddCookies(m.top.cookies)
-    http.SetUrl(url)
-    if IsValid(headers)
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
-    end if
-    http.AddHeader("Content-Type", "application/json")
-    http.AddHeader("Accept", "application/json")
-    response=""
-    responseheaders = []
-    if http.AsyncPostFromString(json) then
-      event = Wait(30000, http.GetPort())
-        if Type(event) = "roUrlEvent" Then
-          response = event.GetResponseCode()
-          if isValid(response)
-            m.top.cookies = http.getCookies("", "/")
-            exit while
-          else
-            sleep(3000)
-            errorcount+=1
-            if errorcount > 5
-              exit while
-            end if
-          end if
-        else if event = invalid then
-          http.asynccancel()
-        Else
-            ? "[LBRY_HTTP] AsyncPostFromString unknown event"
-      end if
-    end if
-  end while
-  if errorcount > 5
-    STOP 'debug
+  http = httpPreSetup(url)
+  if IsValid(headers)
+    http.SetHeaders(headers) 'in some cases, this is actually needed!
   end if
-  return response
+  http.AddHeader("Content-Type", "application/json")
+  http.AddHeader("Accept", "application/json")
+  if http.AsyncPostFromString(json) then
+    event = Wait(5000, http.GetPort())
+    if Type(event) = "roUrlEvent" Then
+      responseCode = event.GetResponseCode()
+    else if event = invalid then
+      http.asynccancel()
+      return postJSONResponseOut(json, url, headers)
+      Else
+          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
+    end if
+  end if
+  cleanup()
+  return responseCode
 end function
 
 function postURLEncoded(data, url, headers) as Object
-  response = {}
-  http = CreateObject("roUrlTransfer")
-  http.AddHeader("User-Agent", m.global.constants["userAgent"])
-  errorcount = 0
-  messagePort = CreateObject("roMessagePort")
-  while true
-    http.RetainBodyOnError(true)
-    http.SetPort(messagePort)
-    http.setCertificatesFile("common:/certs/ca-bundle.crt")
-    http.InitClientCertificates()
-    http.EnableCookies()
-    http.AddCookies(m.top.cookies)
-    http.SetUrl(url+urlencode(data))
-    if IsValid(headers)
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
-    end if
-    http.AddHeader("Accept", "application/json")
-    response=""
-    lastresponsecode = ""
-    lastresponsefailurereason = ""
-    responseheaders = []
-    if http.AsyncPostFromString("") then
-      event = Wait(30000, http.GetPort())
-        if Type(event) = "roUrlEvent" Then
-          response = parsejson(event.getString().replace("\n","|||||"))
-          if isValid(response)
-            m.top.cookies = http.getCookies("", "/")
-            exit while
-          else
-            sleep(3000)
-            errorcount+=1
-            if errorcount > 5
-              exit while
-            end if
-          end if
-        else if event = invalid then
-          http.asynccancel()
-        Else
-            ? "[LBRY_HTTP] AsyncPostFromString unknown event"
-      end if
-    end if
-  end while
-  if errorcount > 5
-    STOP 'debug
+  http = httpPreSetup(url)
+  if IsValid(headers)
+    http.SetHeaders(headers) 'in some cases, this is actually needed!
   end if
+  http.AddHeader("Accept", "application/json")
+  response=""
+  lastresponsecode = ""
+  lastresponsefailurereason = ""
+  responseheaders = []
+  if http.AsyncPostFromString("") then
+    event = Wait(5000, http.GetPort())
+      if Type(event) = "roUrlEvent" Then
+        responseCode = event.GetResponseCode()
+        if responseCode <= 299 AND responseCode >= 200
+          m.top.cookies = http.getCookies("", "/")
+          response = parsejson(event.getString().replace("\n","|||||"))
+        end if
+        if responseCode <= 399 AND responseCode >= 300
+          headers = event.GetResponseHeaders()
+          redirect = headers.location
+          return postURLEncoded(json, redirect, headers)
+        end if
+        if responseCode <= 499 AND responseCode >= 400
+          STOP 'debug
+        end if
+        if responseCode <= 599 AND responseCode >= 500
+          return postURLEncoded(json, url, headers)
+        end if
+      else if event = invalid then
+        http.asynccancel()
+      Else
+          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
+    end if
+  end if
+cleanup()
 return response
 end function
 
 function getURLEncoded(data, url, headers) as Object
-  response = {}
-  http = CreateObject("roUrlTransfer")
-  http.AddHeader("User-Agent", m.global.constants["userAgent"])
-  errorcount = 0
-  messagePort = CreateObject("roMessagePort")
-  while true
-    http.RetainBodyOnError(true)
-    http.SetPort(messagePort)
-    http.setCertificatesFile("common:/certs/ca-bundle.crt")
-    http.InitClientCertificates()
-    http.EnableCookies()
-    http.AddCookies(m.top.cookies)
-    http.SetUrl(url+urlencode(data)) '.replace("claimtype", "claimType").replace("mediatype", "mediaType")
-    http.AddHeader("Accept", "application/json")
-    response=""
+    currenturl = url+urlencode(data)
+    ? currenturl
+    http = httpPreSetup(currenturl)
     if http.AsyncGetToString() then
-      event = Wait(30000, http.GetPort())
+      event = Wait(5000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
-          response = parsejson(event.getString().replace("\n","|||||"))
-          if isValid(response)
+          responseCode = event.GetResponseCode()
+          if responseCode <= 299 AND responseCode >= 200
             m.top.cookies = http.getCookies("", "/")
-            exit while
-          else
-            sleep(3000)
-            errorcount+=1
-            if errorcount > 5
-              exit while
-            end if
+            response = parsejson(event.getString().replace("\n","|||||"))
+          end if
+          if responseCode <= 399 AND responseCode >= 300
+            headers = event.GetResponseHeaders()
+            redirect = headers.location
+            return getURLEncoded(data, redirect, headers)
+          end if
+          if responseCode <= 499 AND responseCode >= 400 'todo: fix cookies
+            m.top.cookies = http.getCookies("", "/")
+            response = parsejson(event.getString().replace("\n","|||||"))
+          end if
+          if responseCode <= 599 AND responseCode >= 500
+            return getURLEncoded(data, url, headers)
           end if
         else if event = invalid then
           http.asynccancel()
@@ -181,10 +127,7 @@ function getURLEncoded(data, url, headers) as Object
           ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
-  end while
-  if errorcount > 5
-    STOP 'debug
-  end if
+  cleanup()
   return response
 end function
 
@@ -204,33 +147,25 @@ function urlencode(data)
 end function
 
 function getJSON(url) as Object
-  errorcount = 0
-  while true
-    http = CreateObject("roUrlTransfer")
-    http.AddHeader("User-Agent", m.global.constants["userAgent"])
-    messagePort = CreateObject("roMessagePort")
-    http.RetainBodyOnError(true)
-    http.SetPort(messagePort)
-    http.setCertificatesFile("common:/certs/ca-bundle.crt")
-    http.InitClientCertificates()
-    http.EnableCookies()
-    http.AddCookies(m.top.cookies)
-    http.SetUrl(url)
-    response=""
+    http = httpPreSetup(url)
     if http.AsyncGetToString() then
-      event = Wait(30000, http.GetPort())
+      event = Wait(5000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
-          response = event.getString()
-          if isValid(response)
+          responseCode = event.GetResponseCode()
+          if responseCode <= 299 AND responseCode >= 200
             m.top.cookies = http.getCookies("", "/")
-            exit while
-          else
-            sleep(3000)
-            ? "[GetJSON] Attempting to load endpoint again."
-            errorcount+=1
-            if errorcount > 5
-              exit while
-            end if
+            response = parsejson(event.getString().replace("\n","|||||"))
+          end if
+          if responseCode <= 399 AND responseCode >= 300
+            headers = event.GetResponseHeaders()
+            redirect = headers.location
+            return getJSON(redirect)
+          end if
+          if responseCode <= 499 AND responseCode >= 400
+            STOP 'debug
+          end if
+          if responseCode <= 599 AND responseCode >= 500
+            return getJSON(url)
           end if
         else if event = invalid then
           http.asynccancel()
@@ -238,40 +173,30 @@ function getJSON(url) as Object
           ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
-  end while
-  if errorcount > 5
-    STOP
-  end if
-  return parsejson(response.replace("\n", Chr(10))) 'workaround for Roku not correctly parsing newline.
+  cleanup()
+  return response
 end function
 
 function getRawText(url) as Object
-  errorcount = 0
-  while true
-    http = CreateObject("roUrlTransfer")
-    http.AddHeader("User-Agent", m.global.constants["userAgent"])
-    messagePort = CreateObject("roMessagePort")
-    http.RetainBodyOnError(true)
-    http.SetPort(messagePort)
-    http.setCertificatesFile("common:/certs/ca-bundle.crt")
-    http.InitClientCertificates()
-    http.EnableCookies()
-    http.AddCookies(m.top.cookies)
-    http.SetUrl(url)
-    response=""
+    http = httpPreSetup(url)
     if http.AsyncGetToString() then
-      event = Wait(30000, http.GetPort())
+      event = Wait(5000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
-          response = event.getString()
-          if isValid(response)
+          responseCode = event.GetResponseCode()
+          if responseCode <= 299 AND responseCode >= 200
             m.top.cookies = http.getCookies("", "/")
-            exit while
-          else
-            sleep(3000)
-            errorcount+=1
-            if errorcount > 5
-              exit while
-            end if
+            response = event.getString()
+          end if
+          if responseCode <= 399 AND responseCode >= 300
+            headers = event.GetResponseHeaders()
+            redirect = headers.location
+            return getRawText(redirect)
+          end if
+          if responseCode <= 499 AND responseCode >= 400
+            STOP 'debug
+          end if
+          if responseCode <= 599 AND responseCode >= 500
+            return getRawText(url)
           end if
         else if event = invalid then
           http.asynccancel()
@@ -279,10 +204,7 @@ function getRawText(url) as Object
           ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
-  end while
-  if errorcount > 5
-    STOP 'debug
-  end if
+  cleanup()
   return response
 end function
 
@@ -312,31 +234,25 @@ if instr(url, m.top.constants["VIDEO_API"]) > 0
   ? cleanvurlarray
   url = m.top.constants["VIDEO_API"]+"/api/v4/streams/free/"+cleanvurlarray.Join("/")
 end if
-http = CreateObject("roUrlTransfer")
-http.AddHeader("User-Agent", m.global.constants["userAgent"])
-messagePort = CreateObject("roMessagePort")
-http.RetainBodyOnError(true)
-http.SetPort(messagePort)
-http.setCertificatesFile("common:/certs/ca-bundle.crt")
-http.InitClientCertificates()
-http.EnableCookies()
-http.AddCookies(m.top.cookies)
-http.SetUrl(url)
-response=""
+http = httpPreSetup(url)
 if http.AsyncHead() then
-  event = Wait(30000, http.GetPort())
+  event = Wait(5000, http.GetPort())
     if Type(event) = "roUrlEvent" Then
-      headers = event.GetResponseHeaders()
-      try
-        redirect = headers.location
-        ? "Redirect is: "+redirect
-        m.top.cookies = http.getCookies("", "/")
-        return redirect
-      catch e
-        ? "No Redirect: "+url
-        m.top.cookies = http.getCookies("", "/")
+      responseCode = event.GetResponseCode()
+      if responseCode <= 299 AND responseCode >= 200
         return url
-      end try
+      end if
+      if responseCode <= 399 AND responseCode >= 300
+        headers = event.GetResponseHeaders()
+        redirect = headers.location
+        return redirect
+      end if
+      if responseCode <= 499 AND responseCode >= 400
+        STOP 'debug
+      end if
+      if responseCode <= 599 AND responseCode >= 500
+        return url
+      end if
     else if event = invalid then
       http.asynccancel()
     Else
@@ -344,3 +260,22 @@ if http.AsyncHead() then
   end if
 end if
 End Function
+
+Function httpPreSetup(url)
+    http = CreateObject("roUrlTransfer")
+    http.AddHeader("User-Agent", m.global.constants["userAgent"])
+    messagePort = CreateObject("roMessagePort")
+    http.RetainBodyOnError(true)
+    http.SetPort(messagePort)
+    http.setCertificatesFile("common:/certs/ca-bundle.crt")
+    http.InitClientCertificates()
+    http.SetUrl(url)
+    http.EnableCookies()
+    return http
+End Function
+
+Sub cleanup()
+messagePort = invalid
+http = invalid
+event = invalid
+End Sub

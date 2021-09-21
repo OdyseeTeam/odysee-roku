@@ -1199,17 +1199,29 @@ sub finishInit()
   end if
 end sub
 
-Sub gotUID()
-  SetRegistry("authRegistry","uid", m.authTask.uid.toStr())
+Sub gotUID(msg as Object)
+  uid = msg.getData()
+  m.uid = uid
+  SetRegistry("authRegistry","uid", uid.toStr().Trim())
 End Sub
 
-Sub gotAuth()
-    SetRegistry("authRegistry","authtoken", m.authTask.authtoken)
+Sub gotAuth(msg as Object)
+    auth = msg.getData()
+    m.authToken = auth
+    SetRegistry("authRegistry","authtoken", auth)
 End Sub
 
 sub gotCookies(msg as Object)
     cookies = msg.getData()
-    SetRegistry("authRegistry","cookies", FormatJSON(cookies))
+    if cookies.Count() > 0
+      ? "COOKIE:"
+      ? FormatJson(cookies)
+      ? "COOKIE_END"
+      SetRegistry("authRegistry","cookies", FormatJSON(cookies))
+      m.cookies = cookies
+    else
+      ? "Invalid cookies."
+    end if
 End Sub
 
 Function GetRegistry(registry, key) As Dynamic
