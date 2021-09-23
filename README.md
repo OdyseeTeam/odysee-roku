@@ -41,7 +41,7 @@ For developers, Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-foll
 ## Contributing
 Contributions to this project are welcome, encouraged, and compensated. For more details, see [CONTRIBUTING](https://lbry.tech/contribute).
 
-If you would like to help with this project, [you are welcome to test the latest version before it is published](https://my.roku.com/account/add?channel=odyseeunofficialedge).
+If you would like to help this project, additional testers are needed. Look at [TESTING](TESTING.md) for more information.
 
 > NOTE:
 > Currently, the developer dosen't accept commits yet, because it is in development. You can see it [here.](https://github.com/lbryio/odysee-roku/issues/7)
