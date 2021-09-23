@@ -20,7 +20,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
           return postJSON(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          STOP 'debug
+          return postJSON(json, redirect, headers)
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postJSON(json, url, headers)
@@ -82,7 +82,7 @@ function postURLEncoded(data, url, headers) as Object
           return postURLEncoded(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          STOP 'debug
+          return postURLEncoded(json, redirect, headers)
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postURLEncoded(json, url, headers)
@@ -162,7 +162,7 @@ function getJSON(url) as Object
             return getJSON(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
-            STOP 'debug
+            return getJSON(redirect)
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getJSON(url)
@@ -193,7 +193,7 @@ function getRawText(url) as Object
             return getRawText(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
-            STOP 'debug
+            return getRawText(url)
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getRawText(url)
@@ -248,7 +248,7 @@ if http.AsyncHead() then
         return redirect
       end if
       if responseCode <= 499 AND responseCode >= 400
-        STOP 'debug
+        return url
       end if
       if responseCode <= 599 AND responseCode >= 500
         return url
