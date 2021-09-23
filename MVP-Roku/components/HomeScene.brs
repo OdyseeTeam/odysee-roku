@@ -175,51 +175,21 @@ End Sub
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
     if m.taskRunning = False
-      ? "key", key, "pressed with focus", m.focusedItem
+      ? "key", key, "pressed with focus", m.focusedItem, "with press", press
       ? "current ui layer:", m.uiLayer
       ? "current ui array:"
       ? m.uiLayers
-      if key = "back"  'If the back button is pressed
-        if m.video.visible
-            returnToUIPage()
-            return true
-        else if (m.uiLayer = 0 AND m.focusedItem = 1) OR (m.uiLayer=0 AND m.focusedItem = 2)
-            'TODO: add "are you sure you want to exit Odysee" screen
-            'for now, re-add old behavior
-            return false
-        else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
-          'set focus to selector
-          ErrorDismissed()
-          m.searchKeyboard.setFocus(false)
-          m.searchKeyboardDialog.setFocus(false)
-          m.searchHistoryBox.setFocus(false)
-          m.searchHistoryDialog.setFocus(false)
-          m.categorySelector.setFocus(true)
-          m.focusedItem = 1 '[selector] 
-          return true
-        else if m.uiLayer > 0
-          'go back a UI layer
-          ? "popping layer"
-          if m.uiLayers.Count() > 0
-            m.uiLayers.pop()
-            m.videoGrid.content = m.uiLayers[m.uiLayers.Count()-1]
-            if isValid(m.uiLayers[m.uiLayers.Count()-1])
-              if m.videoGrid.content.getChildren(1,0)[0].getChildren(1,0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
-                downsizeVideoGrid()
-              end if
-            end if
-            m.uiLayer=m.uiLayer-1
-            ? "went back to", m.uiLayer
-          end if
-          if m.categorySelector.itemFocused = 0 AND m.uiLayers.Count() = 0
-            m.uiLayer=0
-            ? "(search) went back to", m.uiLayer
-            backToKeyboard()
-          end if
-          if m.categorySelector.itemFocused <> 0 AND m.uiLayers.Count() = 0 'not search, on category.
+      if press = true
+        if key = "back"  'If the back button is pressed
+          if m.video.visible
+              returnToUIPage()
+              return true
+          else if (m.uiLayer = 0 AND m.focusedItem = 1) OR (m.uiLayer=0 AND m.focusedItem = 2)
+              'TODO: add "are you sure you want to exit Odysee" screen
+              'for now, re-add old behavior
+              return false
+          else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
             'set focus to selector
-            m.uiLayer=0
-            ? "(catsel) went back to", m.uiLayer
             ErrorDismissed()
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(false)
@@ -227,165 +197,196 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.searchHistoryDialog.setFocus(false)
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector] 
-          end if
-          return true
-        else if m.uiLayer = 0
-          'set focus to selector
-          ErrorDismissed()
-          m.searchKeyboard.setFocus(false)
-          m.searchKeyboardDialog.setFocus(false)
-          m.searchHistoryBox.setFocus(false)
-          m.searchHistoryDialog.setFocus(false)
-          m.categorySelector.setFocus(true)
-          m.focusedItem = 1 '[selector] 
-          return true
-        end if
-      end if
-      if key = "options"
-          if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
-            if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) AND m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
-              curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
-              m.channelResolver.setFields({constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
-              m.channelResolver.observeField("output", "gotResolvedChannel")
-              m.channelResolver.control = "RUN"
-              m.taskRunning = True
-              m.videoGrid.setFocus(false)
-            end if
-          end if
-      end if
-      if key = "up"
-          if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
-              m.searchKeyboardDialog.setFocus(false)
-              m.searchKeyboard.setFocus(true)
-              m.searchKeyboardGrid.jumpToItem = 37
-              m.focusedItem = 3 '[search keyboard] 
-          end if
-          if m.focusedItem = 6 '[clear history]  'Clear History -> History
-              if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
-                  m.searchHistoryDialog.setFocus(false)
-                  m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                  m.searchHistoryBox.setFocus(true)
-                  m.focusedItem = 5 '[search history list] 
+            return true
+          else if m.uiLayer > 0
+            'go back a UI layer
+            ? "popping layer"
+            if m.uiLayers.Count() > 0
+              m.uiLayers.pop()
+              m.videoGrid.content = m.uiLayers[m.uiLayers.Count()-1]
+              if isValid(m.uiLayers[m.uiLayers.Count()-1])
+                if m.videoGrid.content.getChildren(1,0)[0].getChildren(1,0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
+                  downsizeVideoGrid()
+                end if
               end if
-          end if
-      end if
-  
-      if key = "down"
-          if m.focusedItem = 3 '[search keyboard] 
+              m.uiLayer=m.uiLayer-1
+              ? "went back to", m.uiLayer
+            end if
+            if m.categorySelector.itemFocused = 0 AND m.uiLayers.Count() = 0
+              m.uiLayer=0
+              ? "(search) went back to", m.uiLayer
+              backToKeyboard()
+            end if
+            if m.categorySelector.itemFocused <> 0 AND m.uiLayers.Count() = 0 'not search, on category.
+              'set focus to selector
+              m.uiLayer=0
+              ? "(catsel) went back to", m.uiLayer
+              ErrorDismissed()
               m.searchKeyboard.setFocus(false)
-              m.searchKeyboardDialog.setFocus(true)
-              m.focusedItem = 4 '[confirm search] 
-          end if
-  
-          if m.focusedItem = 5 '[search history list]  'History -> Clear
+              m.searchKeyboardDialog.setFocus(false)
               m.searchHistoryBox.setFocus(false)
-              m.searchHistoryDialog.setFocus(true)
-              m.focusedItem = 6 '[clear history] 
-          end if
-  
-      end if
-      if key = "left"
-          if m.focusedItem = 2 '[video grid] 
-            if m.categorySelector.itemFocused = 0
-              m.videoGrid.setFocus(false)
-              m.videoGrid.visible = false
-              m.searchHistoryBox.visible = true
-              m.searchHistoryLabel.visible = true
-              m.searchHistoryDialog.visible = true
-              m.searchKeyboard.visible = true
-              m.searchKeyboardDialog.visible = true
-              m.categorySelector.setFocus(true)
-              m.focusedItem = 1 '[selector] 
-            else if m.uiLayer = 0 'check to make sure we are in UI Layer 0, otherwise, don't bother going back.
-              m.videoGrid.setFocus(false)
+              m.searchHistoryDialog.setFocus(false)
               m.categorySelector.setFocus(true)
               m.focusedItem = 1 '[selector] 
             end if
-          end if
-          
-          if m.focusedItem = 3 '[search keyboard]  OR m.focusedItem = 4 '[confirm search]  'Exit (Keyboard/Search Button -> Bar)
-            ErrorDismissed() 'quick fix
-            m.searchKeyboard.setFocus(false)
-            m.searchKeyboardDialog.setFocus(false)
-            m.searchHistoryBox.setFocus(false)
-            m.searchHistoryDialog.setFocus(false)
-            m.categorySelector.jumpToItem = 0
-            m.categorySelector.setFocus(true)
-            m.focusedItem = 1 '[selector] 
-          end if
-          if m.focusedItem = 5 AND m.errorText.visible = false 'History - Keyboard '[search history list]
-              switchRow = m.searchHistoryBox.itemFocused
-              if m.searchHistoryBox.itemFocused > 6
-                  switchRow = 6
-              end if
-              m.searchHistoryBox.setFocus(false)
-              ? "itemArray:", m.searchKeyboardItemArray[switchRow-1]
-              m.searchKeyboard.setFocus(true)
-              m.focusedItem = 3 '[search keyboard] 
-              m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
-              switchRow = invalid
-              m.focusedItem = 3 '[search keyboard] 
-          else if m.focusedItem = 5 AND m.errorText.visible = true '[search history list]  
+            return true
+          else if m.uiLayer = 0
+            'set focus to selector
             ErrorDismissed()
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(false)
             m.searchHistoryBox.setFocus(false)
             m.searchHistoryDialog.setFocus(false)
-            m.categorySelector.jumpToItem = 1
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector] 
+            return true
           end if
-          if m.focusedItem = 6 '[clear history]  'Clear History -> Search
-              m.searchHistoryDialog.setFocus(false)
-              m.searchKeyboardDialog.setFocus(true)
-              m.focusedItem = 4 '[confirm search] 
-          end if
-      end if
-      if key = "right"
-          if m.focusedItem = 1 AND m.categorySelector.itemFocused = 0 '[selector]  
-            m.focusedItem = 3 '[search keyboard] 
-            m.categorySelector.setFocus(false)
-            m.searchKeyboard.setFocus(true)
-            m.focusedItem = 3 '[search keyboard] 
-          else if m.categorySelector.itemFocused <> 0
-            m.categorySelector.setFocus(false)
-            m.videoGrid.setFocus(true)
-            m.focusedItem = 2 '[video grid]
-          end if
-  
-          if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
-              m.searchKeyboardDialog.setFocus(false)
-              m.searchHistoryDialog.setFocus(true)
-              m.focusedItem = 6 '[clear history] 
-          end if
-  
-          if m.focusedItem = 3 '[search keyboard]  'Keyboard -> Search History
-              column = Int(m.searchKeyboardGrid.currFocusColumn)
-              row = Int(m.searchKeyboardGrid.currFocusRow)
-              itemFocused = m.searchKeyboardGrid.itemFocused
-              ? row, column
-              if column = 4 AND row = 6 OR column = 5
-                  if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
-                      if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
-                          m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                      else if row = 6
-                          m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                      else
-                          m.searchHistoryBox.jumpToItem = row
-                      end if
-                      m.searchKeyboard.setFocus(false)
-                      m.searchHistoryBox.setFocus(true)
-                      m.focusedItem = 5 '[search history list] 
-                  end if
+        end if
+        if key = "options"
+            if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
+              if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) AND m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
+                curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
+                m.channelResolver.setFields({constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+                m.channelResolver.observeField("output", "gotResolvedChannel")
+                m.channelResolver.control = "RUN"
+                m.taskRunning = True
+                m.videoGrid.setFocus(false)
               end if
-              column = Invalid 'free memory
-              row = Invalid
-              itemFocused = Invalid
-          end if
+            end if
+        end if
+        if key = "up"
+            if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
+                m.searchKeyboardDialog.setFocus(false)
+                m.searchKeyboard.setFocus(true)
+                m.searchKeyboardGrid.jumpToItem = 37
+                m.focusedItem = 3 '[search keyboard] 
+            end if
+            if m.focusedItem = 6 '[clear history]  'Clear History -> History
+                if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
+                    m.searchHistoryDialog.setFocus(false)
+                    m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                    m.searchHistoryBox.setFocus(true)
+                    m.focusedItem = 5 '[search history list] 
+                end if
+            end if
+        end if
+    
+        if key = "down"
+            if m.focusedItem = 3 '[search keyboard] 
+                m.searchKeyboard.setFocus(false)
+                m.searchKeyboardDialog.setFocus(true)
+                m.focusedItem = 4 '[confirm search] 
+            end if
+    
+            if m.focusedItem = 5 '[search history list]  'History -> Clear
+                m.searchHistoryBox.setFocus(false)
+                m.searchHistoryDialog.setFocus(true)
+                m.focusedItem = 6 '[clear history] 
+            end if
+    
+        end if
+        if key = "left"
+            if m.focusedItem = 2 '[video grid] 
+              if m.categorySelector.itemFocused = 0
+                m.videoGrid.setFocus(false)
+                m.videoGrid.visible = false
+                m.searchHistoryBox.visible = true
+                m.searchHistoryLabel.visible = true
+                m.searchHistoryDialog.visible = true
+                m.searchKeyboard.visible = true
+                m.searchKeyboardDialog.visible = true
+                m.categorySelector.setFocus(true)
+                m.focusedItem = 1 '[selector] 
+              else if m.uiLayer = 0 'check to make sure we are in UI Layer 0, otherwise, don't bother going back.
+                m.videoGrid.setFocus(false)
+                m.categorySelector.setFocus(true)
+                m.focusedItem = 1 '[selector] 
+              end if
+            end if
+            
+            if m.focusedItem = 3 '[search keyboard]  OR m.focusedItem = 4 '[confirm search]  'Exit (Keyboard/Search Button -> Bar)
+              ErrorDismissed() 'quick fix
+              m.searchKeyboard.setFocus(false)
+              m.searchKeyboardDialog.setFocus(false)
+              m.searchHistoryBox.setFocus(false)
+              m.searchHistoryDialog.setFocus(false)
+              m.categorySelector.jumpToItem = 0
+              m.categorySelector.setFocus(true)
+              m.focusedItem = 1 '[selector] 
+            end if
+            if m.focusedItem = 5 AND m.errorText.visible = false 'History - Keyboard '[search history list]
+                switchRow = m.searchHistoryBox.itemFocused
+                if m.searchHistoryBox.itemFocused > 6
+                    switchRow = 6
+                end if
+                m.searchHistoryBox.setFocus(false)
+                ? "itemArray:", m.searchKeyboardItemArray[switchRow-1]
+                m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
+                switchRow = invalid
+                m.focusedItem = 3 '[search keyboard]
+                m.searchKeyboard.setFocus(true)
+            else if m.focusedItem = 5 AND m.errorText.visible = true '[search history list]  
+              ErrorDismissed()
+              m.searchKeyboard.setFocus(false)
+              m.searchKeyboardDialog.setFocus(false)
+              m.searchHistoryBox.setFocus(false)
+              m.searchHistoryDialog.setFocus(false)
+              m.categorySelector.jumpToItem = 1
+              m.categorySelector.setFocus(true)
+              m.focusedItem = 1 '[selector] 
+            end if
+            if m.focusedItem = 6 '[clear history]  'Clear History -> Search
+                m.searchHistoryDialog.setFocus(false)
+                m.searchKeyboardDialog.setFocus(true)
+                m.focusedItem = 4 '[confirm search] 
+            end if
+        end if
+        if key = "right"
+            if m.focusedItem = 1 AND m.categorySelector.itemFocused = 0 '[selector]  
+              m.focusedItem = 3 '[search keyboard] 
+              m.categorySelector.setFocus(false)
+              m.searchKeyboard.setFocus(true)
+              m.focusedItem = 3 '[search keyboard] 
+            else if m.categorySelector.itemFocused <> 0
+              m.categorySelector.setFocus(false)
+              m.videoGrid.setFocus(true)
+              m.focusedItem = 2 '[video grid]
+            end if
+    
+            if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
+                m.searchKeyboardDialog.setFocus(false)
+                m.searchHistoryDialog.setFocus(true)
+                m.focusedItem = 6 '[clear history] 
+            end if
+    
+            if m.focusedItem = 3 '[search keyboard]  'Keyboard -> Search History
+                column = Int(m.searchKeyboardGrid.currFocusColumn)
+                row = Int(m.searchKeyboardGrid.currFocusRow)
+                itemFocused = m.searchKeyboardGrid.itemFocused
+                ? row, column
+                if column = 4 AND row = 6 OR column = 5
+                    if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
+                        if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
+                            m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                        else if row = 6
+                            m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                        else
+                            m.searchHistoryBox.jumpToItem = row
+                        end if
+                        m.searchKeyboard.setFocus(false)
+                        m.searchHistoryBox.setFocus(true)
+                        m.focusedItem = 5 '[search history list] 
+                    end if
+                end if
+                column = Invalid 'free memory
+                row = Invalid
+                itemFocused = Invalid
+            end if
+        end if
+      else
+          ? "task running, denying user input"
+          return true
       end if
-    else
-        ? "task running, denying user input"
-        return true
     end if
 end Function
 
