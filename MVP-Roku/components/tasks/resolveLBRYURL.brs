@@ -28,6 +28,7 @@ Function resolve(lbry_url)
     end if
 
     vresolvedRedirectURL = resolveRedirect(vurl)
+    ? vresolvedRedirectURL
     vresolvedRedirect = vresolvedRedirectURL.split(".")
     vresolvedRedirectLen = vresolvedRedirect.Count()
     if vresolvedRedirect[vresolvedRedirectLen-1] = "m3u8"

@@ -239,8 +239,15 @@ if http.AsyncHead() then
   event = Wait(5000, http.GetPort())
     if Type(event) = "roUrlEvent" Then
       responseCode = event.GetResponseCode()
+      ? responseCode
       if responseCode <= 299 AND responseCode >= 200
-        return url
+        headers = event.GetResponseHeaders()
+        redirect = headers.location
+        if isValid(redirect)
+          return redirect
+        else
+          return url
+        end if
       end if
       if responseCode <= 399 AND responseCode >= 300
         headers = event.GetResponseHeaders()
@@ -248,7 +255,7 @@ if http.AsyncHead() then
         return redirect
       end if
       if responseCode <= 499 AND responseCode >= 400
-        return url
+        STOP
       end if
       if responseCode <= 599 AND responseCode >= 500
         return url
