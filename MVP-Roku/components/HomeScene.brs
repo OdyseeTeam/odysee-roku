@@ -954,7 +954,7 @@ Sub gotConstants()
   m.authTask.observeField("output", "authDone")
   'uid, authtoken, cookies
   m.authTask.observeField("uid", "gotUID")
-  m.authTask.observeField("auth", "gotAuth")
+  m.authTask.observeField("authtoken", "gotAuth")
   m.authTask.observeField("cookies", "gotCookies")
   ? "Constants are done, running auth"
   ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
@@ -1208,8 +1208,10 @@ End Sub
 
 Sub gotAuth(msg as Object)
     auth = msg.getData()
+    ? "[gotAuth] Token should be "+auth
     m.authToken = auth
-    SetRegistry("authRegistry","authtoken", auth)
+    m.authRegistry.write("authtoken", m.authToken)
+    m.authRegistry.flush()
 End Sub
 
 sub gotCookies(msg as Object)
