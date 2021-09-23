@@ -2,7 +2,7 @@
 ### If you would like to help the Unofficial Odysee channel, you can run the [edge version](https://my.roku.com/account/add?channel=odyseeunofficialedge).
 
 ### If you find a bug on Edge:
-1. Pull the latest dev release from Github (devel branch)
+1. Pull the latest dev release from Github ([indev](https://github.com/lbryio/odysee-roku/tree/indev) branch)
 1. Follow the instructions in install.md
 1. If the same bug occurs on devel or is not known, file a bug report:
 
