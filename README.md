@@ -5,7 +5,7 @@
 
 <div align="center">
  <a href="https://odysee.com">
- <img src="https://user-images.githubusercontent.com/24932514/119749488-c489c800-bec9-11eb-9a95-70b8cf212c75.jpg">
+ <img src="https://halitesoftware.com/rokulatest.png">
  </a>
 </div>
 
@@ -40,6 +40,8 @@ For developers, Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-foll
 
 ## Contributing
 Contributions to this project are welcome, encouraged, and compensated. For more details, see [CONTRIBUTING](https://lbry.tech/contribute).
+
+If you would like to help with this project, [you are welcome to test the latest version before it is published](https://my.roku.com/account/add?channel=odyseeunofficialedge).
 
 > NOTE:
 > Currently, the developer dosen't accept commits yet, because it is in development. You can see it [here.](https://github.com/lbryio/odysee-roku/issues/7)
