@@ -7,8 +7,7 @@ sub master()
     'Define variables
     globalAPIConstantsRaw = getRawText(m.global.constants.apiconstantsurl)
     globalLivestreamConstantsRaw = getRawText(m.global.constants.livestreamconstantsurl)
-    globalAPIConstants = {}
-
+    globalAPIConstants = CreateObject("roAssociativeArray")
     'for future reference:
     '{
     '    CHAT_API: "ws://sockety.odysee.com/ws"
@@ -74,7 +73,12 @@ sub master()
     line = invalid
     globalAPIConstantsRaw = invalid
     globalLivestreamConstantsRaw = invalid
-    
+    iprocsplit = invalid
+    iprocargs = invalid
+    dotlen = invalid
+    if globalAPIConstants.Count() < 10
+        m.top.error = true
+    end if
     'Export
     m.top.constants = globalAPIConstants
 End Sub

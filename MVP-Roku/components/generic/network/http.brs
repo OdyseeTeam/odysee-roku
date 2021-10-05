@@ -20,7 +20,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
           return postJSON(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          return postJSON(json, url, headers)
+          return {error: True}
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postJSON(json, url, headers)
@@ -82,8 +82,7 @@ function postURLEncoded(data, url, headers) as Object
           return postURLEncoded(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          m.top.cookies = http.getCookies("", "/")
-          response = parsejson(event.getString().replace("\n","|||||"))
+          return {error: True}
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postURLEncoded(json, url, headers)
@@ -131,8 +130,7 @@ function getURLEncoded(data, url, headers) as Object
             return getURLEncoded(data, redirect, headers)
           end if
           if responseCode <= 499 AND responseCode >= 400 'todo: fix cookies
-            m.top.cookies = http.getCookies("", "/")
-            response = parsejson(event.getString().replace("\n","|||||"))
+            return {error: True}
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getURLEncoded(data, url, headers)
@@ -178,7 +176,7 @@ function getJSON(url) as Object
             return getJSON(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
-            return getJSON(url)
+            return {error: True}
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getJSON(url)
@@ -209,7 +207,7 @@ function getRawText(url) as Object
             return getRawText(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
-            return getRawText(url)
+            return "{error: True}"
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getRawText(url)
@@ -269,7 +267,7 @@ if http.AsyncHead() then
         return redirect
       end if
       if responseCode <= 499 AND responseCode >= 400
-        STOP
+        return url
       end if
       if responseCode <= 599 AND responseCode >= 500
         return url

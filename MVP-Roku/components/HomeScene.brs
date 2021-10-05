@@ -64,8 +64,8 @@ Sub init()
     '=========Warnings=========
     m.DeviceInfo=createObject("roDeviceInfo")
     m.ModelNumber = m.DeviceInfo.GetModel()
-    m.maxThumbHeight=180
-    m.maxThumbWidth=320
+    m.maxThumbHeight=220
+    m.maxThumbWidth=390
 
   if m.ModelNumber = "2710X" OR m.ModelNumber = "2720X" OR m.ModelNumber = "3700X" OR m.ModelNumber = "3710X" OR m.ModelNumber = "5000X"
       m.errorSubtext.text = "Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur."
@@ -492,6 +492,22 @@ sub Error(title, error)
   m.errorSubtext.visible = true
   m.errorButton.visible = true
   m.errorButton.observeField("buttonSelected", "ErrorDismissed")
+  m.errorButton.setFocus(true)
+end sub
+
+sub retryError(title, error, action)
+  m.searchKeyboard.visible = False
+  m.searchHistoryDialog.visible = False
+  m.searchKeyboardDialog.visible = false
+  m.searchHistoryLabel.visible = false
+  m.searchHistoryBox.visible = False
+  m.loadingText.visible = False
+  m.errorText.text = title
+  m.errorSubtext.text = error
+  m.errorText.visible = true
+  m.errorSubtext.visible = true
+  m.errorButton.visible = true
+  m.errorButton.observeField("buttonSelected", action)
   m.errorButton.setFocus(true)
 end sub
 
@@ -949,16 +965,29 @@ Sub gotConstants()
   ? m.constantsTask.constants
   m.constantsTask.unobserveField("constants")
   m.constantsTask.control = "STOP"
-  m.constants = m.constantsTask.constants
-  m.authTask.setFields({constants: m.constants})
-  m.authTask.observeField("output", "authDone")
-  'uid, authtoken, cookies
-  m.authTask.observeField("uid", "gotUID")
-  m.authTask.observeField("authtoken", "gotAuth")
-  m.authTask.observeField("cookies", "gotCookies")
-  ? "Constants are done, running auth"
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
-  m.authTask.control = "RUN"
+  if m.constantsTask.error
+    retryError("Error getting constants from Github", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryConstants")
+  else
+    m.constants = m.constantsTask.constants
+    m.authTask.setFields({constants: m.constants})
+    m.authTask.observeField("output", "authDone")
+    'uid, authtoken, cookies
+    m.authTask.observeField("uid", "gotUID")
+    m.authTask.observeField("authtoken", "gotAuth")
+    m.authTask.observeField("cookies", "gotCookies")
+    ? "Constants are done, running auth"
+    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    m.authTask.control = "RUN"
+  end if
+End Sub
+
+Sub retryConstants()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.constantsTask.observeField("constants", "gotConstants")
+  m.constantsTask.control = "RUN"
 End Sub
 
 Sub authDone()
@@ -1222,8 +1251,6 @@ sub gotCookies(msg as Object)
       ? "COOKIE_END"
       SetRegistry("authRegistry","cookies", FormatJSON(cookies))
       m.cookies = cookies
-    else
-      ? "Invalid cookies."
     end if
 End Sub
 

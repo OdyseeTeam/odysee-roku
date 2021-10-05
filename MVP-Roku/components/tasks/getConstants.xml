@@ -4,6 +4,7 @@
     <interface>
             <field id="constants" type="assocarray"/>
             <field id="cookies" type="roArray"/>
+            <field id="error" type="bool"/> <!--is in error state-->
     </interface>
     <script type="text/brightscript" uri="pkg:/components/tasks/getConstants.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
