@@ -43,7 +43,6 @@ Function ChannelsToVideoGrid(channels)
         item.Creator = items[i].signing_channel.name
         item.Description = ""
         item.Channel = items[i].signing_channel.claim_id
-        item.lbc = items[i].meta.effective_amount+" LBC"
         time = CreateObject("roDateTime")
         try
             time.FromSeconds(items[i].meta.creation_timestamp)
@@ -75,7 +74,7 @@ Function ChannelsToVideoGrid(channels)
                 currow = createObject("RoSGNode","ContentNode")
             end if
             curitem = createObject("RoSGNode","ContentNode")
-            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: ""})
+            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: ""})
             curitem.setFields(item)
             currow.appendChild(curitem)
             if i = items.Count()-1 'misalignment fix, will need to implement this better later.
@@ -88,7 +87,7 @@ Function ChannelsToVideoGrid(channels)
             currow = invalid
             currow = createObject("RoSGNode","ContentNode")
             curitem = createObject("RoSGNode","ContentNode")
-            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: ""})
+            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: ""})
             curitem.setFields(item)
             currow.appendChild(curitem)
             counter = 1

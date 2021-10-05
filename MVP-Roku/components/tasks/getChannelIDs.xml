@@ -3,6 +3,7 @@
 <component name="getChannelIDs" extends="Task">
     <interface>
             <field id="channelids" type="assocarray"/>
+            <field id="error" type="bool"/>
             <field id="categoryselectordata" type="node"/>
             <field id="cookies" type="roArray"/>
     </interface>

@@ -1142,37 +1142,50 @@ end function
 'Registry+Utility Functions
 
 Sub gotCIDS()
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
-  m.channelIDs = m.cidsTask.channelids
-  m.categorySelectordata = m.cidsTask.categoryselectordata
-  ? m.channelIDs
-  ? "Got channelIDs+category selector data"
-  m.cidsTask.unObserveField("channelids")
+  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+  m.cidsTask.control = "STOP"
+  m.cidsTask.unobserveField("channelids")
+  if m.cidsTask.error
+    retryError("Error getting frontpage channel IDs", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryCIDS")
+  else
+    m.channelIDs = m.cidsTask.channelids
+    m.categorySelectordata = m.cidsTask.categoryselectordata
+    ? m.channelIDs
+    ? "Got channelIDs+category selector data"
+    ? "Creating threads"
+    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    for each category in m.channelIDs 'create categories for selector
+      catData = m.channelIDs[category]
+      thread = CreateObject("roSGNode", "getSinglePage")
+      thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+      thread.observeField("output", "threadDone")
+      m.threads.push(thread)
+      catData = invalid 'save memory
+    end for
+    ? "Done, starting threader."
+    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    m.categorySelector.content = m.categorySelectordata
+    ? m.categorySelectordata
+    ? m.categorySelector.content
+    for runvar = 0 to m.maxThreads-1
+      m.runningthreads.Push(m.threads[runvar])
+      m.threads.delete(runvar)
+    end for
+    for each thread in m.runningthreads
+      thread.control = "RUN" 'start threading
+    end for
+    ? "Threader started."
+    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+  end if
+End Sub
 
-  ? "Creating threads"
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
-  for each category in m.channelIDs 'create categories for selector
-    catData = m.channelIDs[category]
-    thread = CreateObject("roSGNode", "getSinglePage")
-    thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
-    thread.observeField("output", "threadDone")
-    m.threads.push(thread)
-    catData = invalid 'save memory
-  end for
-  ? "Done, starting threader."
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
-  m.categorySelector.content = m.categorySelectordata
-  ? m.categorySelectordata
-  ? m.categorySelector.content
-  for runvar = 0 to m.maxThreads-1
-    m.runningthreads.Push(m.threads[runvar])
-    m.threads.delete(runvar)
-  end for
-  for each thread in m.runningthreads
-    thread.control = "RUN" 'start threading
-  end for
-  ? "Threader started."
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+Sub retryCIDS()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.cidsTask.observeField("channelids", "gotCIDS")
+  m.cidsTask.control = "RUN"
 End Sub
 
 Sub threadDone(msg as Object)
