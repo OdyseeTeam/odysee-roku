@@ -20,7 +20,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
           return postJSON(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          return postJSON(json, redirect, headers)
+          return postJSON(json, url, headers)
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postJSON(json, url, headers)
@@ -68,7 +68,7 @@ function postURLEncoded(data, url, headers) as Object
   lastresponsecode = ""
   lastresponsefailurereason = ""
   responseheaders = []
-  if http.AsyncPostFromString("") then
+  if http.AsyncPostFromString(posturlencode(data)) then
     event = Wait(5000, http.GetPort())
       if Type(event) = "roUrlEvent" Then
         responseCode = event.GetResponseCode()
@@ -82,7 +82,8 @@ function postURLEncoded(data, url, headers) as Object
           return postURLEncoded(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          return postURLEncoded(json, redirect, headers)
+          m.top.cookies = http.getCookies("", "/")
+          response = parsejson(event.getString().replace("\n","|||||"))
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postURLEncoded(json, url, headers)
@@ -95,6 +96,21 @@ function postURLEncoded(data, url, headers) as Object
   end if
 cleanup()
 return response
+end function
+
+function posturlencode(data)
+  encoded = ""
+  beginning = True
+  for each subitem in data
+    if beginning
+      encoded+=subitem+"="+(data[subitem].EncodeUriComponent())
+      beginning = False
+    else
+      encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
+    end if
+  end for
+  ? encoded 'debug
+  return encoded
 end function
 
 function getURLEncoded(data, url, headers) as Object
@@ -162,7 +178,7 @@ function getJSON(url) as Object
             return getJSON(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
-            return getJSON(redirect)
+            return getJSON(url)
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getJSON(url)
