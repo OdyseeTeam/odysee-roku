@@ -20,12 +20,17 @@ sub master()
     else
         ? "FAILURE!"
             newUserData = parseJSON(getRawText(new))
-            m.top.uid = newUserData.data.id
-            m.top.authtoken = newUserData.data.auth_token
             currentUserStatus = getURLEncoded({auth_token: newUserData.data.auth_token.Trim()}, existing, [])
             if currentUserStatus.success = false
-                STOP
+                m.top.error = true
+            else
+                m.top.uid = newUserData.data.id
+                m.top.authtoken = newUserData.data.auth_token
             end if
     end if
-    m.top.output = {result: {uid: m.top.uid, authtoken: m.top.authtoken}} 'checkAccount()
+    if m.top.error
+        m.top.output = {result: {error: true}}
+    else
+        m.top.output = {result: {uid: m.top.uid, authtoken: m.top.authtoken}} 'checkAccount()
+    end if
 End Sub

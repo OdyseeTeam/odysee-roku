@@ -993,32 +993,45 @@ End Sub
 Sub authDone()
   m.authTask.control = "STOP"
   m.authTask.unobserveField("output")
-  ? m.authTask.output
-  m.uid = m.authTask.uid
-  m.authtoken = m.authTask.authtoken
-  m.cookies = m.authTask.cookies
-  ? "AUTH IS DONE!"
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-  if m.global.constants.enableStatistics
-    m.rokuInstall.setFields({constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
-    m.rokuInstall.observeField("output", "didInstall")
-    m.rokuInstall.control = "RUN"
+  if m.authTask.error
+    retryError("Error authenticating with Odysee", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryAuth")
+  else
+    ? m.authTask.output
+    m.uid = m.authTask.uid
+    m.authtoken = m.authTask.authtoken
+    m.cookies = m.authTask.cookies
+    ? "AUTH IS DONE!"
+    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    if m.global.constants.enableStatistics
+      m.rokuInstall.setFields({constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
+      m.rokuInstall.observeField("output", "didInstall")
+      m.rokuInstall.control = "RUN"
+    end if
+    m.authenticated = True
+    m.video.EnableCookies()
+    m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
+    m.video.AddHeader("origin","https://bitwave.tv")
+    m.video.AddHeader("referer","https://bitwave.tv/")
+    m.video.AddHeader(":authority","https://cdn.odysee.live")
+    m.video.AddHeader("Access-Control-Allow-Origin","https://odysee.com/")
+    m.video.AddHeader(":method", "GET")
+    m.video.AddHeader(":path", "")
+    m.video.AddCookies(m.cookies)
+    'm.getSinglePageTask = createObject("roSGNode", "getSinglePage")
+    'm.getSinglePageTask.setFields({uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, constants: m.constants, channels: ["ae12172e991e675ed842a0a4412245d8ee1eb398"], rawname: "@SaltyCracker"})
+    'm.getSinglePageTask.observeField("output", "gotPage")
+    'm.getSinglePageTask.control = "RUN"
+    m.cidsTask.control = "RUN"
   end if
-  m.authenticated = True
-  m.video.EnableCookies()
-  m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
-  m.video.AddHeader("origin","https://bitwave.tv")
-  m.video.AddHeader("referer","https://bitwave.tv/")
-  m.video.AddHeader(":authority","https://cdn.odysee.live")
-  m.video.AddHeader("Access-Control-Allow-Origin","https://odysee.com/")
-  m.video.AddHeader(":method", "GET")
-  m.video.AddHeader(":path", "")
-  m.video.AddCookies(m.cookies)
-  'm.getSinglePageTask = createObject("roSGNode", "getSinglePage")
-  'm.getSinglePageTask.setFields({uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, constants: m.constants, channels: ["ae12172e991e675ed842a0a4412245d8ee1eb398"], rawname: "@SaltyCracker"})
-  'm.getSinglePageTask.observeField("output", "gotPage")
-  'm.getSinglePageTask.control = "RUN"
-  m.cidsTask.control = "RUN"
+End Sub
+
+Sub retryAuth()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.authTask.observeField("output", "authDone")
+  m.authTask.control = "RUN"
 End Sub
 
 sub didInstall(msg as Object)
