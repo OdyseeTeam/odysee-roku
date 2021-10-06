@@ -54,7 +54,7 @@ function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: 
       responseCode = event.GetResponseCode()
     else if event = invalid then
       http.asynccancel()
-      return postJSONResponseOut(json, url, headers)
+      return 500
       Else
           ? "[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
