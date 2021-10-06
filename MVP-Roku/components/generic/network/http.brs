@@ -20,7 +20,12 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
           return postJSON(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          return {error: True}
+          try
+            m.top.cookies = http.getCookies("", "/")
+            response = parsejson(event.getString().replace("\n","|||||"))
+          catch e
+            return {success: False}
+          end try
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postJSON(json, url, headers)
@@ -82,7 +87,12 @@ function postURLEncoded(data, url, headers) as Object
           return postURLEncoded(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
-          return {error: True}
+          try
+            m.top.cookies = http.getCookies("", "/")
+            response = parsejson(event.getString().replace("\n","|||||"))
+          catch e
+            return {success: False}
+          end try
         end if
         if responseCode <= 599 AND responseCode >= 500
           return postURLEncoded(json, url, headers)
@@ -130,7 +140,12 @@ function getURLEncoded(data, url, headers) as Object
             return getURLEncoded(data, redirect, headers)
           end if
           if responseCode <= 499 AND responseCode >= 400 'todo: fix cookies
-            return {error: True}
+            try
+              m.top.cookies = http.getCookies("", "/")
+              response = parsejson(event.getString().replace("\n","|||||"))
+            catch e
+              return {success: False}
+            end try
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getURLEncoded(data, url, headers)
@@ -176,7 +191,12 @@ function getJSON(url) as Object
             return getJSON(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
-            return {error: True}
+            try
+              m.top.cookies = http.getCookies("", "/")
+              response = parsejson(event.getString().replace("\n","|||||"))
+            catch e
+              return {success: False}
+            end try
           end if
           if responseCode <= 599 AND responseCode >= 500
             return getJSON(url)
