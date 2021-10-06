@@ -13,6 +13,8 @@
             <field id="cookies" type="roArray"/>
             <!--Universal Output-->
             <field id="output" type="assocarray"/>
+            <field id="error" type="bool"/>
+            <field id="numerrors" type="int"/>
     </interface>
     <script type="text/brightscript" uri="pkg:/components/tasks/getSinglePage.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />

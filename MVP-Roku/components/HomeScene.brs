@@ -102,7 +102,6 @@ Sub init()
   m.chatHistory = createObject("roSGNode", "getChatHistory")
   m.InputTask=createObject("roSgNode","inputTask")
   m.InputTask.observefield("inputData","handleInputEvent")
-  m.InputTask.control="RUN"
 
   'forgot that cookies should be universal throughout application
   m.urlResolver.observeField("cookies", "gotCookies")
@@ -1191,47 +1190,73 @@ End Sub
 Sub threadDone(msg as Object)
 if type(msg) = "roSGNodeEvent"
   thread = msg.getRoSGNode()
-  m.mediaIndex.append(thread.output.index)
-  ? thread.rawname
-  m.categories.addReplace(thread.rawname, thread.output.content)
-  thread.unObserveField("output")
-  thread.control = "STOP"
-  todelete = []
-  for threadindex = 0 to m.runningthreads.Count()
-    if IsValid(m.runningthreads[threadindex])
-      if m.runningthreads[threadindex].control = "stop"
-        todelete.push(threadindex)
-      end if
-    end if
-  end for
-  for each delthread in todelete
-    m.runningthreads.delete(delthread)
-  end for
-  if m.threads.count() > 0
-    thread = m.threads.Pop()
-    thread.control = "RUN"
-    m.runningthreads.Push(thread)
-  else
-    ? m.mediaIndex
-    ? m.mediaIndex.Count()
-    ? m.categories
-    ? m.categories[m.categories.Keys()[0]]
-    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-    m.videoGrid.content = m.categories[m.categories.Keys()[0]]
-    m.loadingText.visible = false
-    m.loadingText.translation="[800,0]"
-    m.loadingText.vertAlign="center" 
-    m.loadingText.horizAlign="left"
-    if m.modelWarning
-      modelWarning()
+  if thread.error
+    if thread.errorcount = 2
+      'tried twice (w/likely hundreds of queries), kill it
+      thread.control = "STOP"
+      thread.unObserveField("output")
+      for threadindex = 0 to m.runningthreads.Count()
+        if IsValid(m.runningthreads[threadindex])
+          if m.runningthreads[threadindex].control = "stop"
+            if m.runningthreads[threadindex] = thread
+              todelete.push(threadindex)
+            end if
+          end if
+        end if
+      end for
     else
-      finishInit()
+      'retry: thread is not past limit
+      thread.control = "STOP"
+      thread.control = "RUN"
+    end if
+  else
+    m.mediaIndex.append(thread.output.index)
+    ? thread.rawname
+    m.categories.addReplace(thread.rawname, thread.output.content)
+    thread.unObserveField("output")
+    thread.control = "STOP"
+    todelete = []
+    for threadindex = 0 to m.runningthreads.Count()
+      if IsValid(m.runningthreads[threadindex])
+        if m.runningthreads[threadindex].control = "stop"
+          todelete.push(threadindex)
+        end if
+      end if
+    end for
+    for each delthread in todelete
+      m.runningthreads.delete(delthread)
+    end for
+    if m.threads.count() > 0
+      thread = m.threads.Pop()
+      thread.control = "RUN"
+      m.runningthreads.Push(thread)
+    else
+      ? m.mediaIndex
+      ? m.mediaIndex.Count()
+      ? m.categories
+      ? m.categories[m.categories.Keys()[0]]
+      ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+      m.videoGrid.content = m.categories[m.categories.Keys()[0]]
+      m.loadingText.visible = false
+      m.loadingText.translation="[800,0]"
+      m.loadingText.vertAlign="center" 
+      m.loadingText.horizAlign="left"
+      if m.mediaIndex.Count() > 0
+        if m.modelWarning
+          modelWarning()
+        else
+          finishInit()
+        end if
+      else
+        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryConstants")
+      end if
     end if
   end if
 end if
 End Sub
 
 sub finishInit()
+  m.InputTask.control="RUN" 'run input task, since user input is now needed (UI) 
   ? "init finished."
   m.header.visible = true
   m.sidebarTrim.visible = true

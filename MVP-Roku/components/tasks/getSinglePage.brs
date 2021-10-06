@@ -13,6 +13,7 @@ sub master()
 End Sub
 
 Function ChannelsToVideoGrid(channels)
+try
     queryOutput = "placeholder"
     date = CreateObject("roDateTime")
     max = 48
@@ -101,5 +102,11 @@ Function ChannelsToVideoGrid(channels)
     ? "exported"+Str(content.getChildCount()*4)+" items from Odysee"
 
     '? "manufacturing finished for key: "+subkey
+    m.top.error=false
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
+catch e
+    m.top.error=true
+    m.top.numerrors+=1
+    return {error: true}
+end try
 End Function
