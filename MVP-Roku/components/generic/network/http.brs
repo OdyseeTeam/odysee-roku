@@ -17,6 +17,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
         if responseCode <= 399 AND responseCode >= 300
           headers = event.GetResponseHeaders()
           redirect = headers.location
+          http.asynccancel()
           return postJSON(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
@@ -28,6 +29,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
           end try
         end if
         if responseCode <= 599 AND responseCode >= 500
+          http.asynccancel()
           return postJSON(json, url, headers)
         end if
       else if event = invalid then
@@ -84,6 +86,7 @@ function postURLEncoded(data, url, headers) as Object
         if responseCode <= 399 AND responseCode >= 300
           headers = event.GetResponseHeaders()
           redirect = headers.location
+          http.asynccancel()
           return postURLEncoded(json, redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
@@ -95,10 +98,12 @@ function postURLEncoded(data, url, headers) as Object
           end try
         end if
         if responseCode <= 599 AND responseCode >= 500
+          http.asynccancel()
           return postURLEncoded(json, url, headers)
         end if
       else if event = invalid then
         http.asynccancel()
+        return postURLEncoded(json, url, headers)
       Else
           ? "[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
@@ -137,6 +142,7 @@ function getURLEncoded(data, url, headers) as Object
           if responseCode <= 399 AND responseCode >= 300
             headers = event.GetResponseHeaders()
             redirect = headers.location
+            http.asynccancel()
             return getURLEncoded(data, redirect, headers)
           end if
           if responseCode <= 499 AND responseCode >= 400 'todo: fix cookies
@@ -144,14 +150,17 @@ function getURLEncoded(data, url, headers) as Object
               m.top.cookies = http.getCookies("", "/")
               response = parsejson(event.getString().replace("\n","|||||"))
             catch e
+              http.asynccancel()
               return {success: False}
             end try
           end if
           if responseCode <= 599 AND responseCode >= 500
+            http.asynccancel()
             return getURLEncoded(data, url, headers)
           end if
         else if event = invalid then
           http.asynccancel()
+          return getURLEncoded(data, url, headers)
         Else
           ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
@@ -188,6 +197,7 @@ function getJSON(url) as Object
           if responseCode <= 399 AND responseCode >= 300
             headers = event.GetResponseHeaders()
             redirect = headers.location
+            http.asynccancel()
             return getJSON(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
@@ -199,10 +209,12 @@ function getJSON(url) as Object
             end try
           end if
           if responseCode <= 599 AND responseCode >= 500
+            http.asynccancel()
             return getJSON(url)
           end if
         else if event = invalid then
           http.asynccancel()
+          return getJSON(url)
         Else
           ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
@@ -224,16 +236,19 @@ function getRawText(url) as Object
           if responseCode <= 399 AND responseCode >= 300
             headers = event.GetResponseHeaders()
             redirect = headers.location
+            http.asynccancel()
             return getRawText(redirect)
           end if
           if responseCode <= 499 AND responseCode >= 400
             return "{error: True}"
           end if
           if responseCode <= 599 AND responseCode >= 500
+            http.asynccancel()
             return getRawText(url)
           end if
         else if event = invalid then
           http.asynccancel()
+          return getRawText(url)
         Else
           ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
@@ -294,6 +309,7 @@ if http.AsyncHead() then
       end if
     else if event = invalid then
       http.asynccancel()
+      return url
     Else
       ? "[LBRY_HTTP] AsyncGetToString unknown event"
   end if
