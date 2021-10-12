@@ -14,14 +14,14 @@ End Sub
 
 Function resolve(lbry_url)
     'get base URL
-    getRequestJSON = FormatJson({"jsonrpc":"2.0","method":"get","params":{"uri":lbry_url,"save_file":false},"id":m.top.uid})
+    getRequestJSON = FormatJson({"jsonrpc":"2.0","method":"get","params":{"uri":lbry_url,"save_file":false}})
     getRequestURL = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=get"
     getRequestOutput = postJSON(getRequestJSON,getRequestURL,invalid)
     vurl = getRequestOutput["result"]["streaming_url"]
 
     if m.global.constants.enableStatistics
         'get video length (needed for meta)
-        resolveRequestJSON = FormatJson({"jsonrpc":"2.0","method":"resolve","params":{"urls":[lbry_url],"include_purchase_receipt":false,"include_is_my_output":false},"id":m.top.uid})
+        resolveRequestJSON = FormatJson({"jsonrpc":"2.0","method":"resolve","params":{"urls":[lbry_url],"include_purchase_receipt":false,"include_is_my_output":false}})
         resolveRequestURL = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=resolve"
         resolveRequestOutput = postJSON(resolveRequestJSON,resolveRequestURL,invalid)
         vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]

@@ -30,7 +30,7 @@ Function installRoku()
     userAPI = m.top.constants["ROOT_API"]+"/user/me"
     installAPI = m.top.constants["ROOT_API"]+"/install/new"
     versionAPI = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=version"
-    versionRequestJSON = FormatJson({"jsonrpc":"2.0","method":"version","params":{},"id":m.top.uid})
+    versionRequestJSON = FormatJson({"jsonrpc":"2.0","method":"version","params":{}})
 
     currentexternalVersion = postJSON(versionRequestJSON,versionAPI, invalid)
     try
