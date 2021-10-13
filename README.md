@@ -15,12 +15,8 @@
 
 
 <div align="center">
-  <a href="https://github.com/lbryio/lbry.com/blob/master/LICENSE">
+  <a href="https://github.com/OdyseeTeam/odysee-roku/blob/master/LICENSE">
     <img src="https://img.shields.io/dub/l/vibe-d.svg?style=flat-square"/>
-  </a>
-
-  <a href="https://chat.lbry.com">
-    <img src="https://img.shields.io/discord/362322208485277697.svg?style=flat-square&logo=discord"/>
   </a>
 
   <a href="https://tosdr.org/en/service/2391">
@@ -39,25 +35,25 @@
 For developers, Please see [INSTALL](INSTALL.md) for comprehensive, easy-to-follow instructions on running this project.
 
 ## Contributing
-Contributions to this project are welcome, encouraged, and compensated. For more details, see [CONTRIBUTING](https://lbry.tech/contribute).
+Contributions to this project are welcome and encouraged.
 
 If you would like to help this project, additional testers are needed. Look at [TESTING](TESTING.md) for more information.
 
 > NOTE:
-> Currently, the developer dosen't accept commits yet, because it is in development. You can see it [here.](https://github.com/lbryio/odysee-roku/issues/7)
+> Currently, the developer dosen't accept commits yet, because it is in development. You can see it [here.](https://github.com/OdyseeTeam/odysee-roku/issues/7)
 
 ## License
 This project is licensed under the GNU General Public License Version 3.0. For the full license, see [LICENSE](LICENSE).
 
 ## Security
-We take security seriously. Please contact security@lbry.com regarding any security issues. Our PGP key is [here](https://keybase.io/lbry/key.asc) if you need it.
+We take security seriously. Please contact [the current maintainer of the project](mailto:rokusupport@halitesoftware.com) regarding any security issues. My PGP key is [here](https://halitesoftware.com/s9260.gpg) if you need it.
 
 ## Contact
 The maintainer for this project is [@s9260](https://github.com/s9260).
 
 ## Additional Info and Links
 - [https://odysee.com](https://odysee.com) - The website
-- [Discord Chat](https://chat.lbry.com) - A chat room for Odyseenauts
 - [Email us](mailto:hello@odysee.com) - Odysee Support email
+- [Email dev](mailto:rokusupport@halitesoftware.com) - Roku Support email
 - [Twitter](https://twitter.com/@odysee) - Odysee Twitter page
 ![dev]
