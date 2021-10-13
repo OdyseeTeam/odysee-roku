@@ -61,5 +61,3 @@ The maintainer for this project is [@s9260](https://github.com/s9260).
 - [https://odysee.com](https://odysee.com) - The website
 - [Email us](mailto:hello@odysee.com) - Odysee Support email
 - [Email dev](mailto:rokusupport@halitesoftware.com) - Roku Support email
-- [Twitter](https://twitter.com/@odysee) - Odysee Twitter page
-![dev]
