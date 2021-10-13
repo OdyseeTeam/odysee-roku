@@ -16,7 +16,7 @@
 
 <div align="center">
   <a href="https://github.com/OdyseeTeam/odysee-roku/blob/master/LICENSE">
-    <img src="https://img.shields.io/dub/l/vibe-d.svg?style=flat-square"/>
+    <img src="https://img.shields.io/github/license/OdyseeTeam/odysee-roku"/>
   </a>
 
   <a href="https://tosdr.org/en/service/2391">
@@ -29,6 +29,12 @@
 <div align="center">
   <a href="https://channelstore.roku.com/details/9c8df00ea3b378467cfced954e1aa40e/odysee-unofficial">
    <img src="https://img.shields.io/badge/-Download%20via%20Roku%20Channel%20Store-lightgrey?logo=Roku&color=662d91"/>
+  </a>
+</div>
+
+<div align="center">
+  <a href="https://my.roku.com/account/add?channel=odyseeunofficialedge">
+   <img src="https://img.shields.io/badge/-Download%20Testing/Development%20Version-lightgrey?logo=Roku&color=662d91"/>
   </a>
 </div>
 
