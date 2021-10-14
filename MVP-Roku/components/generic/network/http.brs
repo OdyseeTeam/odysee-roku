@@ -268,15 +268,16 @@ if instr(url, m.top.constants["VIDEO_API"]) > 0
   vurlarray[0] = spliturl[spliturlcount-3]
   vurlarray[1] = spliturl[spliturlcount-2]
   vurlarray[2] = spliturl[spliturlcount-1]
-  vregex = CreateObject("roRegex", "[^a-zA-Z0-9\s]", "")
+  vregex = CreateObject("roRegex", "[^a-zA-Z0-9\-\s]", "")
   for i = 0 to vurlarray.Count()-1
-    cleanurl = vregex.ReplaceAll(vurlarray[i], "")
-    if cleanurl = ""
-      cleanurl = "roku"
-    end if
-    if instr(cleanurl, " ") > 0
-      cleanurl = "roku"
-    end if
+    'cleanurl = vregex.ReplaceAll(vurlarray[i], "")
+    'if cleanurl = ""
+    '  cleanurl = "roku"
+    'end if
+    'if instr(cleanurl, " ") > 0
+    '  cleanurl = "roku"
+    'end if
+    cleanurl = vurlarray[i].EncodeUri()
     cleanvurlarray.push(cleanurl)
   end for
   vregex = invalid

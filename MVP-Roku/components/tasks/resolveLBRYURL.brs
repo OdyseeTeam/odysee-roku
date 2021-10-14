@@ -18,7 +18,6 @@ Function resolve(lbry_url)
     getRequestURL = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=get"
     getRequestOutput = postJSON(getRequestJSON,getRequestURL,invalid)
     vurl = getRequestOutput["result"]["streaming_url"]
-
     if m.global.constants.enableStatistics
         'get video length (needed for meta)
         resolveRequestJSON = FormatJson({"jsonrpc":"2.0","method":"resolve","params":{"urls":[lbry_url],"include_purchase_receipt":false,"include_is_my_output":false}})
