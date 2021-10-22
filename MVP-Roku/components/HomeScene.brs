@@ -95,7 +95,6 @@ Sub init()
   m.categories = {}
   m.authTask = createObject("roSGNode", "authTask")
   m.urlResolver = createObject("roSGNode", "resolveLBRYURL")
-  m.livestreamResolver = createObject("roSGNode", "resolveOdyseeLivestream")
   m.channelResolver = createObject("roSGNode", "getSingleChannel")
   m.videoSearch = createObject("roSGNode", "getVideoSearch")
   m.channelSearch = createObject("roSGNode", "getChannelSearch")
@@ -105,7 +104,6 @@ Sub init()
 
   'forgot that cookies should be universal throughout application
   m.urlResolver.observeField("cookies", "gotCookies")
-  m.livestreamResolver.observeField("cookies", "gotCookies")
   m.channelResolver.observeField("cookies", "gotCookies")
   m.videoSearch.observeField("cookies", "gotCookies")
   m.channelSearch.observeField("cookies", "gotCookies")
@@ -494,6 +492,19 @@ sub Error(title, error)
   m.errorButton.setFocus(true)
 end sub
 
+sub ErrorDismissed()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.searchKeyboard.text = ""
+  if m.searchFailed = true
+    backToKeyboard()
+  else
+    m.videoGrid.visible = True
+  end if
+end sub
+
 sub retryError(title, error, action)
   m.searchKeyboard.visible = False
   m.searchHistoryDialog.visible = False
@@ -510,17 +521,26 @@ sub retryError(title, error, action)
   m.errorButton.setFocus(true)
 end sub
 
-sub ErrorDismissed()
+sub resolveError()
+  m.videoGrid.setFocus(false)
+  m.videoGrid.visible = False
+  m.errorText.text = "Error: Could Not Resolve Claim"
+  m.errorSubtext.text = "Please e-mail rokusupport@halitesoftware.com."
+  m.errorText.visible = true
+  m.errorSubtext.visible = true
+  m.errorButton.visible = true
+  m.errorButton.observeField("buttonSelected", "resolveerrorDismissed")
+  m.errorButton.setFocus(true)
+end sub
+
+sub resolveErrorDismissed()
+  m.errorButton.setFocus(false)
+  m.errorButton.unobserveField("buttonSelected")
   m.errorText.visible = false
   m.errorSubtext.visible = false
   m.errorButton.visible = false
-  m.errorButton.unobserveField("buttonSelected")
-  m.searchKeyboard.text = ""
-  if m.searchFailed = true
-    backToKeyboard()
-  else
-    m.videoGrid.visible = True
-  end if
+  m.videoGrid.visible = True
+  m.videoGrid.setFocus(true)
 end sub
 
 sub cleanupToUIPage() 'more aggressive returnToUIPage, until I recreate the UI loop
@@ -674,14 +694,16 @@ end sub
 sub vstatsChanged() 'if position/duration changes, report if vStats are turned on.
   if m.vStatsTimer.TotalSeconds() > 5
     m.vStatsTimer.Mark()
-    if m.video.playStartInfo.prebuf_dur > 10
-      cache = "miss"
-    else
-      cache = "player"
+    if isValid(m.video.playStartInfo)
+      if m.video.playStartInfo.prebuf_dur > 10
+        cache = "miss"
+      else
+        cache = "player"
+      end if
+      watchmanFields = {constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies,bandwidth:m.video.streamInfo.measuredBitrate,cache:cache,duration:m.urlResolver.output.length,player:m.urlResolver.output.player,position:m.video.position,protocol:m.urlResolver.output.videotype.replace("mp4", "stb"),rebuf_count:0,rebuf_duration:0,url:m.urlResolver.url,uid:m.uid}
+      m.watchman.setFields(watchmanFields)
+      m.watchman.control = "RUN"
     end if
-    watchmanFields = {constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies,bandwidth:m.video.streamInfo.measuredBitrate,cache:cache,duration:m.urlResolver.output.length,player:m.urlResolver.output.player,position:m.video.position,protocol:m.urlResolver.output.videotype.replace("mp4", "stb"),rebuf_count:0,rebuf_duration:0,url:m.urlResolver.url,uid:m.uid}
-    m.watchman.setFields(watchmanFields)
-    m.watchman.control = "RUN"
   end if
 end sub
 
@@ -696,29 +718,36 @@ End Sub
 Sub playResolvedVideo(msg as Object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
-    ? "VPLAYDEBUG:"
-    ? formatJSON(data)
-    m.videoContent.url = data.videourl.Unescape()
-    ? m.videoContent.url
-    m.videoContent.streamFormat = data.videotype
-    m.videoContent.title = data.title 'passthrough title
-    m.videoContent.Live = false
-    m.video.content = m.videoContent
-    m.video.width = 1920
-    m.video.visible = "true"
-    m.video.setFocus(true)
-    m.focusedItem = 7 '[video player/overlay] 
-    m.video.control = "play"
-    if m.global.constants.enableStatistics
-      m.video.observeField("position", "vStatsChanged")
+    if isValid(data.error)
+      m.urlResolver.unobserveField("output")
+      m.urlResolver.control = "STOP"
+      m.taskRunning = False
+      resolveError()
+    else
+      ? "VPLAYDEBUG:"
+      ? formatJSON(data)
+      m.videoContent.url = data.videourl.Unescape()
+      ? m.videoContent.url
+      m.videoContent.streamFormat = data.videotype
+      m.videoContent.title = data.title 'passthrough title
+      m.videoContent.Live = false
+      m.video.content = m.videoContent
+      m.video.width = 1920
+      m.video.visible = "true"
+      m.video.setFocus(true)
+      m.focusedItem = 7 '[video player/overlay] 
+      m.video.control = "play"
+      if m.global.constants.enableStatistics
+        m.video.observeField("position", "vStatsChanged")
+      end if
+      ? m.video.errorStr
+      ? m.video.videoFormat
+      ? m.video
+      m.urlResolver.unobserveField("output")
+      m.urlResolver.control = "STOP"
+      m.taskRunning = False
     end if
-    ? m.video.errorStr
-    ? m.video.videoFormat
-    ? m.video
   end if
-  m.urlResolver.unobserveField("output")
-  m.urlResolver.control = "STOP"
-  m.taskRunning = False
 End Sub
 
 Function onVideoStateChanged(msg as Object)
@@ -896,26 +925,37 @@ end sub
 sub gotResolvedChannel(msg as Object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
-    resetVideoGrid()
-    m.videoSearch.unobserveField("output")
-    m.videoGrid.content = data.content
-    m.channelResolver.control = "STOP"
-    m.taskRunning = False
-    m.focusedItem = 2 '[video grid]
-    if isValid(m.uiLayers[m.uiLayers.Count()-1])
-      previousData = m.uiLayers[m.uiLayers.Count()-1]
-      currentData = data.content
-      previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
-      currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
-      if previousDataChildTitle <> currentDataChildTitle
+    if isValid(data.error)
+      m.channelResolver.control = "STOP"
+      m.taskRunning = false
+      if m.uiLayers.Count() > 0
+        m.videoGrid.content = m.uiLayers[0]
+        resolveError()
+      else
+        failedSearch()
+      end if
+    else
+      resetVideoGrid()
+      m.videoSearch.unobserveField("output")
+      m.videoGrid.content = data.content
+      m.channelResolver.control = "STOP"
+      m.taskRunning = False
+      m.focusedItem = 2 '[video grid]
+      if isValid(m.uiLayers[m.uiLayers.Count()-1])
+        previousData = m.uiLayers[m.uiLayers.Count()-1]
+        currentData = data.content
+        previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        if previousDataChildTitle <> currentDataChildTitle
+          m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
+          m.uiLayer = m.uiLayer+1
+        end if
+      else
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
         m.uiLayer = m.uiLayer+1
       end if
-    else
-      m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-      m.uiLayer = m.uiLayer+1
+      m.videoGrid.setFocus(true)
     end if
-    m.videoGrid.setFocus(true)
   end if
 end sub
 

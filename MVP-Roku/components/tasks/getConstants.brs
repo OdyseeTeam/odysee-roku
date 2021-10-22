@@ -78,6 +78,8 @@ sub master()
     dotlen = invalid
     if globalAPIConstants.Count() < 10
         m.top.error = true
+    else
+        m.top.error = false
     end if
     'Export
     m.top.constants = globalAPIConstants

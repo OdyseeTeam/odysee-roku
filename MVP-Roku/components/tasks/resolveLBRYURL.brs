@@ -13,6 +13,7 @@ sub master()
 End Sub
 
 Function resolve(lbry_url)
+    try
     'get base URL
     getRequestJSON = FormatJson({"jsonrpc":"2.0","method":"get","params":{"uri":lbry_url,"save_file":false}})
     getRequestURL = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=get"
@@ -39,8 +40,14 @@ Function resolve(lbry_url)
         vplayer = "use-p1" 'default to use-p1 since cdn.lbryplayer.xyz is use-p1
     end if
     if m.global.constants.enableStatistics
+        m.top.error = false
         return {videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url} 'returns video+statdata
     else
+        m.top.error = false
         return {videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title} 'stat data is not needed for playback w/o statistics
     end if
+    catch e
+        m.top.error = true
+        return {error: true}
+    end try
 End Function

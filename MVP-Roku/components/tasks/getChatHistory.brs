@@ -27,7 +27,7 @@ Function getChatHistory(channel, channelName, streamClaim)
             exit while
         end if
         if retries > 5
-            STOP
+            return {superChat: [], chat: []}
         end if
     end while
 
@@ -82,7 +82,7 @@ Function getChatHistory(channel, channelName, streamClaim)
             exit while
         end if
         if retries > 5
-            STOP
+            return {superChat: [], chat: []}
         end if
     end while
     'parse chat

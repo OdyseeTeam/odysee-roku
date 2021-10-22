@@ -13,6 +13,7 @@
             <field id="authtoken" type="String"/>
             <field id="cookies" type="roArray"/>
             <!--Universal Output-->
+            <field id="error" type="bool"/>
             <field id="output" type="assocarray"/>
     </interface>
     <script type="text/brightscript" uri="pkg:/components/tasks/resolveLBRYURL.brs" />

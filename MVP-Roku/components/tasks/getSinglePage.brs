@@ -29,7 +29,7 @@ try
             exit while
         end if
         if retries > 5
-            STOP
+            exit while
         end if
     end while
     items = response.result.items

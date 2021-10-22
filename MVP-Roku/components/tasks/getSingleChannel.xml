@@ -14,6 +14,8 @@
             <field id="cookies" type="roArray"/>
             <!--Universal Output-->
             <field id="output" type="assocarray"/>
+            <!--Indicate error to HomeScene-->
+            <field id="error" type="bool"/>
     </interface>
     <script type="text/brightscript" uri="pkg:/components/tasks/getSingleChannel.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />

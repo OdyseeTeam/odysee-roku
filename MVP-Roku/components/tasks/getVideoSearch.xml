@@ -12,6 +12,7 @@
             <field id="cookies" type="roArray"/>
             <!--Universal Output-->
             <field id="output" type="assocarray"/>
+            <field id="error" type="bool"/>
     </interface>
     <script type="text/brightscript" uri="pkg:/components/tasks/getVideoSearch.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />

@@ -49,7 +49,7 @@ Function ClaimsToVideoGrid(claims)
             exit while
         end if
         if retries > 5
-            STOP
+            return false
         end if
     end while
     items = response.result.items
