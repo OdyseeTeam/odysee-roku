@@ -287,6 +287,8 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               if m.categorySelector.itemFocused = 0
                 m.videoGrid.setFocus(false)
                 m.videoGrid.visible = false
+                m.uiLayer = 0
+                m.uiLayers = []
                 m.searchHistoryBox.visible = true
                 m.searchHistoryLabel.visible = true
                 m.searchHistoryDialog.visible = true
