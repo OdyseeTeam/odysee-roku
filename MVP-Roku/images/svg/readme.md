@@ -5,6 +5,6 @@
 3. Hover over an Icon on the sidebar
 4. Go into the tab, find <svg
 5. Copy element
-6. Paste into a text editor and save as .svg named as that icon
+6. Paste into a text editor and save as .svg named as that icon (without spaces, the Roku app removes them)
 7. Manually go into Inkscape for each individual icon. Ctrl+A, Stroke paint to white flat color, and save the icon.
 8. Run convert.sh

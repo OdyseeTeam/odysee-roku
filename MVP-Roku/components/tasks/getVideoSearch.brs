@@ -79,7 +79,7 @@ Function ClaimsToVideoGrid(claims)
         try
             thumbnail = items[i].value.thumbnail.url
         catch e
-            thumbnail = "pkg:/images/frontpage/bad_icon_requires_usage_rights.png"
+            thumbnail = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
         end try
         item.HDPosterURL = thumbnail
         item.thumbnailDimensions = [360, 240]

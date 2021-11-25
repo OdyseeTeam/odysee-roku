@@ -22,16 +22,16 @@ sub master()
         categorySelectordata = CreateObject("roSGNode", "ContentNode")
         'create search icon
         dataItem = categorySelectordata.CreateChild("catselectordata")
-        dataItem.posterUrl = "pkg:/images/frontpage/Search.png"
+        dataItem.posterUrl = "pkg:/images/png/Search.png"
         dataItem.labelText = "Search"
         ? "Creating categories"
         for each category in frontpageCIDS 'create categories for selector
             catData = frontpageCIDS[category]
             dataItem = categorySelectordata.CreateChild("catselectordata")
-            if fileSystem.Exists("pkg:/images/png/"+catData.icon+".png")
-                dataItem.posterUrl = "pkg:/images/png/"+catData.icon+".png"
+            if fileSystem.Exists("pkg:/images/png/"+catData.icon.replace(" ", "")+".png")
+                dataItem.posterUrl = "pkg:/images/png/"+catData.icon.replace(" ", "")+".png"
               else
-                dataItem.posterUrl = "pkg:/images/frontpage/bad_icon_requires_usage_rights.png"
+                dataItem.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
             end if
             dataItem.trueName = category
             dataItem.labelText = catData.label
