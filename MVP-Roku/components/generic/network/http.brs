@@ -257,6 +257,39 @@ function getRawText(url) as Object
   return response
 end function
 
+function urlExists(url) as Object
+  http = httpPreSetup(url)
+  if http.AsyncGetToString() then
+    event = Wait(5000, http.GetPort())
+      if Type(event) = "roUrlEvent" Then
+        responseCode = event.GetResponseCode()
+        if responseCode <= 299 AND responseCode >= 200
+          return true
+        end if
+        if responseCode <= 399 AND responseCode >= 300
+          headers = event.GetResponseHeaders()
+          redirect = headers.location
+          http.asynccancel()
+          return urlExists(redirect)
+        end if
+        if responseCode <= 499 AND responseCode >= 400
+          return false
+        end if
+        if responseCode <= 599 AND responseCode >= 500
+          http.asynccancel()
+          return false
+        end if
+      else if event = invalid then
+        http.asynccancel()
+        return false
+      Else
+        ? "[LBRY_HTTP] AsyncGetToString unknown event"
+    end if
+  end if
+cleanup()
+return response
+end function
+
 Function resolveRedirect(url As String) As String
 url = url.Unescape()
 if instr(url, m.top.constants["VIDEO_API"]) > 0

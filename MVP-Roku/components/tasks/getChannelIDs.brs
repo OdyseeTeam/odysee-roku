@@ -31,7 +31,11 @@ sub master()
             if fileSystem.Exists("pkg:/images/png/"+catData.icon.replace(" ", "")+".png")
                 dataItem.posterUrl = "pkg:/images/png/"+catData.icon.replace(" ", "")+".png"
               else
-                dataItem.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                if urlExists("https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/"+catData.icon.replace(" ", "")+".png")
+                    dataItem.posterUrl = "https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/"+catData.icon.replace(" ", "")+".png"
+                else
+                    dataItem.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                end if
             end if
             dataItem.trueName = category
             dataItem.labelText = catData.label
