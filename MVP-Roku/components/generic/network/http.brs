@@ -287,7 +287,6 @@ function urlExists(url) as Object
     end if
   end if
 cleanup()
-return response
 end function
 
 Function resolveRedirect(url As String) As String
