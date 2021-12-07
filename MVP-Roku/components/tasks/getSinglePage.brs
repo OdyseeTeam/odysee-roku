@@ -9,15 +9,14 @@ sub master()
     '? m.top.authtoken
     '? m.top.channels
     '? m.top.rawname
-    m.top.output = ChannelsToVideoGrid(m.top.channels)
+    m.top.output = ChannelsToVideoGrid(m.top.channels, m.top.blocked)
 end sub
 
 function ChannelsToVideoGrid(channels, blockedChannels)
-
     if isValid(m.top.blocked)
         blockedChannels = m.top.blocked
         for i = 0 to channels.Count() - 1 step 1
-            for blockedchannel in blockedChannels
+            for each blockedchannel in blockedChannels
                 if channels[i] = blockedchannel
                     channels.Delete(i) 'remove blocked channels from query, allowing more room for others
                 end if

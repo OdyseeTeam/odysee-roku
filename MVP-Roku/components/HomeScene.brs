@@ -14,7 +14,7 @@ Sub init()
     m.threads = []
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
-    m.legacyAuthenticated = False 'Has the app passed stage 0 of authentication?
+    m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
     m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
     m.searchFailed = False 'Has a search failed?
     m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
@@ -149,10 +149,10 @@ Sub init()
     m.cookies = ParseJSON(GetRegistry("authRegistry", "cookies"))
     m.authTask.setFields({ uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
   end if
-
   if IsValid(GetRegistry("preferencesRegistry", "loggedIn")) and IsValid(GetRegistry("preferencesRegistry", "preferences")) 'Get user preferences (if they exist)
-    ? "found current account with UID" + GetRegistry("authRegistry", "uid")
-    if GetRegistry("preferenceRegistry", "loggedIn") = "true"
+    ? "found preferences" + GetRegistry("preferencesRegistry", "preferences")
+    ? GetRegistry("preferencesRegistry", "loggedIn")
+    if GetRegistry("preferencesRegistry", "loggedIn") = "true"
       m.wasLoggedIn = true
     else
       m.wasLoggedIn = false
@@ -1101,7 +1101,10 @@ Sub retryConstants()
 End Sub
 
 Sub authDone()
-  m.authTask.control = "STOP"
+  ? "Running authDone"
+  if m.authTask.authPhase = 1
+    m.authTask.control = "STOP"
+  end if
   m.authTask.unobserveField("output")
   if m.authTask.error
     retryError("Error authenticating with Odysee", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryAuth")
@@ -1266,8 +1269,10 @@ Sub gotCIDS()
     blocked = []
     if m.wasLoggedIn AND m.preferences.Count() > 0
       if isValid(m.preferences.blocked)
+        ? "found blocked users"
         if m.preferences.blocked.Count() > 0
           blocked = m.preferences.blocked
+          ? formatJson(blocked)
         end if
       end if
     end if
@@ -1449,12 +1454,12 @@ sub authPhaseChanged(msg as object)
     if data = 10
       ? "Phase 10 (Logging Out)"
       m.wasLoggedIn = false
-      setRegistry("preferenceRegistry", "loggedIn", "false")
+      setRegistry("preferencesRegistry", "loggedIn", "false")
     end if
     if data = 4
       ? "Phase 4 (Fully authenticated)"
       m.wasLoggedIn = true
-      setRegistry("preferenceRegistry", "loggedIn", "true")
+      setRegistry("preferencesRegistry", "loggedIn", "true")
       if m.syncTimerObserved = false
         m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
         m.syncLoop.control = "RUN"
@@ -1480,7 +1485,15 @@ sub authPhaseChanged(msg as object)
         m.syncLoopTimer.unobserveField("fire")
         m.syncTimerObserved = false
       end if
-      authDone()
+      ? m.wasLoggedIn
+      if isValid(m.authTask.output)
+        if m.wasLoggedIn AND m.authTask.output.authenticated = false
+          authDone()
+        end if
+      end if
+      if m.wasLoggedIn = false
+        authDone()
+      end if
       m.authTask.authPhase = 1
       m.authTask.control = "RUN"
       ? "Task Restarted"
@@ -1505,7 +1518,7 @@ end sub
 
 sub gotSync(msg as object)
   data = msg.getData()
-  if data = false
+  if data = false OR m.preferences.Count() = 0 or m.legacyAuthenticated = false
     m.syncLoop.control = "STOP"
     ? "sync loop done."
     getUserPrefs()
@@ -1518,6 +1531,7 @@ end sub
 
 'User Preference related tasks
 sub getUserPrefs()
+  ? "attempting to get user preferences"
   m.getpreferencesTask.setFields({ "accessToken": m.accessToken: uid: m.syncLoop.uid })
   m.getpreferencesTask.observeField("preferences", "gotUserPrefs")
   m.getpreferencesTask.control = "RUN"
@@ -1526,6 +1540,11 @@ end sub
 sub gotUserPrefs()
   m.getpreferencesTask.control = "STOP"
   m.preferences = m.getpreferencesTask.preferences
+  setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
+  ? FormatJson(m.preferences)
+  if m.legacyAuthenticated = false
+    authDone()
+  end if
 end sub
 
 sub getReactions(videoID)
