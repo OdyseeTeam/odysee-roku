@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="getpreferencesTask" extends="Task">
+    <interface>
+            <!--accessToken from authTask-->
+            <field id="accessToken" type="String"/>
+            <!--needed for sync_apply/preference_set-->
+            <field id="oldHash" type="String"/>
+            <field id="newHash" type="String"/>
+            <field id="walletData" type="String"/>
+            <field id="uid" type="int"/>
+            <field id="cookies" type="roArray"/>
+            <!--"Legacy" Auth Scope (still used for all searches/etc)-->
+            <field id="authtoken" type="String"/>
+            <!--Odysee preferences-->
+            <field id="preferences" type="assocArray"/>
+            <!--All queries (will be) based on input constants-->
+            <field id="constants" type="assocarray"/>
+    </interface>
+    <children>
+        <Timer id="syncTimer" repeat="true" duration="5"/>
+    </children>
+    <script type="text/brightscript" uri="pkg:/components/tasks/device-flow/getpreferencesTask.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="syncLoop" extends="Task">
+    <interface>
+            <!--accessToken from authTask-->
+            <field id="accessToken" type="String"/>
+            <field id="oldHash" type="String"/>
+            <field id="newHash" type="String"/>
+            <field id="walletData" type="String"/>
+            <field id="uid" type="int"/>
+            <field id="cookies" type="roArray"/>
+            <!--used to trigger external tasks if out-of-sync-->
+            <field id="inSync" type="bool"/>
+            <field id="constants" type="assocarray"/>
+    </interface>
+    <children>
+        <Timer id="syncTimer" repeat="true" duration="300"/>
+    </children>
+    <script type="text/brightscript" uri="pkg:/components/tasks/device-flow/syncLoop.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>

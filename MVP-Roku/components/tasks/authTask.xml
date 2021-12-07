@@ -2,16 +2,39 @@
 
 <component name="authTask" extends="Task">
     <interface>
+            <!--Auth Variables-->
+            <field id="authPhase" type="int"/> <!--tracks auth phase-->
+            <!--Auth Phases:
+           -1: Error (not SlowDown)
+            0: Init
+            1: Legacy Done
+            2: Pending (error: authorization_pending)
+            3: slowDown (add 1 to refreshInterval)
+            4: Authorized/Refresh-->
+            <field id="deviceCode" type="String"/>
+            <field id="userCode" type="String"/>
+            <field id="authCode" type="String"/>
+            <field id="legacyAuthorized" type="bool"/>
+            <field id="error" type="bool"/>
             <!--Universal Output-->
             <field id="output" type="assocarray"/>
-            <field id="error" type="bool"/>
-            <!--Account-Specific Vars-->
+            <field id="verifyURL" type="String"/>
+            <field id="accessToken" type="String"/>
+            <field id="accessTokenExpiration" type="Int"/> <!--Future Use: will be used for determining if refreshToken needs to be used or not.-->
+            <field id="refreshToken" type="String"/>
+            <field id="refreshTokenExpiration" type="Int"/> <!--Future Use: will be used for determining if user needs to log back in.-->
+            <field id="scope" type="roArray"/>
+            <!--"Legacy" Auth Scope (still used for all searches/etc)-->
             <field id="uid" type="Int"/>
             <field id="authtoken" type="String"/>
+            <!--Account-Specific Vars-->
             <field id="cookies" type="roArray"/>
             <!--All queries based on input constants-->
             <field id="constants" type="assocarray"/>
     </interface>
+    <children>
+        <Timer id="authTimer" repeat="true" duration="5"/>
+    </children>
     <script type="text/brightscript" uri="pkg:/components/tasks/authTask.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="setreactionTask" extends="Task">
+    <interface>
+            <!--accessToken from authTask-->
+            <field id="accessToken" type="String"/>
+            <!--Claim ID-->
+            <field id="claimID" type="String"/>
+            <!--Action (Like/Dislike/etc..)-->
+            <field id="action" type="String"/>
+            <!--Set Status-->
+            <field id="status" type="assocArray"/>
+            <!--All queries (will be) based on input constants-->
+            <field id="constants" type="assocarray"/>
+            <!--Needed for HTTP library-->
+            <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/device-flow/setreactionTask.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>

@@ -14,6 +14,8 @@ Sub init()
     m.threads = []
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
+    m.legacyAuthenticated = False 'Has the app passed stage 0 of authentication?
+    m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
     m.searchFailed = False 'Has a search failed?
     m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
@@ -108,26 +110,89 @@ Sub init()
   m.videoSearch.observeField("cookies", "gotCookies")
   m.channelSearch.observeField("cookies", "gotCookies")
   m.chatHistory.observeField("cookies", "gotCookies")
-
   m.constantsTask = createObject("roSGNode", "getConstants")
   m.constantsTask.observeField("constants", "gotConstants")
-  m.constantsTask.control = "RUN"
+  m.authTask = createObject("roSGNode", "authTask")
+  m.syncLoop = createObject("roSGNode", "syncLoop")
+  observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID" })
+  observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
+  m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
+  m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
+  m.preferences = {} ' user preferences (blocked, following)
+  m.getreactionTask = createObject("roSGNode", "getreactionTask")
+  m.setreactionTask = createObject("roSGNode", "setreactionTask")
+  m.authTaskChildren = m.authTask.getChildren(-1, 0)
+  m.syncLoopChildren = m.syncLoop.getChildren(-1, 0)
+  m.authTaskTimer = m.authTaskChildren[0]
+  m.syncLoopTimer = m.syncLoopChildren[0]
+  m.accessToken = ""
+  m.accessTokenExpiration = 0
+  m.refreshToken = ""
+  m.refreshTokenExpiration = 0
+  m.uid = 0
+  m.authToken = ""
 
   m.cidsTask = createObject("roSGNode", "getChannelIDs")
   m.cidsTask.observeField("channelids", "gotCIDS")
 
   m.legacyRegistry = CreateObject("roRegistrySection", "Authentication")
-  m.authRegistry = CreateObject("roRegistrySection", "authData") 'Authentication Data (UID/Authtoken/etc.)
+  m.authRegistry = CreateObject("roRegistrySection", "authData") 'Authentication Data (UID/authToken/etc.)
+  m.deviceFlowRegistry = CreateObject("roRegistrySection", "deviceFlowData") 'Device Flow Data (Wallet, Sync Hashes (old/new), Auth Token+Refresh Token)
+  m.preferencesRegistry = CreateObject("roRegistrySection", "preferences") 'User preferences (odysee.com/app local)
   m.searchHistoryRegistry = CreateObject("roRegistrySection", "searchHistory") 'Search History
 
-  'Get current auth
-  if IsValid(GetRegistry("authRegistry", "uid")) AND IsValid(GetRegistry("authRegistry", "authtoken")) AND IsValid(GetRegistry("authRegistry", "cookies"))
-    ? "found current account with UID"+GetRegistry("authRegistry", "uid")
+  'Get current (older non-token) auth
+  if IsValid(GetRegistry("authRegistry", "uid")) and IsValid(GetRegistry("authRegistry", "authtoken")) and IsValid(GetRegistry("authRegistry", "cookies"))
+    ? "found current account with UID" + GetRegistry("authRegistry", "uid")
     m.uid = StrToI(GetRegistry("authRegistry", "uid"))
     m.authToken = GetRegistry("authRegistry", "authtoken")
     m.cookies = ParseJSON(GetRegistry("authRegistry", "cookies"))
-    m.authTask.setFields({uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
+    m.authTask.setFields({ uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
   end if
+
+  if IsValid(GetRegistry("preferencesRegistry", "loggedIn")) and IsValid(GetRegistry("preferencesRegistry", "preferences")) 'Get user preferences (if they exist)
+    ? "found current account with UID" + GetRegistry("authRegistry", "uid")
+    if GetRegistry("preferenceRegistry", "loggedIn") = "true"
+      m.wasLoggedIn = true
+    else
+      m.wasLoggedIn = false
+    end if
+    m.preferences = ParseJSON(GetRegistry("preferencesRegistry", "preferences"))
+  end if
+
+  m.wallet = { "oldHash": "asdf", "newHash": "asdf", "walletData": "asdf" } 'create template wallet object
+  'begin populating template
+  if isValid(GetRegistry("deviceFlowRegistry", "walletOldHash"))
+    m.wallet.oldHash = GetRegistry("deviceFlowRegistry", "walletOldHash")
+  end if
+  if isValid(GetRegistry("deviceFlowRegistry", "walletNewHash"))
+    m.wallet.newHash = GetRegistry("deviceFlowRegistry", "walletNewHash")
+  end if
+  if isValid(GetRegistry("deviceFlowRegistry", "walletData"))
+    m.wallet.walletData = GetRegistry("deviceFlowRegistry", "walletData")
+  end if
+  if isValid(GetRegistry("deviceFlowRegistry", "flowUID"))
+    m.flowUID = GetRegistry("deviceFlowRegistry", "flowUID")
+  end if
+  if isValid(GetRegistry("deviceFlowRegistry", "accessToken"))
+    m.accessToken = GetRegistry("deviceFlowRegistry", "accessToken")
+  end if
+  if isValid(GetRegistry("deviceFlowRegistry", "accessTokenExpiration"))
+    m.accessToken = GetRegistry("deviceFlowRegistry", "accessTokenExpiration")
+  end if
+  if isValid(GetRegistry("deviceFlowRegistry", "refreshToken"))
+    m.refreshToken = GetRegistry("deviceFlowRegistry", "refreshToken")
+  end if
+  if isValid(GetRegistry("deviceFlowRegistry", "refreshTokenExpiration"))
+    m.refreshTokenExpiration = GetRegistry("deviceFlowRegistry", "refreshTokenExpiration")
+  end if
+  m.authTask.setFields({ "accessToken": m.accessToken: "refreshToken": m.refreshToken: uid: m.flowUID })
+
+  '<field id="oldHash" type="String"/>
+  '<field id="newHash" type="String"/>
+  '<field id="walletData" type="String"/>
+  m.authTimerObserved = false
+  m.syncTimerObserved = false
   'Get current search history
   if IsValid(GetRegistry("searchHistoryRegistry", "searchHistory"))
     ? "found current search history"
@@ -168,6 +233,7 @@ Sub init()
     end if
   end if
   ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+  m.constantsTask.control = "RUN"
 End Sub
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
@@ -1010,8 +1076,11 @@ Sub gotConstants()
     retryError("Error getting constants from Github", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryConstants")
   else
     m.constants = m.constantsTask.constants
-    m.authTask.setFields({constants: m.constants})
-    m.authTask.observeField("output", "authDone")
+    m.authTask.setField("constants", m.constants)
+    m.getpreferencesTask.setField("constants", m.constants)
+    m.setpreferencesTask.setField("constants", m.constants)
+    m.setreactionTask.setField("constants", m.constants)
+    m.syncLoop.setField("constants", m.constants)
     'uid, authtoken, cookies
     m.authTask.observeField("uid", "gotUID")
     m.authTask.observeField("authtoken", "gotAuth")
@@ -1037,6 +1106,7 @@ Sub authDone()
   if m.authTask.error
     retryError("Error authenticating with Odysee", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryAuth")
   else
+    m.legacyAuthenticated = True
     ? m.authTask.output
     m.uid = m.authTask.uid
     m.authtoken = m.authTask.authtoken
@@ -1048,7 +1118,6 @@ Sub authDone()
       m.rokuInstall.observeField("output", "didInstall")
       m.rokuInstall.control = "RUN"
     end if
-    m.authenticated = True
     m.video.EnableCookies()
     m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
     m.video.AddHeader("origin","https://bitwave.tv")
@@ -1071,7 +1140,6 @@ Sub retryAuth()
   m.errorSubtext.visible = false
   m.errorButton.visible = false
   m.errorButton.unobserveField("buttonSelected")
-  m.authTask.observeField("output", "authDone")
   m.authTask.control = "RUN"
 End Sub
 
@@ -1194,11 +1262,19 @@ Sub gotCIDS()
     ? m.channelIDs
     ? "Got channelIDs+category selector data"
     ? "Creating threads"
-    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    blocked = []
+    if m.wasLoggedIn AND m.preferences.Count() > 0
+      if isValid(m.preferences.blocked)
+        if m.preferences.blocked.Count() > 0
+          blocked = m.preferences.blocked
+        end if
+      end if
+    end if
     for each category in m.channelIDs 'create categories for selector
       catData = m.channelIDs[category]
       thread = CreateObject("roSGNode", "getSinglePage")
-      thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+      thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked})
       thread.observeField("output", "threadDone")
       m.threads.push(thread)
       catData = invalid 'save memory
@@ -1322,20 +1398,225 @@ sub finishInit()
   end if
 end sub
 
-Sub gotUID(msg as Object)
-  uid = msg.getData()
-  m.uid = uid
-  SetRegistry("authRegistry","uid", uid.toStr().Trim())
-End Sub
+'AuthTask (deviceflow/reg)-related functions
+sub gotUID(msg as object)
+  m.flowUID = msg.getData()
+  m.uid = msg.getData()
+  SetRegistry("deviceFlowRegistry", "flowUID", m.flowUID.toStr().Trim())
+  SetRegistry("authRegistry", "uid", m.uid.toStr().Trim())
+end sub
 
-Sub gotAuth(msg as Object)
-    auth = msg.getData()
-    ? "[gotAuth] Token should be "+auth
-    m.authToken = auth
-    m.authRegistry.write("authtoken", m.authToken)
-    m.authRegistry.flush()
-End Sub
+sub gotAuth(msg as object)
+  auth = msg.getData()
+  ? "[gotAuth] Token should be " + auth
+  m.authToken = auth
+  SetRegistry("authRegistry", "authtoken", m.authtoken)
+end sub
 
+sub refreshAuth(msg as object)
+  m.authTask.control = "RUN"
+  m.authTask.observeField("output", "didRefresh")
+end sub
+
+sub didRefresh(msg as object)
+  m.authTask.control = "STOP"
+  'data = msg.getData()
+  '? data
+  m.authTask.unObserveField("output")
+  m.authTimerObserved = false
+end sub
+
+sub gotRokuCode(msg as object)
+  'm.mainLabel.text = "enter " + msg.getData() + " at " + m.authTask.verifyURL + " to link"
+  ? "stub"
+end sub
+
+sub gotAccessToken(msg as object)
+  m.accessToken = msg.getData()
+  ? "accessToken is", m.accessToken
+  SetRegistry("deviceFlowRegistry", "accessToken", m.accessToken)
+end sub
+
+sub gotRefreshToken(msg as object)
+  m.refreshToken = msg.getData()
+  SetRegistry("deviceFlowRegistry", "refreshToken", m.refreshToken)
+end sub
+
+sub authPhaseChanged(msg as object)
+  if type(msg) = "roSGNodeEvent"
+    m.authTask.control = "STOP"
+    data = msg.getData()
+    if data = 10
+      ? "Phase 10 (Logging Out)"
+      m.wasLoggedIn = false
+      setRegistry("preferenceRegistry", "loggedIn", "false")
+    end if
+    if data = 4
+      ? "Phase 4 (Fully authenticated)"
+      m.wasLoggedIn = true
+      setRegistry("preferenceRegistry", "loggedIn", "true")
+      if m.syncTimerObserved = false
+        m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
+        m.syncLoop.control = "RUN"
+        m.syncLoopTimer.observeField("fire", "getSync")
+        m.syncTimerObserved = true
+      end if
+      if m.authTimerObserved = false
+        m.authTaskTimer.observeField("fire", "refreshAuth")
+        m.authTimerObserved = true
+      end if
+    end if
+    if data = 2
+      ? "Phase 2"
+      if m.authTimerObserved = false
+        m.authTaskTimer.observeField("fire", "refreshAuth")
+        m.authTimerObserved = true
+      end if
+    end if
+    if data = 1
+      ? "Phase 1 (Legacy Authenticated)"
+      if m.syncTimerObserved = true
+        m.syncLoop.control = "STOP"
+        m.syncLoopTimer.unobserveField("fire")
+        m.syncTimerObserved = false
+      end if
+      authDone()
+      m.authTask.authPhase = 1
+      m.authTask.control = "RUN"
+      ? "Task Restarted"
+    end if
+    if data = 0
+      ? "Phase 0"
+      m.authTask.control = "RUN"
+    end if
+  end if
+end sub
+
+sub Logout()
+  m.authTask.authPhase = 10 'logout
+  m.authTask.control = "RUN"
+end sub
+
+'Sync Task related functions (post auth)
+sub getSync()
+  m.syncLoop.control = "STOP"
+  m.syncLoop.control = "RUN"
+end sub
+
+sub gotSync(msg as object)
+  data = msg.getData()
+  if data = false
+    m.syncLoop.control = "STOP"
+    ? "sync loop done."
+    getUserPrefs()
+  else
+    m.syncLoop.control = "STOP"
+    ? "sync loop done."
+  end if
+  
+end sub
+
+'User Preference related tasks
+sub getUserPrefs()
+  m.getpreferencesTask.setFields({ "accessToken": m.accessToken: uid: m.syncLoop.uid })
+  m.getpreferencesTask.observeField("preferences", "gotUserPrefs")
+  m.getpreferencesTask.control = "RUN"
+end sub
+
+sub gotUserPrefs()
+  m.getpreferencesTask.control = "STOP"
+  m.preferences = m.getpreferencesTask.preferences
+end sub
+
+sub getReactions(videoID)
+  'accesstoken, uid, cookies, claimid, constants
+  m.getreactionTask.setfields({accessToken:m.accessToken:uid:m.uid:cookies:m.cookies:claimid:videoID:constants:m.constants})
+  m.getreactionTask.observeField("reactions", "gotReactions")
+  m.getreactionTask.control = "RUN"
+end sub
+
+sub gotReactions(msg as object)
+  data = msg.getData()
+  ? formatJson(data)
+  m.getreactionTask.control = "STOP"
+end sub
+
+sub setReaction(videoID, reaction)
+  m.setreactionTask.setfields({accessToken:m.accessToken:action:reaction:claimid:videoID:constants:m.constants})
+  m.setreactionTask.observeField("status", "setReactions")
+  m.setreactionTask.control = "RUN"
+end sub
+
+sub setReactions(msg as object)
+  data = msg.getData()
+  ? formatJson(data)
+  m.setreactionTask.control = "STOP"
+end sub
+
+sub block(channelID)
+  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"blocked": [channelID]}:changeType:"append"})
+  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.control = "RUN"
+end sub
+
+sub unBlock(channelID)
+  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"blocked": [channelID]}:changeType:"remove"})
+  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.control = "RUN"
+end sub
+
+sub follow(channelID)
+  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"following": [channelID]}:changeType:"append"})
+  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.control = "RUN"
+end sub
+
+sub unFollow(channelID)
+  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"following": [channelID]}:changeType:"remove"})
+  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.control = "RUN"
+end sub
+
+sub setPrefStateChanged()
+  if m.setpreferencesTask.setState = 1
+    m.setpreferencesTask.control = "STOP"
+    ? "SUCCESS: Set preferences remotely"
+  else if m.setpreferencesTask.setState = 2
+    m.setpreferencesTask.control = "STOP"
+    ? "FAILURE: Failed to set preferences for some reason."
+  end if
+  'Logout()
+end sub
+
+'Wallet
+sub walletChanged(msg as object)
+  data = msg.getData()
+  field = msg.getField()
+  if field = "newHash"
+    m.wallet.newHash = data
+    SetRegistry("deviceFlowRegistry", "walletNewHash", m.wallet.newHash)
+  else if field = "oldHash"
+    m.wallet.oldHash = data
+    SetRegistry("deviceFlowRegistry", "walletOldHash", m.wallet.oldHash)
+  else if field = "walletData"
+    m.wallet.walletData = data
+    SetRegistry("deviceFlowRegistry", "walletData", m.wallet.walletData)
+  end if
+end sub
+
+'Generic task utility functions
+
+sub observeFields(task, fieldaarray)
+  curTask = task
+  fields = fieldaarray
+  for each field in fields.Keys()
+    m[curTask].observeField(field, fields[field])
+  end for
+  curTask = invalid
+  field = invalid
+end sub
+
+'General HTTP/Registry-Related Functions
 sub gotCookies(msg as Object)
     cookies = msg.getData()
     if cookies.Count() > 0

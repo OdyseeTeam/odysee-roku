@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<component name="setpreferencesTask" extends="Task">
+    <interface>
+            <!--accessToken from authTask-->
+            <field id="accessToken" type="String"/>
+            <!--needed for sync_apply/preference_set-->
+            <field id="oldHash" type="String"/>
+            <field id="error" type="Bool"/>
+            <field id="setState" type="int"/>
+            <field id="newHash" type="String"/>
+            <field id="walletData" type="String"/>
+            <field id="uid" type="int"/>
+            <field id="cookies" type="roArray"/>
+            <!--"Legacy" Auth Scope (still used for all searches/etc)-->
+            <field id="authtoken" type="String"/>
+            <!--Odysee preferences (change)-->
+            <field id="preferences" type="assocArray"/>
+            <field id="changeType" type="String"/> <!--Append/Remove-->
+            <!--All queries (will be) based on input constants-->
+            <field id="constants" type="assocarray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/device-flow/setpreferencesTask.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>
