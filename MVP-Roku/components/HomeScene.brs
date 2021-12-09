@@ -14,6 +14,7 @@ Sub init()
     m.threads = []
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
+    m.favoritesLoaded = false 'Were favorites loaded (was user logged in, thus favorites thread created?)
     m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
     m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
     m.searchFailed = False 'Has a search failed?
@@ -54,6 +55,9 @@ Sub init()
     m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
     m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
     m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
+    m.oauthHeader = m.top.findNode("oauth-header")
+    m.oauthCode = m.top.findNode("oauth-code")
+    m.oauthFooter = m.top.findNode("oauth-footer")
 
     'UI Item observers
     m.video.observeField("state", "onVideoStateChanged")
@@ -407,16 +411,20 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
         end if
         if key = "right"
-            if m.focusedItem = 1 AND m.categorySelector.itemFocused = 0 '[selector]  
-              m.focusedItem = 3 '[search keyboard] 
-              m.categorySelector.setFocus(false)
-              m.searchKeyboard.setFocus(true)
-              m.focusedItem = 3 '[search keyboard] 
-            else if m.categorySelector.itemFocused <> 0
-              m.categorySelector.setFocus(false)
-              m.videoGrid.setFocus(true)
-              m.focusedItem = 2 '[video grid]
-            end if
+          if m.focusedItem = 1 and m.categorySelector.itemFocused = 0 '[selector]
+            m.focusedItem = 3 '[search keyboard]
+            m.categorySelector.setFocus(false)
+            m.searchKeyboard.setFocus(true)
+            m.focusedItem = 3 '[search keyboard]
+          else if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded
+            m.categorySelector.setFocus(false)
+            m.videoGrid.setFocus(true)
+            m.focusedItem = 2 '[video grid]
+          else if m.categorySelector.itemFocused > 1
+            m.categorySelector.setFocus(false)
+            m.videoGrid.setFocus(true)
+            m.focusedItem = 2 '[video grid]
+          end if
     
             if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
                 m.searchKeyboardDialog.setFocus(false)
@@ -499,36 +507,81 @@ sub categorySelectorFocusChanged(msg)
   '? m.categorySelector.itemUnfocused
   '? "to:"
   '? m.categorySelector.itemFocused
-  if m.categorySelector.itemFocused <> -1 AND m.loaded = True
-      m.videoGrid.visible = true
-      m.loadingText.visible = false
-      if m.categorySelector.itemFocused = 0
-          ? "in search UI"
-          m.videoGrid.visible = false
-          m.searchHistoryBox.visible = true
-          m.searchHistoryLabel.visible = true
-          m.searchHistoryDialog.visible = true
-          m.searchKeyboard.visible = true
-          m.searchKeyboardDialog.visible = true
+  if m.categorySelector.itemFocused <> -1 and m.loaded = True
+    m.videoGrid.visible = true
+    m.loadingText.visible = false
+    if m.categorySelector.itemFocused = 0
+      if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
+        m.authTask.control = "STOP"
+        m.authTaskTimer.control = "stop"
       end if
-      if m.categorySelector.itemFocused <> 0
-        m.searchHistoryBox.visible = false
-        m.searchHistoryLabel.visible = false
-        m.searchHistoryDialog.visible = false
-        m.searchKeyboard.visible = false
-        m.searchKeyboardDialog.visible = false
-        resetVideoGrid()
+      ? "in search UI"
+      m.videoGrid.visible = false
+      m.oauthHeader.visible = false
+      m.oauthCode.visible = false
+      m.oauthFooter.visible = false
+      m.searchHistoryBox.visible = true
+      m.searchHistoryLabel.visible = true
+      m.searchHistoryDialog.visible = true
+      m.searchKeyboard.visible = true
+      m.searchKeyboardDialog.visible = true
+    end if
+    if m.categorySelector.itemFocused = 1
+      ? "in following UI"
+      ? m.authTask.legacyAuthorized
+      ? m.authTask.authPhase
+      m.searchHistoryBox.visible = false
+      m.searchHistoryLabel.visible = false
+      m.searchHistoryDialog.visible = false
+      m.searchKeyboard.visible = false
+      m.searchKeyboardDialog.visible = false
+      m.oauthHeader.visible = false
+      m.oauthCode.visible = false
+      m.oauthFooter.visible = false
+      if m.authTask.authPhase = 3
+        m.videoGrid.content = m.categories["FAVORITES"]
         m.videoGrid.visible = true
+      else
+        if m.authTask.legacyAuthorized and m.authTask.authPhase = 1
+          m.videoGrid.visible = false
+          m.oauthHeader.visible = true
+          m.oauthCode.visible = true
+          m.oauthFooter.visible = true
+          m.authTask.control = "RUN"
+          m.authTaskTimer.control = "start"
+        else if m.authTask.authPhase = -1
+          ? "Would show error status"
+          m.authTask.control = "STOP"
+          m.authTaskTimer.control = "stop"
+        end if
       end if
-      if m.categorySelector.itemFocused > 0
-        ? m.categorySelector
-        ? m.categorySelector.itemFocused
-        trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
-        m.videoGrid.content = m.categories[trueName]
+    end if
+    if m.categorySelector.itemFocused > 1
+      if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
+        m.authTask.control = "STOP"
+        m.authTaskTimer.control = "stop"
+        m.authRefreshSecondaryTimer.Mark()
       end if
-      'base = m.JSONTask.output["PRIMARY_CONTENT"]
-      'm.videoGrid.content = base["content"]
-      'm.mediaIndex = base["index"]
+      m.oauthHeader.visible = false
+      m.oauthCode.visible = false
+      m.oauthFooter.visible = false
+      m.searchHistoryBox.visible = false
+      m.searchHistoryLabel.visible = false
+      m.searchHistoryDialog.visible = false
+      m.searchKeyboard.visible = false
+      m.searchKeyboardDialog.visible = false
+      resetVideoGrid()
+      m.videoGrid.visible = true
+    end if
+    if m.categorySelector.itemFocused > 1
+      ? m.categorySelector
+      ? m.categorySelector.itemFocused
+      trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
+      m.videoGrid.content = m.categories[trueName]
+    end if
+    'base = m.JSONTask.output["PRIMARY_CONTENT"]
+    'm.videoGrid.content = base["content"]
+    'm.mediaIndex = base["index"]
   end if
 end sub
 
@@ -1276,6 +1329,19 @@ Sub gotCIDS()
         end if
       end if
     end if
+    if m.wasLoggedIn AND m.preferences.Count() > 0
+      if isValid(m.preferences.following)
+        if m.preferences.following.Count() > 0
+          ? "found following"
+          ? formatJson(m.preferences["following"])
+          thread = CreateObject("roSGNode", "getSinglePage")
+          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+          thread.observeField("output", "threadDone")
+          m.threads.push(thread)
+          m.favoritesLoaded = true 'favorites were loaded because user is logged in
+        end if
+      end if
+    end if
     for each category in m.channelIDs 'create categories for selector
       catData = m.channelIDs[category]
       thread = CreateObject("roSGNode", "getSinglePage")
@@ -1386,7 +1452,7 @@ sub finishInit()
   m.sidebarBackground.visible = true
   m.odyseeLogo.visible = true
   m.videoGrid.visible = true
-  m.categorySelector.jumpToItem = 1
+  m.categorySelector.jumpToItem = 2
   m.categorySelector.visible = true
   m.loaded = True
   m.taskRunning = false

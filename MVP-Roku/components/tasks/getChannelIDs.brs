@@ -24,6 +24,9 @@ sub master()
         dataItem = categorySelectordata.CreateChild("catselectordata")
         dataItem.posterUrl = "pkg:/images/png/Search.png"
         dataItem.labelText = "Search"
+        dataItem = categorySelectordata.CreateChild("catselectordata")
+        dataItem.posterUrl = "pkg:/images/png/Heart.png"
+        dataItem.labelText = "Following"
         ? "Creating categories"
         for each category in frontpageCIDS 'create categories for selector
             catData = frontpageCIDS[category]
@@ -50,5 +53,4 @@ sub master()
     catch e
         m.top.error = true
     end try
-    
 End Sub
