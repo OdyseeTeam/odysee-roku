@@ -1456,8 +1456,8 @@ sub authPhaseChanged(msg as object)
       m.wasLoggedIn = false
       setRegistry("preferencesRegistry", "loggedIn", "false")
     end if
-    if data = 4
-      ? "Phase 4 (Fully authenticated)"
+    if data = 3
+      ? "Phase 3 (Fully authenticated)"
       m.wasLoggedIn = true
       setRegistry("preferencesRegistry", "loggedIn", "true")
       if m.syncTimerObserved = false
@@ -1562,11 +1562,11 @@ end sub
 
 sub setReaction(videoID, reaction)
   m.setreactionTask.setfields({accessToken:m.accessToken:action:reaction:claimid:videoID:constants:m.constants})
-  m.setreactionTask.observeField("status", "setReactions")
+  m.setreactionTask.observeField("status", "setReactionDone")
   m.setreactionTask.control = "RUN"
 end sub
 
-sub setReactions(msg as object)
+sub setReactionDone(msg as object)
   data = msg.getData()
   ? formatJson(data)
   m.setreactionTask.control = "STOP"

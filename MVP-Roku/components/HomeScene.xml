@@ -85,6 +85,20 @@
 
 	<Button id="warningbutton" textcolor="#ffffff" minwidth="300" height="64" text="OK" showFocusFootprint="true" translation="[300,286]" visible="false"/>
     
+    <Label id="oauth-header" font="font:Inter-Emoji" color="#ffffff" width="1920" height="80" text="Enter" translation="[960,500]" visible="false">
+			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
+	</Label>
+
+    <Label id="oauth-code" font="font:Inter-Emoji" color="#ffffff" width="1920" height="80" text="PYZK-WKYS" translation="[700,550]" visible="false">
+			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="120"/>
+	</Label>
+
+    <Label id="oauth-footer" font="font:Inter-Emoji" color="#ffffff" width="1920" height="80" text="at https://odysee.com/$/activate" translation="[560,670]" visible="false">
+			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
+	</Label>
+
+    <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1500,70]" iconUri="" focusedIconUri="" visible="true"/>
+
     <!-- video grid -->
     <MarkupList
             id="selector"

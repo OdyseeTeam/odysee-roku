@@ -95,12 +95,12 @@ sub master()
             ? m.top.refreshTokenExpiration
             curUnixTime = invalid
             m.authTimer.duration = 10
-            m.top.authPhase = 4
+            m.top.authPhase = 3
             m.top.output = { authorized: true, state: "OK", debug: authreq }
         end if
     end if
-    if m.top.authPhase = 4
-        'authPhase is 4, so we need to refresh the Authentication Token.
+    if m.top.authPhase = 3
+        'authPhase is 3, so we need to refresh the Authentication Token.
         checkRefresh()
     end if
     if m.top.authPhase = 10 'User wants to log out.
@@ -139,7 +139,7 @@ sub checkRefresh()
             ? m.top.refreshTokenExpiration
             curUnixTime = invalid
             m.top.output = { authorized: true, state: "OK", debug: authreq }
-            m.top.authPhase = 4
+            m.top.authPhase = 3
         end if
     else
         ? "token still valid"
@@ -164,7 +164,7 @@ sub checkRefresh()
                 m.top.output = { authorized: false, state: "INVALID", debug: authreq }
             end if
         else
-            m.top.authPhase = 4
+            m.top.authPhase = 3
         end if
     end if
     curUnixTime = invalid
