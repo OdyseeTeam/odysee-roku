@@ -97,7 +97,7 @@
 			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
 	</Label>
 
-    <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1500,70]" iconUri="" focusedIconUri="" visible="true"/>
+    <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1500,70]" iconUri="" focusedIconUri="" visible="false"/>
 
     <!-- video grid -->
     <MarkupList

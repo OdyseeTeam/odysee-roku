@@ -58,7 +58,7 @@ Sub init()
     m.oauthHeader = m.top.findNode("oauth-header")
     m.oauthCode = m.top.findNode("oauth-code")
     m.oauthFooter = m.top.findNode("oauth-footer")
-
+    m.oauthLogoutButton = m.top.findNode("logoutButton")
     'UI Item observers
     m.video.observeField("state", "onVideoStateChanged")
     m.categorySelector.observeField("itemFocused", "categorySelectorFocusChanged")
@@ -66,6 +66,7 @@ Sub init()
     m.searchHistoryBox.observeField("itemSelected", "historySearch")
     m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
     m.searchKeyboardDialog.observeField("itemSelected", "search")
+    m.oauthLogoutButton.observeField("buttonSelected", "Logout")
 
     '=========Warnings=========
     m.DeviceInfo=createObject("roDeviceInfo")
@@ -107,7 +108,7 @@ Sub init()
   m.chatHistory = createObject("roSGNode", "getChatHistory")
   m.InputTask=createObject("roSgNode","inputTask")
   m.InputTask.observefield("inputData","handleInputEvent")
-
+  m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
   'forgot that cookies should be universal throughout application
   m.urlResolver.observeField("cookies", "gotCookies")
   m.channelResolver.observeField("cookies", "gotCookies")
@@ -191,7 +192,6 @@ Sub init()
     m.refreshTokenExpiration = GetRegistry("deviceFlowRegistry", "refreshTokenExpiration")
   end if
   m.authTask.setFields({ "accessToken": m.accessToken: "refreshToken": m.refreshToken: uid: m.flowUID })
-
   '<field id="oldHash" type="String"/>
   '<field id="newHash" type="String"/>
   '<field id="walletData" type="String"/>
@@ -241,6 +241,8 @@ Sub init()
 End Sub
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
+? "task running state is:"
+? m.taskRunning
     if m.taskRunning = False
       ? "key", key, "pressed with focus", m.focusedItem, "with press", press
       ? "current ui layer:", m.uiLayer
@@ -336,8 +338,14 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                     m.focusedItem = 5 '[search history list] 
                 end if
             end if
+            if m.focusedItem = 2
+              if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded AND m.videoGrid.rowItemFocused[0] = 0 AND m.videoGrid.rowItemFocused[1] = 3
+                m.videoGrid.setFocus(false)
+                m.oauthLogoutButton.setFocus(true)
+                m.focusedItem = 8 '[oauth logout button]
+              end if
+            end if
         end if
-    
         if key = "down"
             if m.focusedItem = 3 '[search keyboard] 
                 m.searchKeyboard.setFocus(false)
@@ -350,7 +358,14 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 m.searchHistoryDialog.setFocus(true)
                 m.focusedItem = 6 '[clear history] 
             end if
-    
+
+            if m.focusedItem = 8
+              if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded
+                m.oauthLogoutButton.setFocus(false)
+                m.videoGrid.setFocus(true)
+                m.focusedItem = 2 '[video grid]
+              end if
+            end if
         end if
         if key = "left"
             if m.focusedItem = 2 '[video grid] 
@@ -457,9 +472,11 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
         end if
       else
-          ? "task running, denying user input"
-          return true
+        return true
       end if
+    else
+      ? "task running, denying user input"
+      return true
     end if
 end Function
 
@@ -539,29 +556,33 @@ sub categorySelectorFocusChanged(msg)
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
       if m.authTask.authPhase = 3
-        m.videoGrid.content = m.categories["FAVORITES"]
-        m.videoGrid.visible = true
-      else
-        if m.authTask.legacyAuthorized and m.authTask.authPhase = 1
-          m.videoGrid.visible = false
-          m.oauthHeader.visible = true
-          m.oauthCode.visible = true
-          m.oauthFooter.visible = true
-          m.authTask.control = "RUN"
-          m.authTaskTimer.control = "start"
-        else if m.authTask.authPhase = -1
-          ? "Would show error status"
-          m.authTask.control = "STOP"
-          m.authTaskTimer.control = "stop"
+        if m.favoritesLoaded = false
+          getUserPrefs()
+        else
+          m.videoGrid.content = m.categories["FAVORITES"]
+          m.videoGrid.visible = true
+          m.oauthLogoutButton.visible = true
         end if
+      else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
+        m.videoGrid.visible = false
+        m.oauthLogoutButton.visible = false
+        m.oauthHeader.visible = true
+        m.oauthCode.visible = true
+        m.oauthFooter.visible = true
+        m.authTask.control = "RUN"
+        m.authTaskTimer.control = "start"
+      else if m.authTask.authPhase = -1
+        ? "Would show error status"
+        m.authTask.control = "STOP"
+        m.authTaskTimer.control = "stop"
       end if
     end if
     if m.categorySelector.itemFocused > 1
       if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
         m.authTask.control = "STOP"
         m.authTaskTimer.control = "stop"
-        m.authRefreshSecondaryTimer.Mark()
       end if
+      m.oauthLogoutButton.visible = false
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
@@ -684,6 +705,7 @@ sub cleanupToUIPage() 'more aggressive returnToUIPage, until I recreate the UI l
   m.taskRunning = false
   m.categorySelector.jumpToItem = 1
   m.categorySelector.setFocus(true)
+  m.focusedItem = 1
 end sub
 
 sub backToKeyboard()
@@ -1457,6 +1479,7 @@ sub finishInit()
   m.loaded = True
   m.taskRunning = false
   m.categorySelector.setFocus(true)
+  m.focusedItem = 1
   m.global.scene.signalBeacon("AppLaunchComplete")
   if isValid(m.global.deeplink)
     if isValid(m.global.deeplink.contentId)
@@ -1498,8 +1521,7 @@ sub didRefresh(msg as object)
 end sub
 
 sub gotRokuCode(msg as object)
-  'm.mainLabel.text = "enter " + msg.getData() + " at " + m.authTask.verifyURL + " to link"
-  ? "stub"
+  m.oauthCode.text = msg.getData()
 end sub
 
 sub gotAccessToken(msg as object)
@@ -1572,19 +1594,30 @@ sub authPhaseChanged(msg as object)
 end sub
 
 sub Logout()
+  m.categorySelector.setFocus(true)
+  m.focusedItem = 1
+  m.categorySelector.jumpToItem = 2
   m.authTask.authPhase = 10 'logout
   m.authTask.control = "RUN"
+  m.preferences = []
+  m.favoritesLoaded = false
+  setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
 end sub
 
 'Sync Task related functions (post auth)
 sub getSync()
   m.syncLoop.control = "STOP"
   m.syncLoop.control = "RUN"
+  if m.favoritesLoaded = false 'if we don't have favorites loaded, the app wasn't logged in (or it was, and we need to refresh the preferences), so we don't have the current user preferences
+    m.syncLoop.control = "STOP"
+    ? "sync loop done."
+    getUserPrefs()
+  end if
 end sub
 
 sub gotSync(msg as object)
   data = msg.getData()
-  if data = false OR m.preferences.Count() = 0 or m.legacyAuthenticated = false
+  if data = false OR m.preferences.Count() = 0
     m.syncLoop.control = "STOP"
     ? "sync loop done."
     getUserPrefs()
@@ -1610,6 +1643,55 @@ sub gotUserPrefs()
   ? FormatJson(m.preferences)
   if m.legacyAuthenticated = false
     authDone()
+  end if
+  ? m.favoritesLoaded
+  ? m.legacyAuthenticated
+  ? m.favoritesThread.state
+  ? m.favoritesThread.errorcount
+  if m.favoritesLoaded = false AND m.legacyAuthenticated = true AND m.favoritesThread.state = "init"
+    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.favoritesThread.observeField("output", "gotFavorites")
+    m.favoritesThread.control = "RUN"
+  end if
+  if m.favoritesLoaded = false AND m.legacyAuthenticated = true AND m.favoritesThread.state = "stop"
+    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.favoritesThread.observeField("output", "gotFavorites")
+    m.favoritesThread.control = "RUN"
+  end if
+end sub
+
+sub gotFavorites(msg as object)
+  if type(msg) = "roSGNodeEvent"
+    thread = msg.getRoSGNode()
+    if thread.error
+      if thread.errorcount = 2
+        'tried twice (w/likely hundreds of queries), kill it
+        thread.control = "STOP"
+        thread.unObserveField("output")
+      else
+        'retry: thread is not past limit
+        thread.control = "STOP"
+        thread.control = "RUN"
+      end if
+    else
+      m.favoritesLoaded = true
+      m.mediaIndex.append(thread.output.index)
+      m.categories.addReplace("favorites", thread.output.content)
+      thread.unObserveField("output")
+      thread.control = "STOP"
+      ? m.focusedItem
+      ? m.categorySelector.itemFocused
+      if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1
+        m.oauthHeader.visible = false
+        m.oauthCode.visible = false
+        m.oauthFooter.visible = false
+        m.videoGrid.content = m.categories["FAVORITES"]
+        m.videoGrid.visible = true
+        m.videoGrid.setFocus(true)
+        m.focusedItem = 2
+        m.oauthLogoutButton.visible = true
+      end if
+    end if
   end if
 end sub
 
@@ -1735,4 +1817,16 @@ End Function
 
 Function IsValid(value As Dynamic) As Boolean 'TheEndless Roku Development forums
     Return Type(value) <> "<uninitialized>" And value <> invalid
+End Function
+
+Function deleteReg (section = "" As String) As Void
+    r = CreateObject ("roRegistry")
+    If section = ""
+        For Each regSection In r.GetSectionList ()
+            r.Delete (regSection)
+        End For
+    Else
+        r.Delete (section)
+    Endif
+    r.Flush ()
 End Function
