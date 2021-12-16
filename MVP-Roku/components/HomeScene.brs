@@ -1594,14 +1594,30 @@ sub authPhaseChanged(msg as object)
 end sub
 
 sub Logout()
+  m.syncLoop.control = "STOP"
+  m.authTask.control = "STOP"
+  m.syncLoopTimer.unobserveField("fire")
+  m.authTaskTimer.unobserveField("fire")
+  m.authTimerObserved = false
+  m.syncTimerObserved = false
   m.categorySelector.setFocus(true)
   m.focusedItem = 1
   m.categorySelector.jumpToItem = 2
-  m.authTask.authPhase = 10 'logout
-  m.authTask.control = "RUN"
   m.preferences = []
   m.favoritesLoaded = false
+  m.flowUID = ""
+  m.accessToken = ""
+  m.refreshToken = ""
+  m.wasLoggedIn = false
+  m.authTask.setFields({ uid: 0, authtoken: "", cookies: [] })
+  m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
+  SetRegistry("deviceFlowRegistry", "flowUID", m.flowUID.toStr().Trim())
+  SetRegistry("deviceFlowRegistry", "accessToken", m.accessToken)
+  SetRegistry("deviceFlowRegistry", "refreshToken", m.refreshToken)
   setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
+  setRegistry("preferencesRegistry", "loggedIn", "false")
+  m.authTask.authPhase = 10 'logout
+  m.authTask.control = "RUN"
 end sub
 
 'Sync Task related functions (post auth)
@@ -1819,7 +1835,7 @@ Function IsValid(value As Dynamic) As Boolean 'TheEndless Roku Development forum
     Return Type(value) <> "<uninitialized>" And value <> invalid
 End Function
 
-Function deleteReg (section = "" As String) As Void
+Function deleteReg (section = "" As String) As Void 'belltown Roku Development forums (https://community.roku.com/t5/Roku-Developer-Program/Registry-not-Cleared-if-App-is-deleted/m-p/428861/highlight/true#M30587)
     r = CreateObject ("roRegistry")
     If section = ""
         For Each regSection In r.GetSectionList ()
