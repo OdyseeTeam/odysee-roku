@@ -1542,6 +1542,7 @@ sub authPhaseChanged(msg as object)
     if data = 10
       ? "Phase 10 (Logging Out)"
       m.wasLoggedIn = false
+      m.authTask.setFields({ uid: 0, authtoken: "", cookies: [] })
       setRegistry("preferencesRegistry", "loggedIn", "false")
     end if
     if data = 3
@@ -1595,9 +1596,7 @@ end sub
 
 sub Logout()
   m.syncLoop.control = "STOP"
-  m.authTask.control = "STOP"
   m.syncLoopTimer.unobserveField("fire")
-  m.authTaskTimer.unobserveField("fire")
   m.authTimerObserved = false
   m.syncTimerObserved = false
   m.categorySelector.setFocus(true)
@@ -1609,7 +1608,6 @@ sub Logout()
   m.accessToken = ""
   m.refreshToken = ""
   m.wasLoggedIn = false
-  m.authTask.setFields({ uid: 0, authtoken: "", cookies: [] })
   m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
   SetRegistry("deviceFlowRegistry", "flowUID", m.flowUID.toStr().Trim())
   SetRegistry("deviceFlowRegistry", "accessToken", m.accessToken)
