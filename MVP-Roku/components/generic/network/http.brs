@@ -332,7 +332,15 @@ if http.AsyncHead() then
       if responseCode <= 399 AND responseCode >= 300
         headers = event.GetResponseHeaders()
         redirect = headers.location
-        return redirect
+        if redirect.split("/")[0] <> "http" OR redirect.split("/")[0] <> "https"
+          urlsplit = url.split("/")
+          urlsplit.Shift()
+          urlsplit.Shift()
+          rooturl = urlsplit[0]
+          return "https://"+rooturl+redirect
+        else
+          return redirect
+        end if
       end if
       if responseCode <= 499 AND responseCode >= 400
         return url
