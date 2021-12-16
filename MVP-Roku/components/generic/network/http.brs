@@ -1,8 +1,6 @@
-function postJSON(json, url, headers=invalid) as Object 'json, url, headers: {header: headerdata}
+function postJSON(json, url, headers) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
-    '? "POSTJSON: found valid headers"
-    '? formatJson(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
   end if
   http.AddHeader("Content-Type", "application/json")
@@ -17,8 +15,8 @@ function postJSON(json, url, headers=invalid) as Object 'json, url, headers: {he
           response = parsejson(event.getString().replace("\n","|||||"))
         end if
         if responseCode <= 399 AND responseCode >= 300
-          rheaders = event.GetResponseHeaders()
-          redirect = rheaders.location
+          headers = event.GetResponseHeaders()
+          redirect = headers.location
           http.asynccancel()
           return postJSON(json, redirect, headers)
         end if
@@ -45,7 +43,7 @@ function postJSON(json, url, headers=invalid) as Object 'json, url, headers: {he
   return response
 end function
 
-function postJSONResponseOut(json, url, headers=invalid) as Object 'json, url, headers: {header: headerdata}
+function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
@@ -86,8 +84,8 @@ function postURLEncoded(data, url, headers) as Object
           response = parsejson(event.getString().replace("\n","|||||"))
         end if
         if responseCode <= 399 AND responseCode >= 300
-          rheaders = event.GetResponseHeaders()
-          redirect = rheaders.location
+          headers = event.GetResponseHeaders()
+          redirect = headers.location
           http.asynccancel()
           return postURLEncoded(json, redirect, headers)
         end if
@@ -125,13 +123,13 @@ function posturlencode(data)
       encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
     end if
   end for
-  '? encoded 'debug
+  ? encoded 'debug
   return encoded
 end function
 
 function getURLEncoded(data, url, headers) as Object
     currenturl = url+urlencode(data)
-    '? currenturl
+    ? currenturl
     http = httpPreSetup(currenturl)
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
@@ -142,8 +140,8 @@ function getURLEncoded(data, url, headers) as Object
             response = parsejson(event.getString().replace("\n","|||||"))
           end if
           if responseCode <= 399 AND responseCode >= 300
-            rheaders = event.GetResponseHeaders()
-            redirect = rheaders.location
+            headers = event.GetResponseHeaders()
+            redirect = headers.location
             http.asynccancel()
             return getURLEncoded(data, redirect, headers)
           end if
@@ -186,11 +184,8 @@ function urlencode(data)
   return encoded
 end function
 
-function getJSON(url, headers=invalid) as Object
+function getJSON(url) as Object
     http = httpPreSetup(url)
-    if IsValid(headers)
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
-    end if
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
@@ -200,8 +195,8 @@ function getJSON(url, headers=invalid) as Object
             response = parsejson(event.getString().replace("\n","|||||"))
           end if
           if responseCode <= 399 AND responseCode >= 300
-            rheaders = event.GetResponseHeaders()
-            redirect = rheaders.location
+            headers = event.GetResponseHeaders()
+            redirect = headers.location
             http.asynccancel()
             return getJSON(redirect)
           end if
@@ -239,8 +234,8 @@ function getRawText(url) as Object
             response = event.getString()
           end if
           if responseCode <= 399 AND responseCode >= 300
-            rheaders = event.GetResponseHeaders()
-            redirect = rheaders.location
+            headers = event.GetResponseHeaders()
+            redirect = headers.location
             http.asynccancel()
             return getRawText(redirect)
           end if
@@ -258,53 +253,6 @@ function getRawText(url) as Object
           ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
-  cleanup()
-  return response
-end function
-
-function postRawText(text, url, headers=invalid) as Object 'json, url, headers: {header: headerdata}
-  http = httpPreSetup(url)
-  if IsValid(headers)
-    '? "POSTJSON: found valid headers"
-    '? formatJson(headers)
-    http.SetHeaders(headers) 'in some cases, this is actually needed!
-  end if
-  http.AddHeader("Content-Type", "text/plain")
-  http.AddHeader("Accept", "*/*")
-  response=""
-  if http.AsyncPostFromString(text) then
-    event = Wait(5000, http.GetPort())
-      if Type(event) = "roUrlEvent" Then
-        responseCode = event.GetResponseCode()
-        if responseCode <= 299 AND responseCode >= 200
-          m.top.cookies = http.getCookies("", "/")
-          response = event.getString()
-        end if
-        if responseCode <= 399 AND responseCode >= 300
-          rheaders = event.GetResponseHeaders()
-          redirect = rheaders.location
-          http.asynccancel()
-          return postRawText(json, redirect, headers)
-        end if
-        if responseCode <= 499 AND responseCode >= 400
-          try
-            m.top.cookies = http.getCookies("", "/")
-            response = event.getString()
-          catch e
-            return {success: False}
-          end try
-        end if
-        if responseCode <= 599 AND responseCode >= 500
-          http.asynccancel()
-          return postRawText(json, url, headers)
-        end if
-      else if event = invalid then
-        http.asynccancel()
-        return postRawText(json, url, headers)
-      Else
-          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
-    end if
-  end if
   cleanup()
   return response
 end function
@@ -365,7 +313,7 @@ if instr(url, m.top.constants["VIDEO_API"]) > 0
     cleanvurlarray.push(cleanurl)
   end for
   vregex = invalid
-  '? cleanvurlarray
+  ? cleanvurlarray
   url = m.top.constants["VIDEO_API"]+"/api/v4/streams/free/"+cleanvurlarray.Join("/")
 end if
 http = httpPreSetup(url)
@@ -373,8 +321,8 @@ if http.AsyncHead() then
   event = Wait(5000, http.GetPort())
     if Type(event) = "roUrlEvent" Then
       responseCode = event.GetResponseCode()
-      rheaders = event.GetResponseHeaders()
-      redirect = rheaders.location
+      headers = event.GetResponseHeaders()
+      redirect = headers.location
       if isValid(redirect)
         responseCode = 300
       end if
@@ -382,9 +330,17 @@ if http.AsyncHead() then
         return url
       end if
       if responseCode <= 399 AND responseCode >= 300
-        rheaders = event.GetResponseHeaders()
-        redirect = rheaders.location
-        return redirect
+        headers = event.GetResponseHeaders()
+        redirect = headers.location
+        if redirect.split("/")[0] <> "http" OR redirect.split("/")[0] <> "https"
+          urlsplit = url.split("/")
+          urlsplit.Shift()
+          urlsplit.Shift()
+          rooturl = urlsplit[0]
+          return "https://"+rooturl+redirect
+        else
+          return redirect
+        end if
       end if
       if responseCode <= 499 AND responseCode >= 400
         return url
