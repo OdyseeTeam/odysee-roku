@@ -125,7 +125,7 @@ Sub init()
   observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
-  m.preferences = {} ' user preferences (blocked, following)
+  m.preferences = {} ' user preferences (blocked, following, collections)
   m.getreactionTask = createObject("roSGNode", "getreactionTask")
   m.setreactionTask = createObject("roSGNode", "setreactionTask")
   m.authTaskChildren = m.authTask.getChildren(-1, 0)
@@ -1373,7 +1373,11 @@ Sub gotCIDS()
     for each category in m.channelIDs 'create categories for selector
       catData = m.channelIDs[category]
       thread = CreateObject("roSGNode", "getSinglePage")
-      thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked})
+      if m.wasLoggedIn AND m.preferences.Count() > 0
+        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked})
+      else
+        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+      end if
       thread.observeField("output", "threadDone")
       m.threads.push(thread)
       catData = invalid 'save memory
@@ -1608,7 +1612,7 @@ sub Logout()
   m.categorySelector.setFocus(true)
   m.focusedItem = 1
   m.categorySelector.jumpToItem = 2
-  m.preferences = []
+  m.preferences = {}
   m.favoritesLoaded = false
   m.flowUID = ""
   m.accessToken = ""
