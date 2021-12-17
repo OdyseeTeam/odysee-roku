@@ -566,14 +566,13 @@ sub categorySelectorFocusChanged(msg)
       if m.authTask.authPhase = 3
         if m.favoritesLoaded
           if m.favoritesUIFlag = false
-            m.videoGrid.setFocus(false)
-            m.categorySelector.setFocus(true)
             m.videoGrid.visible = false
             m.loadingText.visible = true
             m.oauthLogoutButton.visible = true
           else
             m.videoGrid.content = m.categories["FAVORITES"]
             m.videoGrid.visible = true
+            m.loadingText.visible = false
             m.oauthLogoutButton.visible = true
           end if
         end if
@@ -1669,7 +1668,7 @@ sub syncStateChanged(msg as object)
     m.syncLoopState = 2
   end if
   if data = 1
-    if m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
+    if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
       m.videoGrid.setFocus(false)
       m.categorySelector.setFocus(true)
       m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
@@ -1708,14 +1707,14 @@ sub gotFavorites(msg as object)
     if thread.error
         thread.control = "STOP"
     else
-      m.favoritesLoaded = true
       m.mediaIndex.append(thread.output.index) 'TODO: Remove duplicates from mediaIndex.
       m.categories.addReplace("favorites", thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"
+      m.favoritesUIFlag = true
       ? m.focusedItem
       ? m.categorySelector.itemFocused
-      if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0
+      if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0
         m.oauthHeader.visible = false
         m.oauthCode.visible = false
         m.oauthFooter.visible = false
