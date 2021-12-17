@@ -35,10 +35,16 @@ sub master()
                                 m.top.inSync = false
                                 m.top.oldHash = walletfull.data.hash
                                 m.top.walletData = walletfull.data.data
+                                m.top.syncState = 1
                             else
                                 m.top.inSync = true
                                 m.top.newHash = walletfull.data.hash
                                 m.top.walletData = walletfull.data.data
+                                if m.top.syncState = 3
+                                    m.top.syncState = 4 'wait until second sync call (when we are SURE its already written to SDK)
+                                else
+                                    m.top.syncState = 2
+                                end if
                             end if
                         end if
                     end if
@@ -56,6 +62,7 @@ sub master()
                     ? formatJson(syncset)
                     if syncset.success = true
                         ? "Successfully synchronized data"
+                        m.top.syncState = 3
                         m.top.inSync = true
                     end if
                 end if

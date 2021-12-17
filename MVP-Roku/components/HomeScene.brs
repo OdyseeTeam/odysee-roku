@@ -14,9 +14,8 @@ Sub init()
     m.threads = []
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
-    m.favoritesLoaded = false 'Were favorites loaded (was user logged in, thus favorites thread created?)
-    m.preferencesUpdating = false
-    m.preferenceLock = false 'thread lock to prevent preferences thread from executing multiple times
+    m.favoritesLoaded = false 'Were favorites loaded? (init only)
+    m.favoritesUIFlag = true 'Is a post-init favorites transition allowed?
     m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
     m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
     m.searchFailed = False 'Has a search failed?
@@ -122,16 +121,18 @@ Sub init()
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
   observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID" })
-  observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
+  observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged": "syncState": "syncStateChanged" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
   m.preferences = {} ' user preferences (blocked, following, collections)
+  m.oldpreferences = {blocked: []: following: []: collections: []} ' user preferences (blocked, following, collections)
   m.getreactionTask = createObject("roSGNode", "getreactionTask")
   m.setreactionTask = createObject("roSGNode", "setreactionTask")
   m.authTaskChildren = m.authTask.getChildren(-1, 0)
   m.syncLoopChildren = m.syncLoop.getChildren(-1, 0)
   m.authTaskTimer = m.authTaskChildren[0]
   m.syncLoopTimer = m.syncLoopChildren[0]
+  m.syncLoopState = 0 'Sync loop state variable.
   m.accessToken = ""
   m.accessTokenExpiration = 0
   m.refreshToken = ""
@@ -165,6 +166,7 @@ Sub init()
       m.wasLoggedIn = false
     end if
     m.preferences = ParseJSON(GetRegistry("preferencesRegistry", "preferences"))
+    m.oldpreferences = ParseJSON(GetRegistry("preferencesRegistry", "preferences"))
   end if
 
   m.wallet = { "oldHash": "asdf", "newHash": "asdf", "walletData": "asdf" } 'create template wallet object
@@ -437,7 +439,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.categorySelector.setFocus(false)
             m.searchKeyboard.setFocus(true)
             m.focusedItem = 3 '[search keyboard]
-          else if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded
+          else if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded AND m.favoritesUIFlag
             m.categorySelector.setFocus(false)
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
@@ -562,12 +564,18 @@ sub categorySelectorFocusChanged(msg)
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
       if m.authTask.authPhase = 3
-        if m.favoritesLoaded = false
-          getUserPrefs()
-        else
-          m.videoGrid.content = m.categories["FAVORITES"]
-          m.videoGrid.visible = true
-          m.oauthLogoutButton.visible = true
+        if m.favoritesLoaded
+          if m.favoritesUIFlag = false
+            m.videoGrid.setFocus(false)
+            m.categorySelector.setFocus(true)
+            m.videoGrid.visible = false
+            m.loadingText.visible = true
+            m.oauthLogoutButton.visible = true
+          else
+            m.videoGrid.content = m.categories["FAVORITES"]
+            m.videoGrid.visible = true
+            m.oauthLogoutButton.visible = true
+          end if
         end if
       else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
         m.videoGrid.visible = false
@@ -1631,37 +1639,43 @@ end sub
 'Sync Task related functions (post auth)
 sub getSync()
   if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn 'update
-    gotSync(false)
+    gotSync()
   else 'get in sync first
     m.syncLoop.control = "STOP"
     m.syncLoop.control = "RUN"
   end if
-  
 end sub
 
 sub gotSync(msg as object)
-  if isValid(msg.getData())
-    data = msg.getData()
-  else
-    data = false
+  data = msg.getData()
+  m.syncLoop.control = "STOP"
+  if m.preferences.Count() = 0 OR m.favoritesLoaded = false
+    getUserPrefs()
   end if
-  if data = false OR m.preferences.Count() = 0 OR m.favoritesLoaded = false AND m.preferencesUpdating = false
-    m.syncLoop.control = "STOP"
-    ? "sync loop done. (running prefs 2)"
-    ? m.categorySelector.itemFocused
-    ? m.uiLayer
-    if m.categorySelector.itemFocused = 1 AND m.uiLayer = 0
-      m.focusedItem = 1
+end sub
+
+sub syncStateChanged(msg as object)
+  data = msg.getData()
+  if data = 4 'State 4 only. Run once.
+    m.syncLoopState = 4
+    m.syncLoopTimer.duration = 5
+    getUserPrefs()
+  end if
+  if data = 3
+    m.syncLoopState = 3
+    m.syncLoopTimer.duration = 2
+  end if
+  if data = 2
+    m.syncLoopState = 2
+  end if
+  if data = 1
+    if m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
       m.videoGrid.setFocus(false)
       m.categorySelector.setFocus(true)
+      m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
       m.videoGrid.visible = false
       m.loadingText.visible = true
     end if
-    m.preferencesUpdating = true
-    getUserPrefs()
-  else
-    m.syncLoop.control = "STOP"
-    ? "sync loop done. (outside loop)"
   end if
 end sub
 
@@ -1681,22 +1695,7 @@ sub gotUserPrefs()
   if m.legacyAuthenticated = false
     authDone()
   end if
-  ? m.favoritesLoaded
-  ? m.legacyAuthenticated
-  ? m.favoritesThread.state
-  ? m.favoritesThread.errorcount
-  if m.favoritesLoaded = false AND m.legacyAuthenticated = true AND m.favoritesThread.state = "init"
-    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
-    m.favoritesThread.observeField("output", "gotFavorites")
-    m.favoritesThread.control = "RUN"
-  end if
-  if m.favoritesLoaded = false AND m.legacyAuthenticated = true AND m.favoritesThread.state = "stop"
-    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
-    m.favoritesThread.observeField("output", "gotFavorites")
-    m.favoritesThread.control = "RUN"
-  end if
-  if m.preferencesUpdating AND m.legacyAuthenticated = true AND m.favoritesThread.state = "stop" AND m.preferenceLock = false
-    m.preferenceLock = true
+  if m.favoritesThread.state = "init" OR m.favoritesThread.state = "stop"
     m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
@@ -1707,15 +1706,7 @@ sub gotFavorites(msg as object)
   if type(msg) = "roSGNodeEvent"
     thread = msg.getRoSGNode()
     if thread.error
-      if thread.errorcount = 2
-        'tried twice (w/likely hundreds of queries), kill it
         thread.control = "STOP"
-        thread.unObserveField("output")
-      else
-        'retry: thread is not past limit
-        thread.control = "STOP"
-        thread.control = "RUN"
-      end if
     else
       m.favoritesLoaded = true
       m.mediaIndex.append(thread.output.index) 'TODO: Remove duplicates from mediaIndex.
@@ -1734,7 +1725,6 @@ sub gotFavorites(msg as object)
         m.videoGrid.setFocus(true)
         m.focusedItem = 2
         m.oauthLogoutButton.visible = true
-        m.preferenceLock = false
       end if
     end if
   end if
