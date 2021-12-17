@@ -115,6 +115,7 @@ function set_prefs()
                                         end for
                                         if isDuplicate = false
                                             preferences.result.shared.value.following.append([subclaim])
+                                            prenotify_new_follow(subclaim.uri.split("#").Pop())
                                         end if
                                     end if
                                 else 'in raw claim format: needs additional data
@@ -127,6 +128,7 @@ function set_prefs()
                                         'assume that we are in non-legacy format inside legacy datastructure
                                         if isDuplicate = false
                                             preferences.result.shared.value.following.append([{ uri: subclaim, "notificationsDisabled": true }])
+                                            prenotify_new_follow(subclaim.split("#").Pop())
                                         end if
                                     else
                                         'legacy: we will need to look up this channel
@@ -141,6 +143,7 @@ function set_prefs()
                                             end for
                                             if isDuplicate = false
                                                 preferences.result.shared.value.following.append([{ uri: response.result.items[0]["permanent_url"], "notificationsDisabled": true }])
+                                                prenotify_new_follow(subclaim)
                                             end if
                                         catch e
                                             ? e
@@ -232,10 +235,12 @@ function set_prefs()
                                                 if change.split("#").Count() > 1
                                                     if preferences.result.shared.value.following[i]["uri"] = change
                                                         preferences.result.shared.value.following.Delete(i)
+                                                        prenotify_delete_follow(change.split("#").Pop())
                                                     end if
                                                 else
                                                     if preferences.result.shared.value.following[i]["uri"].split("#").Pop() = change
                                                         preferences.result.shared.value.following.Delete(i)
+                                                        prenotify_delete_follow(change)
                                                     end if
                                                 end if
                                             end for
@@ -328,4 +333,16 @@ function string_deduplicate(array)
         deduper = invalid
         return deduparray
     end if
+end function
+
+function prenotify_delete_follow(follow)
+    notifyURL = m.top.constants["ROOT_API"] + "/subscription/delete"
+    notifyQuery = {claim_id: follow}
+    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
+end function
+
+function prenotify_new_follow(follow)
+    notifyURL = m.top.constants["ROOT_API"] + "/subscription/new"
+    notifyQuery = {claim_id: follow,notifications_disabled:true}
+    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
 end function

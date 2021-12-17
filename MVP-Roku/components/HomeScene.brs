@@ -15,6 +15,8 @@ Sub init()
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
     m.favoritesLoaded = false 'Were favorites loaded (was user logged in, thus favorites thread created?)
+    m.preferencesUpdating = false
+    m.preferenceLock = false 'thread lock to prevent preferences thread from executing multiple times
     m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
     m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
     m.searchFailed = False 'Has a search failed?
@@ -271,22 +273,26 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             'go back a UI layer
             ? "popping layer"
             if m.uiLayers.Count() > 0
-              m.uiLayers.pop()
-              m.videoGrid.content = m.uiLayers[m.uiLayers.Count()-1]
-              if isValid(m.uiLayers[m.uiLayers.Count()-1])
-                if m.videoGrid.content.getChildren(1,0)[0].getChildren(1,0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
-                  downsizeVideoGrid()
+              if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.videoGrid.content <> m.categories["FAVORITES"]
+                m.videoGrid.content = m.categories["FAVORITES"]
+              else
+                m.uiLayers.pop()
+                m.videoGrid.content = m.uiLayers[m.uiLayers.Count()-1]
+                if isValid(m.uiLayers[m.uiLayers.Count()-1])
+                  if m.videoGrid.content.getChildren(1,0)[0].getChildren(1,0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
+                    downsizeVideoGrid()
+                  end if
                 end if
+                m.uiLayer=m.uiLayer-1
+                ? "went back to", m.uiLayer
               end if
-              m.uiLayer=m.uiLayer-1
-              ? "went back to", m.uiLayer
             end if
             if m.categorySelector.itemFocused = 0 AND m.uiLayers.Count() = 0
               m.uiLayer=0
               ? "(search) went back to", m.uiLayer
               backToKeyboard()
             end if
-            if m.categorySelector.itemFocused <> 0 AND m.uiLayers.Count() = 0 'not search, on category.
+            if m.categorySelector.itemFocused > 1 AND m.uiLayers.Count() = 0 'not search, on category.
               'set focus to selector
               m.uiLayer=0
               ? "(catsel) went back to", m.uiLayer
@@ -1620,26 +1626,39 @@ end sub
 
 'Sync Task related functions (post auth)
 sub getSync()
-  m.syncLoop.control = "STOP"
-  m.syncLoop.control = "RUN"
-  if m.favoritesLoaded = false 'if we don't have favorites loaded, the app wasn't logged in (or it was, and we need to refresh the preferences), so we don't have the current user preferences
+  if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn 'update
+    gotSync(false)
+  else 'get in sync first
     m.syncLoop.control = "STOP"
-    ? "sync loop done."
-    getUserPrefs()
+    m.syncLoop.control = "RUN"
   end if
+  
 end sub
 
 sub gotSync(msg as object)
-  data = msg.getData()
-  if data = false OR m.preferences.Count() = 0
+  if isValid(msg.getData())
+    data = msg.getData()
+  else
+    data = false
+  end if
+  if data = false OR m.preferences.Count() = 0 OR m.favoritesLoaded = false AND m.preferencesUpdating = false
     m.syncLoop.control = "STOP"
-    ? "sync loop done."
+    ? "sync loop done. (running prefs 2)"
+    ? m.categorySelector.itemFocused
+    ? m.uiLayer
+    if m.categorySelector.itemFocused = 1 AND m.uiLayer = 0
+      m.focusedItem = 1
+      m.videoGrid.setFocus(false)
+      m.categorySelector.setFocus(true)
+      m.videoGrid.visible = false
+      m.loadingText.visible = true
+    end if
+    m.preferencesUpdating = true
     getUserPrefs()
   else
     m.syncLoop.control = "STOP"
-    ? "sync loop done."
+    ? "sync loop done. (outside loop)"
   end if
-  
 end sub
 
 'User Preference related tasks
@@ -1672,6 +1691,12 @@ sub gotUserPrefs()
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if
+  if m.preferencesUpdating AND m.legacyAuthenticated = true AND m.favoritesThread.state = "stop" AND m.preferenceLock = false
+    m.preferenceLock = true
+    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.favoritesThread.observeField("output", "gotFavorites")
+    m.favoritesThread.control = "RUN"
+  end if
 end sub
 
 sub gotFavorites(msg as object)
@@ -1689,21 +1714,23 @@ sub gotFavorites(msg as object)
       end if
     else
       m.favoritesLoaded = true
-      m.mediaIndex.append(thread.output.index)
+      m.mediaIndex.append(thread.output.index) 'TODO: Remove duplicates from mediaIndex.
       m.categories.addReplace("favorites", thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"
       ? m.focusedItem
       ? m.categorySelector.itemFocused
-      if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1
+      if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0
         m.oauthHeader.visible = false
         m.oauthCode.visible = false
         m.oauthFooter.visible = false
+        m.loadingText.visible = false
         m.videoGrid.content = m.categories["FAVORITES"]
         m.videoGrid.visible = true
         m.videoGrid.setFocus(true)
         m.focusedItem = 2
         m.oauthLogoutButton.visible = true
+        m.preferenceLock = false
       end if
     end if
   end if

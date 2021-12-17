@@ -1,4 +1,4 @@
-function postJSON(json, url, headers) as Object 'json, url, headers: {header: headerdata}
+function postJSON(json, url, headers=invalid) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
@@ -43,7 +43,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
   return response
 end function
 
-function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: {header: headerdata}
+function postJSONResponseOut(json, url, headers=invalid) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
@@ -65,7 +65,7 @@ function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: 
   return responseCode
 end function
 
-function postURLEncoded(data, url, headers) as Object
+function postURLEncoded(data, url, headers=invalid) as Object
   http = httpPreSetup(url)
   if IsValid(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
@@ -127,7 +127,7 @@ function posturlencode(data)
   return encoded
 end function
 
-function getURLEncoded(data, url, headers) as Object
+function getURLEncoded(data, url, headers=invalid) as Object
     currenturl = url+urlencode(data)
     ? currenturl
     http = httpPreSetup(currenturl)
@@ -184,8 +184,11 @@ function urlencode(data)
   return encoded
 end function
 
-function getJSON(url) as Object
+function getJSON(url, headers=invalid) as Object
     http = httpPreSetup(url)
+    if IsValid(headers)
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
