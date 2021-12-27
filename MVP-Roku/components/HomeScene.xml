@@ -98,7 +98,6 @@
 	</Label>
 
     <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1500,70]" iconUri="" focusedIconUri="" visible="false"/>
-
     <!-- video grid -->
     <MarkupList
             id="selector"
@@ -113,7 +112,6 @@
             columnWidths="[110,70]"
             visible = "false"
     />
-
     <RowList
         id= "vgrid"
         translation= "[210,120]"
@@ -139,10 +137,10 @@
     	    id="searchKeyboardDialog"
     		itemComponentName="horizontalButton"
     	    itemSpacing="[0, 20]"
-    		numColumns="2"
     		numRows="1"
     		translation="[16,710]"
     	    drawFocusFeedback="false"
+            jumpToItem="true"
     	/>
 	</MiniKeyboard>
 
@@ -174,6 +172,18 @@
         width = "1920"
 	    loop = "false"
         visible = "false"
+    />
+    <!--Video Overlay, used for like/dislike (or play/pause)-->
+    <MarkupGrid 
+        id="videoOverlay"
+    	itemComponentName="horizontalButton"
+        itemSpacing="[20, 20]"
+        columnSpacings="[0, 200, 0, 0, 200, 0]"
+    	numRows="1"
+    	translation="[300, 900]"
+        drawFocusFeedback="false"
+        jumpToItem="true"
+        visible="false"
     />
     
     <Rectangle id = "ChatBackground"

@@ -47,9 +47,13 @@ Sub init()
     m.videoGrid = m.top.findNode("vgrid")
     m.categorySelector = m.top.findNode("selector")
     m.searchKeyboard = m.top.findNode("searchKeyboard")
+    vjschars = {"play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730)}
     m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
     m.searchKeyboardDialog.itemSize = [280,65]
-    m.searchKeyboardDialog.content = createTextItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
+    m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
+    m.videoOverlay = m.top.findNode("videoOverlay")
+    m.videoOverlay.itemSize = [128,128]
+    m.videoOverlay.content = createBothItems(m.videoOverlay, ["https://thumbnails.lbry.com/UC8c-i0G5ySY3giqIQepEjcQ","pkg://images/png/Heart.png",vjschars["previous-item"],vjschars["play"],vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoOverlay.itemSize)
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
     m.searchHistoryItems = []
@@ -545,6 +549,7 @@ sub categorySelectorFocusChanged(msg)
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
+      m.oauthLogoutButton.visible = false
       m.searchHistoryBox.visible = true
       m.searchHistoryLabel.visible = true
       m.searchHistoryDialog.visible = true
@@ -776,6 +781,7 @@ Sub resolveVideo(url = invalid)
           m.videoContent.Live = true
           m.video.content = m.videoContent
           m.video.visible = "true"
+          m.videoOverlay.visible = "true"
           m.video.setFocus(true)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
@@ -890,6 +896,7 @@ Sub playResolvedVideo(msg as Object)
       m.video.content = m.videoContent
       m.video.width = 1920
       m.video.visible = "true"
+      m.videoOverlay.visible = "true"
       m.video.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
@@ -935,6 +942,7 @@ Function returnToUIPage()
       m.ws.close = [1000, "livestreamStopped"]
       m.ws.control = "STOP"
     end if
+    m.videoOverlay.visible = "false"
     m.video.visible = "false" 'Hide video
     m.video.control = "stop"  'Stop video from playing
     m.videoGrid.setFocus(true)
@@ -1115,17 +1123,34 @@ sub gotResolvedChannel(msg as Object)
   end if
 end sub
 
-function createTextItems(buttons, items, itemSize) as object
+function createBothItems(buttons, items, itemSize) as object
   data = CreateObject("roSGNode", "ContentNode")
   buttons.numColumns = items.Count()
   for each item in items
-      dataItem = data.CreateChild("horizontalButtonItemData")
-      dataItem.posterUrl = ""
-      dataItem.width=itemSize[0]
-      dataItem.height=itemSize[1]
-      dataItem.backgroundColor="0x00000000"
-      dataItem.outlineColor="0xFFFFFFFF"
-      dataItem.labelText = item
+      if item.split(":")[0] = "http" or item.split(":")[0] = "https" or item.split(":")[0] = "pkg"
+          dataItem = data.CreateChild("horizontalButtonItemData")
+          dataItem.posterUrl = item
+          dataItem.width = itemSize[0]
+          dataItem.height = itemSize[1]
+          dataItem.backgroundColor = "0x00000000"
+          dataItem.outlineColor = "0xFFFFFFFF"
+          dataItem.labelText = ""
+      else
+          dataItem = data.CreateChild("horizontalButtonItemData")
+          if Asc(item) <> 61728 AND Asc(item) <> 61697 AND Asc(item) <> 61727
+              dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
+              dataItem.fontSize = (itemSize[1]/64)*35
+          else
+              dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+              dataItem.fontSize = (itemSize[1]/64)*60
+          end if
+          dataItem.posterUrl = ""
+          dataItem.width = itemSize[0]
+          dataItem.height = itemSize[1]
+          dataItem.backgroundColor = "0x00000000"
+          dataItem.outlineColor = "0xFFFFFFFF"
+          dataItem.labelText = item
+      end if
   end for
   return data
 end function
