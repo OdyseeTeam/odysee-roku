@@ -143,6 +143,15 @@ function ChannelToVideoGrid(channel)
             item.Creator = items[i].signing_channel.name
             item.Description = ""
             item.Channel = items[i].signing_channel.claim_id
+            try
+                if isValid(items[i].signing_channel.value.thumbnail.url)
+                    item.ChannelIcon = items[i].signing_channel.value.thumbnail.url
+                else
+                    item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                end if
+            catch e
+                item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+            end try
             item.lbc = items[i].meta.effective_amount + " LBC"
             time = CreateObject("roDateTime")
             try
@@ -175,7 +184,7 @@ function ChannelToVideoGrid(channel)
                     currow = createObject("RoSGNode", "ContentNode")
                 end if
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" })
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" , ChannelIcon: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
@@ -188,7 +197,7 @@ function ChannelToVideoGrid(channel)
                 currow = invalid
                 currow = createObject("RoSGNode", "ContentNode")
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" })
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", ChannelIcon: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 counter = 1

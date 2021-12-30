@@ -47,13 +47,16 @@ Sub init()
     m.videoGrid = m.top.findNode("vgrid")
     m.categorySelector = m.top.findNode("selector")
     m.searchKeyboard = m.top.findNode("searchKeyboard")
-    vjschars = {"play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730)}
+    m.vjschars = {"play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730)}
     m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
     m.searchKeyboardDialog.itemSize = [280,65]
     m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
     m.videoOverlay = m.top.findNode("videoOverlay")
     m.videoOverlay.itemSize = [128,128]
-    m.videoOverlay.content = createBothItems(m.videoOverlay, ["https://thumbnails.lbry.com/UC8c-i0G5ySY3giqIQepEjcQ","pkg://images/png/Heart.png",vjschars["previous-item"],vjschars["play"],vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoOverlay.itemSize)
+    m.videoOverlay.content = createBothItems(m.videoOverlay, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoOverlay.itemSize)
+    m.videoOverlayPlayIcon = m.videoOverlay.content.getChildren(-1, 0)[3]
+    m.videoOverlayChannelIcon = m.videoOverlay.content.getChildren(-1, 0)[0]
+    m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
     m.searchHistoryItems = []
@@ -758,6 +761,7 @@ Sub resolveVideo(url = invalid)
         curItem = m.videoGrid.content.getChild(incomingData[0]).getChild(incomingData[1])
         if curItem.itemType = "video"
           ? "Resolving a Video"
+          m.currentVideoChannelIcon = curitem.channelicon
           m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.urlResolver.observeField("output", "playResolvedVideo")
           m.urlResolver.control = "RUN"
@@ -774,6 +778,7 @@ Sub resolveVideo(url = invalid)
         end if
         if curItem.itemType = "livestream"
           ? "Playing a livestream"
+          m.currentVideoChannelIcon = curitem.channelicon
           m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
           m.videoContent.streamFormat = curItem.streamFormat
@@ -915,12 +920,32 @@ End Sub
 
 Function onVideoStateChanged(msg as Object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "state"
-      if msg.getData() = "finished"
+      state = msg.getData()
+      if state = "finished"
           if m.global.constants.enableStatistics
             m.video.unobserveField("position")
           end if
           m.video.unobserveField("duration")
+          m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+          m.videoOverlayChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
           returnToUIPage()
+      end if
+      if state = "playing" OR state = "buffering"
+        m.videoOverlayPlayIcon.labelText = m.vjschars["pause"]
+        m.videoOverlayPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        m.videoOverlayPlayIcon.fontSize = m.videoOverlay.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+        ? m.currentVideoChannelIcon
+        ? m.videoOverlayChannelIcon
+        if m.videoOverlayChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+          m.videoOverlayChannelIcon.posterUrl = m.currentVideoChannelIcon
+        end if
+      else if state = "paused"
+        m.videoOverlayPlayIcon.labelText = m.vjschars["play"]
+        m.videoOverlayPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        m.videoOverlayPlayIcon.fontSize = m.videoOverlay.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+      else if state = "stopped"
+        m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+        m.videoOverlayChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       end if
   end if
 end Function
