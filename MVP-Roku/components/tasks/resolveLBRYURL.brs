@@ -44,7 +44,7 @@ Function resolve(lbry_url)
         return {videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url} 'returns video+statdata
     else
         m.top.error = false
-        return {videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title} 'stat data is not needed for playback w/o statistics
+        return {videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength} 'stat data is not needed for playback w/o statistics. Length is still needed for UI.
     end if
     catch e
         m.top.error = true

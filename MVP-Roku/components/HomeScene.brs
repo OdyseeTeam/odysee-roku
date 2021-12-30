@@ -21,6 +21,7 @@ Sub init()
     m.searchFailed = False 'Has a search failed?
     m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
+    m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
     m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
@@ -51,15 +52,15 @@ Sub init()
     m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
     m.searchKeyboardDialog.itemSize = [280,65]
     m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
-    m.videoOverlay = m.top.findNode("videoOverlay")
-    m.videoOverlay.itemSize = [128,128]
-    m.videoOverlay.content = createBothItems(m.videoOverlay, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoOverlay.itemSize)
-    m.videoOverlayPlayIcon = m.videoOverlay.content.getChildren(-1, 0)[3]
-    m.videoOverlayChannelIcon = m.videoOverlay.content.getChildren(-1, 0)[0]
-    m.videoProgressGroup = m.top.findNode("videoProgressGroup")
-    m.videoProgressBarp1 = m.videoProgressGroup.getChildren(-1, 0)[0]
-    m.videoProgressBarp2 = m.videoProgressGroup.getChildren(-1, 0)[1]
-    m.videoProgressBar = m.videoProgressGroup.getChildren(-1, 0)[3]
+    m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
+    m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
+    m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
+    m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
+    m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
+    m.videoButtons.itemSize = [128,128]
+    m.videoButtons.content = createBothItems(m.videoButtons, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoButtons.itemSize)
+    m.videoButtonsPlayIcon = m.videoButtons.content.getChildren(-1, 0)[3]
+    m.videoButtonsChannelIcon = m.videoButtons.content.getChildren(-1, 0)[0]
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
@@ -790,9 +791,12 @@ Sub resolveVideo(url = invalid)
           m.videoContent.title = curItem.description
           m.videoContent.Live = true
           m.video.content = m.videoContent
-          m.video.visible = "true"
-          m.videoOverlay.visible = "true"
-          m.videoProgressGroup.visible = "false" 'its live, we don't need progress updates.
+          m.video.visible = true
+          'TODO: Reposition video dialog
+          m.videoProgressBar.visible = false 'its live, we don't need progress updates.
+          m.videoProgressBarp1.visible = false
+          m.videoProgressBarp2.visible = false
+          m.videoOverlayGroup.visible = true
           m.video.setFocus(true)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
@@ -864,19 +868,26 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
   end if
 end sub
 
-sub vstatsChanged() 'if position/duration changes, report if vStats are turned on.
-  if m.vStatsTimer.TotalSeconds() > 5
-    m.vStatsTimer.Mark()
-    if isValid(m.video.playStartInfo)
-      if m.video.playStartInfo.prebuf_dur > 10
-        cache = "miss"
-      else
-        cache = "player"
+sub videoPositionChanged() 
+  if m.global.constants.enableStatistics 'if position/duration changes, report if vStats are turned on.
+    if m.vStatsTimer.TotalSeconds() > 5
+      m.vStatsTimer.Mark()
+      if isValid(m.video.playStartInfo)
+        if m.video.playStartInfo.prebuf_dur > 10
+          cache = "miss"
+        else
+          cache = "player"
+        end if
+        watchmanFields = {constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies,bandwidth:m.video.streamInfo.measuredBitrate,cache:cache,duration:m.urlResolver.output.length,player:m.urlResolver.output.player,position:m.video.position,protocol:m.urlResolver.output.videotype.replace("mp4", "stb"),rebuf_count:0,rebuf_duration:0,url:m.urlResolver.url,uid:m.uid}
+        m.watchman.setFields(watchmanFields)
+        m.watchman.control = "RUN"
       end if
-      watchmanFields = {constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies,bandwidth:m.video.streamInfo.measuredBitrate,cache:cache,duration:m.urlResolver.output.length,player:m.urlResolver.output.player,position:m.video.position,protocol:m.urlResolver.output.videotype.replace("mp4", "stb"),rebuf_count:0,rebuf_duration:0,url:m.urlResolver.url,uid:m.uid}
-      m.watchman.setFields(watchmanFields)
-      m.watchman.control = "RUN"
     end if
+  end if
+  'change video UI
+  if m.videoProgressBar.visible = true AND m.videoProgressBarp1.visible = true AND m.videoProgressBarp2.visible = true
+    m.videoProgressBarp1.text = getvideoLength(m.video.position)
+    m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.video.position)
   end if
 end sub
 
@@ -899,6 +910,11 @@ Sub playResolvedVideo(msg as Object)
     else
       ? "VPLAYDEBUG:"
       ? formatJSON(data)
+      'preset video length in UI
+      if m.videoEndingTimeSet = false
+        m.videoProgressBarp2.text = getvideoLength(data.length)
+        m.videoEndingTimeSet = true
+      end if
       m.videoContent.url = data.videourl.Unescape()
       ? m.videoContent.url
       m.videoContent.streamFormat = data.videotype
@@ -906,15 +922,15 @@ Sub playResolvedVideo(msg as Object)
       m.videoContent.Live = false
       m.video.content = m.videoContent
       m.video.width = 1920
-      m.video.visible = "true"
-      m.videoOverlay.visible = "true"
-      m.videoProgressGroup.visible = "true"
+      m.video.visible = true
+      m.videoOverlayGroup.visible = true
+      m.videoProgressBar.visible = true
+      m.videoProgressBarp1.visible = true
+      m.videoProgressBarp2.visible = true
       m.video.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
-      if m.global.constants.enableStatistics
-        m.video.observeField("position", "vStatsChanged")
-      end if
+      m.video.observeField("position", "videoPositionChanged")
       ? m.video.errorStr
       ? m.video.videoFormat
       ? m.video
@@ -925,6 +941,44 @@ Sub playResolvedVideo(msg as Object)
   end if
 End Sub
 
+Function getvideoLength(length)
+  timeConverter = CreateObject("roDateTime")
+  timeConverter.FromSeconds(length)
+  days = timeConverter.GetDayOfMonth().ToStr()
+  hours = timeConverter.GetHours().ToStr()
+  minutes = timeConverter.GetMinutes().ToStr()
+  seconds = timeConverter.GetSeconds().ToStr()
+  result = ""
+  if timeConverter.GetDayOfMonth() < 10
+    days = "0"+timeConverter.GetDayOfMonth().ToStr()
+  end if
+  if timeConverter.GetHours() < 10
+    hours = "0"+timeConverter.GetHours().ToStr()
+  end if
+  if timeConverter.GetMinutes() < 10
+    minutes = "0"+timeConverter.GetMinutes().ToStr()
+  end if
+  if timeConverter.GetSeconds() < 10
+    seconds = "0"+timeConverter.GetSeconds().ToStr()
+  end if
+  if length < 3600
+    'use minute format
+      result = minutes+":"+seconds
+  end if
+  if length >= 3600 AND length < 86400
+    result = hours+":"+minutes+":"+seconds
+  end if
+  if length >= 86400 'TODO: make videos above month length display proper length
+    result = days+":"+hours+":"+minutes+":"+seconds
+  end if
+  timeConverter = invalid
+  days = invalid
+  hours = invalid
+  minutes = invalid
+  seconds = invalid
+  return result
+End Function
+
 Function onVideoStateChanged(msg as Object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "state"
       state = msg.getData()
@@ -934,17 +988,17 @@ Function onVideoStateChanged(msg as Object)
           end if
           m.video.unobserveField("duration")
           m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-          m.videoOverlayChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+          m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
           returnToUIPage()
       end if
       if state = "playing" OR state = "buffering"
-        m.videoOverlayPlayIcon.labelText = m.vjschars["pause"]
-        m.videoOverlayPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-        m.videoOverlayPlayIcon.fontSize = m.videoOverlay.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+        m.videoButtonsPlayIcon.labelText = m.vjschars["pause"]
+        m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
         ? m.currentVideoChannelIcon
-        ? m.videoOverlayChannelIcon
-        if m.videoOverlayChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-          m.videoOverlayChannelIcon.posterUrl = m.currentVideoChannelIcon
+        ? m.videoButtonsChannelIcon
+        if m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+          m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
         end if
         if state = "playing"
           deleteSpinner()
@@ -952,12 +1006,12 @@ Function onVideoStateChanged(msg as Object)
           addSpinner()
         end if
       else if state = "paused"
-        m.videoOverlayPlayIcon.labelText = m.vjschars["play"]
-        m.videoOverlayPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-        m.videoOverlayPlayIcon.fontSize = m.videoOverlay.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+        m.videoButtonsPlayIcon.labelText = m.vjschars["play"]
+        m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
       else if state = "stopped"
         m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-        m.videoOverlayChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+        m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       end if
   end if
 end Function
@@ -971,8 +1025,10 @@ sub addSpinner()
   centery = invalid
 end sub
 sub deleteSpinner()
-  m.top.removeChild(m.busySpinner)
-  m.busySpinner = invalid
+  if isValid(m.busySpinner)
+    m.top.removeChild(m.busySpinner)
+    m.busySpinner = invalid
+  end if
 end sub
 
 Function returnToUIPage()
@@ -992,10 +1048,12 @@ Function returnToUIPage()
       m.ws.close = [1000, "livestreamStopped"]
       m.ws.control = "STOP"
     end if
-    m.videoOverlay.visible = "false"
-    m.videoProgressGroup.visible = "false"
-    m.video.visible = "false" 'Hide video
+    m.videoOverlayGroup.visible = false
+    m.video.visible = false 'Hide video
     m.video.control = "stop"  'Stop video from playing
+    deleteSpinner()
+    m.videoEndingTimeSet = false
+    m.video.unObserveField("position")
     m.videoGrid.setFocus(true)
     m.focusedItem = 2 '[video grid] 
     m.video.width = 1920
