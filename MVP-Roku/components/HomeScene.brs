@@ -56,6 +56,10 @@ Sub init()
     m.videoOverlay.content = createBothItems(m.videoOverlay, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoOverlay.itemSize)
     m.videoOverlayPlayIcon = m.videoOverlay.content.getChildren(-1, 0)[3]
     m.videoOverlayChannelIcon = m.videoOverlay.content.getChildren(-1, 0)[0]
+    m.videoProgressGroup = m.top.findNode("videoProgressGroup")
+    m.videoProgressBarp1 = m.videoProgressGroup.getChildren(-1, 0)[0]
+    m.videoProgressBarp2 = m.videoProgressGroup.getChildren(-1, 0)[1]
+    m.videoProgressBar = m.videoProgressGroup.getChildren(-1, 0)[3]
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
@@ -534,6 +538,7 @@ sub failedSearch()
   Error("No results.", "Nothing found on Odysee.")
 end sub
 
+
 sub categorySelectorFocusChanged(msg)
   '? "[Selector] focus changed from:"
   '? m.categorySelector.itemUnfocused
@@ -787,6 +792,7 @@ Sub resolveVideo(url = invalid)
           m.video.content = m.videoContent
           m.video.visible = "true"
           m.videoOverlay.visible = "true"
+          m.videoProgressGroup.visible = "false" 'its live, we don't need progress updates.
           m.video.setFocus(true)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
@@ -902,6 +908,7 @@ Sub playResolvedVideo(msg as Object)
       m.video.width = 1920
       m.video.visible = "true"
       m.videoOverlay.visible = "true"
+      m.videoProgressGroup.visible = "true"
       m.video.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
@@ -939,6 +946,11 @@ Function onVideoStateChanged(msg as Object)
         if m.videoOverlayChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
           m.videoOverlayChannelIcon.posterUrl = m.currentVideoChannelIcon
         end if
+        if state = "playing"
+          deleteSpinner()
+        else if state = "buffering"
+          addSpinner()
+        end if
       else if state = "paused"
         m.videoOverlayPlayIcon.labelText = m.vjschars["play"]
         m.videoOverlayPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
@@ -949,6 +961,19 @@ Function onVideoStateChanged(msg as Object)
       end if
   end if
 end Function
+
+sub addSpinner()
+  m.busySpinner = m.top.createChild("BusySpinner")
+  m.busySpinner.poster.uri = "pkg:/images/generic/spaceman.png"
+  m.busySpinner.translation = [ 870, 450 ]
+  m.busySpinner.visible = true
+  centerx = invalid
+  centery = invalid
+end sub
+sub deleteSpinner()
+  m.top.removeChild(m.busySpinner)
+  m.busySpinner = invalid
+end sub
 
 Function returnToUIPage()
     m.video.setFocus(false)
@@ -968,6 +993,7 @@ Function returnToUIPage()
       m.ws.control = "STOP"
     end if
     m.videoOverlay.visible = "false"
+    m.videoProgressGroup.visible = "false"
     m.video.visible = "false" 'Hide video
     m.video.control = "stop"  'Stop video from playing
     m.videoGrid.setFocus(true)

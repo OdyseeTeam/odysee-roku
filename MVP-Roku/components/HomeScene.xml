@@ -185,7 +185,28 @@
         jumpToItem="true"
         visible="false"
     />
-    
+    <Group id="videoProgressGroup" translation="[300,850]" visible="false">
+        <Label
+        id="beginningProgress"
+        height="20"
+        width="1293"
+        font="font:SmallestBoldSystemFont"
+        text = "0:00"
+        horizAlign = "left"
+        vertAlign = "center"
+        translation="[0,0]" />
+        <Label
+        id="endingProgress"
+        height="20"
+        width="1293"
+        font="font:SmallestBoldSystemFont"
+        text = "0:00"
+        horizAlign = "right"
+        vertAlign = "center"
+        translation="[0,0]" />
+        <Rectangle id="outline" color="0x000000FF" width="1293" height="12" translation="[0,25]"/>
+        <Rectangle id="bar" color="0xFFFFFF88" width="1290" height="10" translation="[2,27]" />
+    </Group>
     <Rectangle id = "ChatBackground"
         width = "505"
         height = "1080"
