@@ -337,6 +337,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if key = "play"  'If the back button is pressed
           if m.video.visible
             if m.videoTransitionState = 0
+              deleteSpinner()
               if m.video.state = "playing"
                 m.video.control = "pause"
               else if m.video.state = "paused"
@@ -346,20 +347,32 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.ffrwTimer.control = "stop"
               m.ffrwTimer.unobserveField("fire")
               m.videoTransitionState = 0
-              m.video.control = "pause"
-              m.video.control = "resume"
+              deleteSpinner()
+              if m.video.control = "stop"
+                m.video.control = "prebuffer"
+                m.video.control = "play"
+              else
+                m.video.control = "pause"
+                m.video.control = "resume"
+              end if
             end if
           end if
         end if
         if key = "rewind"  'If the back button is pressed
+          ? m.video.visible
+          ? m.ffrwTimer.control
+          ? m.ffrwTimer.duration
+          ? m.videoVP
           if m.video.visible
             if m.videoTransitionState <> 1
               m.ffrwTimer.duration = .5
             end if
             m.videoTransitionState = 1
-            m.video.control = "prebuffer"
+            m.video.control = "stop"
+            ? m.ffrwTimer.control
             if m.ffrwTimer.control = "start"
               m.ffrwTimer.duration = m.ffrwTimer.duration / 2
+              m.ffrwTimer.observeField("fire", "changeVideoPosition")
             else
               m.ffrwTimer.observeField("fire", "changeVideoPosition")
               m.ffrwTimer.control = "start"
@@ -369,7 +382,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if key = "fastforward"  'If the back button is pressed
           if m.video.visible
             if m.videoTransitionState <> 2
-              m.ffrwTimer.duration = .5
+              m.ffrwTimer.duration = .3
             end if
             m.videoTransitionState = 2
             m.video.control = "prebuffer"
@@ -954,9 +967,9 @@ sub changeVideoPosition()
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
     end if
   else if m.videoTransitionState = 1
-    if m.video.position-1 <= 0 
+    if m.videoVP-1 >= 0 
       m.video.seek = m.videoVP-1
-      m.videoVP-=1
+      m.videoVP=m.videoVP-1
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
     end if
