@@ -1084,6 +1084,7 @@ Function onVideoStateChanged(msg as Object)
           m.video.unobserveField("duration")
           m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
           m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+          m.videoProgressBar.width = 0
           returnToUIPage()
       end if
       if state = "playing" OR state = "buffering"
@@ -1125,6 +1126,9 @@ end sub
 
 Function returnToUIPage()
     m.video.setFocus(false)
+    m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+    m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+    m.videoProgressBar.width = 0
     m.ws.unobserveField("on_close")
     m.ws.unobserveField("on_message")
     m.ws.unobserveField("on_error")
