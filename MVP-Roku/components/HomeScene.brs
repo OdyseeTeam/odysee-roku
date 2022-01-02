@@ -22,6 +22,8 @@ Sub init()
     m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
     m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
+    m.videoTransitionState = 0 '0=None, 1=Rewind, 2=FastForward
+    m.videoVP = 0 'Virtual Video Position for ff/rw
     m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
@@ -53,6 +55,7 @@ Sub init()
     m.searchKeyboardDialog.itemSize = [280,65]
     m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
     m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
+    m.ffrwTimer = m.top.findNode("ffrwTimer")
     m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
     m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
     m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
@@ -329,6 +332,53 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector] 
             return true
+          end if
+        end if
+        if key = "play"  'If the back button is pressed
+          if m.video.visible
+            if m.videoTransitionState = 0
+              if m.video.state = "playing"
+                m.video.control = "pause"
+              else if m.video.state = "paused"
+                m.video.control = "resume"
+              end if
+            else
+              m.ffrwTimer.control = "stop"
+              m.ffrwTimer.unobserveField("fire")
+              m.videoTransitionState = 0
+              m.video.control = "pause"
+              m.video.control = "resume"
+            end if
+          end if
+        end if
+        if key = "rewind"  'If the back button is pressed
+          if m.video.visible
+            if m.videoTransitionState <> 1
+              m.ffrwTimer.duration = .5
+            end if
+            m.videoTransitionState = 1
+            m.video.control = "prebuffer"
+            if m.ffrwTimer.control = "start"
+              m.ffrwTimer.duration = m.ffrwTimer.duration / 2
+            else
+              m.ffrwTimer.observeField("fire", "changeVideoPosition")
+              m.ffrwTimer.control = "start"
+            end if
+          end if
+        end if
+        if key = "fastforward"  'If the back button is pressed
+          if m.video.visible
+            if m.videoTransitionState <> 2
+              m.ffrwTimer.duration = .5
+            end if
+            m.videoTransitionState = 2
+            m.video.control = "prebuffer"
+            if m.ffrwTimer.control = "start"
+              m.ffrwTimer.duration = m.ffrwTimer.duration / 2
+            else
+              m.ffrwTimer.observeField("fire", "changeVideoPosition")
+              m.ffrwTimer.control = "start"
+            end if
           end if
         end if
         if key = "options"
@@ -801,6 +851,7 @@ Sub resolveVideo(url = invalid)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
           m.refreshes = 0
+          m.videoVP = 0
           m.video.observeField("duration", "liveDurationChanged")
           ? m.video.errorStr
           ? m.video.videoFormat
@@ -891,6 +942,27 @@ sub videoPositionChanged()
   end if
 end sub
 
+sub changeVideoPosition()
+  if m.videoVP = 0
+    m.videoVP = m.video.position
+  end if
+  if m.videoTransitionState = 2
+    if m.videoVP+1 <= m.urlResolver.output.length
+      m.video.seek = m.videoVP+1
+      m.videoVP+=1
+      m.videoProgressBarp1.text = getvideoLength(m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
+    end if
+  else if m.videoTransitionState = 1
+    if m.video.position-1 <= 0 
+      m.video.seek = m.videoVP-1
+      m.videoVP-=1
+      m.videoProgressBarp1.text = getvideoLength(m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
+    end if
+  end if
+end sub
+
 Sub watchmanRan(msg as Object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
@@ -922,6 +994,7 @@ Sub playResolvedVideo(msg as Object)
       m.videoContent.Live = false
       m.video.content = m.videoContent
       m.video.width = 1920
+      m.videoVP = 0
       m.video.visible = true
       m.videoOverlayGroup.visible = true
       m.videoProgressBar.visible = true
@@ -1009,9 +1082,6 @@ Function onVideoStateChanged(msg as Object)
         m.videoButtonsPlayIcon.labelText = m.vjschars["play"]
         m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
         m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
-      else if state = "stopped"
-        m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-        m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       end if
   end if
 end Function

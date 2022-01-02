@@ -242,6 +242,13 @@
     <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="60"/>
     </ScrollingLabel>
 
+    <!--Fast Forward/Rewind Timer-->
+    <Timer
+    id="ffrwTimer"
+    repeat="true"
+    duration=".3"
+    />
+
     <!--DEV USE ONLY-->
     <Poster
         id="safezones"
