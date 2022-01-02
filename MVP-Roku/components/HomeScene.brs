@@ -23,7 +23,7 @@ Sub init()
     m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
     m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
     m.videoTransitionState = 0 '0=None, 1=Rewind, 2=FastForward
-    m.videoVP = 0 'Virtual Video Position for ff/rw
+    m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
     m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
     m.searchType = "channel" 'changed to either video or channel
     m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
@@ -334,7 +334,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             return true
           end if
         end if
-        if key = "play"  'If the back button is pressed
+        if key = "play"
           if m.video.visible
             if m.videoTransitionState = 0
               deleteSpinner()
@@ -358,7 +358,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
           end if
         end if
-        if key = "rewind"  'If the back button is pressed
+        if key = "rewind"
           ? m.video.visible
           ? m.ffrwTimer.control
           ? m.ffrwTimer.duration
@@ -368,7 +368,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.ffrwTimer.duration = .5
             end if
             m.videoTransitionState = 1
-            m.video.control = "stop"
+            m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
             ? m.ffrwTimer.control
             if m.ffrwTimer.control = "start"
               m.ffrwTimer.duration = m.ffrwTimer.duration / 2
@@ -379,13 +379,13 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
           end if
         end if
-        if key = "fastforward"  'If the back button is pressed
+        if key = "fastforward"
           if m.video.visible
             if m.videoTransitionState <> 2
               m.ffrwTimer.duration = .3
             end if
             m.videoTransitionState = 2
-            m.video.control = "prebuffer"
+            m.video.control = "prebuffer" 'it's better to prebuffer immediately as we are moving forwards in the video
             if m.ffrwTimer.control = "start"
               m.ffrwTimer.duration = m.ffrwTimer.duration / 2
             else
@@ -951,6 +951,9 @@ sub videoPositionChanged()
   'change video UI
   if m.videoProgressBar.visible = true AND m.videoProgressBarp1.visible = true AND m.videoProgressBarp2.visible = true
     m.videoProgressBarp1.text = getvideoLength(m.video.position)
+    if m.video.position > 0
+      m.videoProgressBar.width = 1290*(m.video.position / m.urlResolver.output.length)
+    end if
     m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.video.position)
   end if
 end sub
@@ -963,6 +966,9 @@ sub changeVideoPosition()
     if m.videoVP+1 <= m.urlResolver.output.length
       m.video.seek = m.videoVP+1
       m.videoVP+=1
+      if m.videoVP > 0
+        m.videoProgressBar.width = 1290*(m.videoVP / m.urlResolver.output.length)
+      end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
     end if
@@ -970,6 +976,9 @@ sub changeVideoPosition()
     if m.videoVP-1 >= 0 
       m.video.seek = m.videoVP-1
       m.videoVP=m.videoVP-1
+      if m.videoVP > 0
+        m.videoProgressBar.width = 1290*(m.videoVP / m.urlResolver.output.length)
+      end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
     end if

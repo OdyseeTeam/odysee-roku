@@ -197,7 +197,7 @@
         vertAlign = "center"
         translation="[300,40]" />
         <Rectangle id="outline" color="0x000000FF" width="1293" height="12" translation="[300,65]"/>
-        <Rectangle id="bar" color="0xFFFFFF88" width="1290" height="10" translation="[302,67]" />
+        <Rectangle id="bar" color="0xFFFFFF88" width="0" height="10" translation="[302,67]" />
         <MarkupGrid 
         id="videoButtons"
         itemComponentName="horizontalButton"
