@@ -1077,7 +1077,10 @@ End Function
 Function onVideoStateChanged(msg as Object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "state"
       state = msg.getData()
+      ? "==========VIDEO STATE==========="
+      ? state
       if state = "finished"
+          deleteSpinner()
           if m.global.constants.enableStatistics
             m.video.unobserveField("position")
           end if
