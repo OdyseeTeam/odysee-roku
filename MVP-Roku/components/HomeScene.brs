@@ -947,6 +947,8 @@ sub gotResolvedChannel(msg as Object)
         failedSearch()
       end if
     else
+      m.videoGrid.visible = true
+      m.loadingText.visible = false
       resetVideoGrid()
       m.videoSearch.unobserveField("output")
       m.videoGrid.content = data.content
