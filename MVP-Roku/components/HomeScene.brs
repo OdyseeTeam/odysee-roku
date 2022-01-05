@@ -604,6 +604,9 @@ Sub resolveVideo(url = invalid)
           m.urlResolver.control = "RUN"
           m.taskRunning = True
           m.videoGrid.setFocus(false)
+          m.videoGrid.visible = false
+          m.loadingText.visible = true
+          m.loadingText.text = "Resolving Video..."
         end if
         if curItem.itemType = "channel"
           ? "Resolving a Channel"
@@ -612,6 +615,9 @@ Sub resolveVideo(url = invalid)
           m.channelResolver.control = "RUN"
           m.taskRunning = True
           m.videoGrid.setFocus(false)
+          m.videoGrid.visible = false
+          m.loadingText.visible = true
+          m.loadingText.text = "Resolving Channel..."
         end if
         if curItem.itemType = "livestream"
           ? "Playing a livestream"
@@ -726,6 +732,8 @@ Sub playResolvedVideo(msg as Object)
       m.taskRunning = False
       resolveError()
     else
+      m.videoGrid.visible = true
+      m.loadingText.visible = false
       ? "VPLAYDEBUG:"
       ? formatJSON(data)
       m.videoContent.url = data.videourl.Unescape()
@@ -932,6 +940,8 @@ sub gotResolvedChannel(msg as Object)
       m.taskRunning = false
       if m.uiLayers.Count() > 0
         m.videoGrid.content = m.uiLayers[0]
+        m.videoGrid.visible = true
+        m.loadingText.visible = false
         resolveError()
       else
         failedSearch()
@@ -1007,7 +1017,7 @@ Sub gotConstants()
   m.constantsTask.unobserveField("constants")
   m.constantsTask.control = "STOP"
   if m.constantsTask.error
-    retryError("Error getting constants from Github", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryConstants")
+    retryError("Error getting constants from Github", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
   else
     m.constants = m.constantsTask.constants
     m.authTask.setFields({constants: m.constants})
@@ -1035,7 +1045,7 @@ Sub authDone()
   m.authTask.control = "STOP"
   m.authTask.unobserveField("output")
   if m.authTask.error
-    retryError("Error authenticating with Odysee", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryAuth")
+    retryError("Error authenticating with Odysee", "Please e-mail rokusupport@halitesoftware.com.", "retryAuth")
   else
     ? m.authTask.output
     m.uid = m.authTask.uid
@@ -1187,7 +1197,7 @@ Sub gotCIDS()
   m.cidsTask.control = "STOP"
   m.cidsTask.unobserveField("channelids")
   if m.cidsTask.error
-    retryError("Error getting frontpage channel IDs", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryCIDS")
+    retryError("Error getting frontpage channel IDs", "Please e-mail rokusupport@halitesoftware.com.", "retryCIDS")
   else
     m.channelIDs = m.cidsTask.channelids
     m.categorySelectordata = m.cidsTask.categoryselectordata
@@ -1290,7 +1300,7 @@ if type(msg) = "roSGNodeEvent"
           finishInit()
         end if
       else
-        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryConstants")
+        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
       end if
     end if
   end if
