@@ -836,6 +836,9 @@ Sub resolveVideo(url = invalid)
           m.urlResolver.control = "RUN"
           m.taskRunning = True
           m.videoGrid.setFocus(false)
+          m.videoGrid.visible = false
+          m.loadingText.visible = true
+          m.loadingText.text = "Resolving Video..."
         end if
         if curItem.itemType = "channel"
           ? "Resolving a Channel"
@@ -844,6 +847,9 @@ Sub resolveVideo(url = invalid)
           m.channelResolver.control = "RUN"
           m.taskRunning = True
           m.videoGrid.setFocus(false)
+          m.videoGrid.visible = false
+          m.loadingText.visible = true
+          m.loadingText.text = "Resolving Channel..."
         end if
         if curItem.itemType = "livestream"
           ? "Playing a livestream"
