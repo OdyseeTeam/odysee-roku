@@ -56,6 +56,7 @@ Sub init()
     m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
     m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
     m.ffrwTimer = m.top.findNode("ffrwTimer")
+    m.videoUITimer = m.top.findNode("videoUITimer")
     m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
     m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
     m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
@@ -841,7 +842,7 @@ Sub resolveVideo(url = invalid)
           m.videoProgressBarp1.visible = false
           m.videoProgressBarp2.visible = false
           m.videoOverlayGroup.visible = true
-          m.video.setFocus(true)
+          m.videoOverlayGroup.setFocus(true)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
           m.refreshes = 0
@@ -1005,7 +1006,7 @@ Sub playResolvedVideo(msg as Object)
       m.videoProgressBar.visible = true
       m.videoProgressBarp1.visible = true
       m.videoProgressBarp2.visible = true
-      m.video.setFocus(true)
+      m.videoOverlayGroup.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
       m.video.observeField("position", "videoPositionChanged")
@@ -1111,7 +1112,7 @@ sub deleteSpinner()
 end sub
 
 Function returnToUIPage()
-    m.video.setFocus(false)
+    m.videoOverlayGroup.setFocus(false)
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.videoProgressBar.width = 0
@@ -1852,11 +1853,6 @@ sub Logout()
     m.uiLayer = 0
     m.uiLayers = []
     m.categorySelector.jumpToItem = 1
-    if videoFocused = true
-      m.focusedItem = 7
-      m.video.setFocus(true)
-      videofocused = invalid
-    end if
     if m.video.visible = false
       m.videoGrid.visible = false
       m.oauthLogoutButton.visible = false
@@ -1865,6 +1861,11 @@ sub Logout()
       m.oauthCode.visible = true
       m.oauthFooter.visible = true
     end if
+  end if
+  if videoFocused = true
+    m.focusedItem = 7
+    m.videoOverlayGroup.setFocus(true)
+    videofocused = invalid
   end if
   m.preferences = {}
   m.favoritesLoaded = false

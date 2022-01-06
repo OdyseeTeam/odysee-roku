@@ -248,6 +248,12 @@
     repeat="true"
     duration=".3"
     />
+    <!--Video UI Timer-->
+    <Timer
+    id="videoUITimer"
+    repeat="false"
+    duration="3"
+    />
 
     <!--DEV USE ONLY-->
     <Poster
