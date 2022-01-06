@@ -3,27 +3,27 @@ sub Init()
 end sub
 
 sub master()
-    '? m.top.constants
-    '? m.top.cookies
-    '? m.top.uid
-    '? m.top.authtoken
-    '? m.top.channels
-    '? m.top.rawname
+    '' ?m.top.constants
+    '' ?m.top.cookies
+    '' ?m.top.uid
+    '' ?m.top.authtoken
+    '' ?m.top.channels
+    '' ?m.top.rawname
     m.top.output = resolve(m.top.url)
 end sub
 
 function resolve(lbry_url)
     try
         'get base URL
-        ? lbry_url
+        ' ?lbry_url
         try
             'Preferred: Single Claim Search Method
             spliturl = lbry_url.split("#")
             friendlyname = spliturl[0].split("/")[2]
             claimid = spliturl[1]
-            ? spliturl
-            ? friendlyname
-            ? claimid
+            ' ?spliturl
+            ' ?friendlyname
+            ' ?claimid
             resQuery = postJSON(FormatJson({ "method": "claim_search", "params": { "claim_ids": [claimid], "has_source": true, "has_no_source": false, "page_size": 1, "no_totals": true, "include_purchase_receipt": false, "include_is_my_output": false } }), m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search", invalid)
             sdHash = resQuery["result"]["items"][0]["value"]["source"]["sd_hash"]
             vurl = resolveRedirect(m.top.constants["VIDEO_API"] + "/api/v4/streams/free/" + friendlyname + "/" + claimid + "/" + Left(sdHash, 6))
@@ -49,7 +49,7 @@ function resolve(lbry_url)
             end if
         catch e
             'Slower: Site Method
-            ? "Attempting secondary resolution method (slower!)"
+            ' ?"Attempting secondary resolution method (slower!)"
             getRequestJSON = FormatJson({ "jsonrpc": "2.0", "method": "get", "params": { "uri": lbry_url, "save_file": false } })
             getRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=get"
             getRequestOutput = postJSON(getRequestJSON, getRequestURL, invalid)
@@ -63,7 +63,7 @@ function resolve(lbry_url)
             end if
 
             vresolvedRedirectURL = resolveRedirect(vurl)
-            ? vresolvedRedirectURL
+            ' ?vresolvedRedirectURL
             vresolvedRedirect = vresolvedRedirectURL.split(".")
             vresolvedRedirectLen = vresolvedRedirect.Count()
             if vresolvedRedirect[vresolvedRedirectLen - 1] = "m3u8"

@@ -6,8 +6,8 @@ sub master()
     di = CreateObject("roDeviceInfo")
     fileSystem = CreateObject("roFileSystem")
     locale = di.GetCurrentLocale().split("_")[0] 'Extract Locale (odyseelogicdiagram) ((en, es, etc))
-    ? "[CIDSTask]: Current locale is:"
-    ? locale
+    ' ?"[CIDSTask]: Current locale is:"
+    ' ?locale
     try
         if IsValid(getJSON(m.global.constants.frontpageURL).data[locale]) 'Use Locale (if exists) (odysee logic diagram)
             frontpageCIDS = getJSON(m.global.constants.frontpageURL).data[locale]
@@ -27,7 +27,7 @@ sub master()
         dataItem = categorySelectordata.CreateChild("catselectordata")
         dataItem.posterUrl = "pkg:/images/png/Heart.png"
         dataItem.labelText = "Following"
-        ? "Creating categories"
+        ' ?"Creating categories"
         for each category in frontpageCIDS 'create categories for selector
             catData = frontpageCIDS[category]
             dataItem = categorySelectordata.CreateChild("catselectordata")

@@ -3,13 +3,13 @@ Sub Init()
 End Sub
 
 sub master()
-    '? m.top.constants
-    '? m.top.cookies
-    '? m.top.uid
-    '? m.top.authtoken
-    '? m.top.channel
-    '? m.top.channelName
-    '? m.top.streamClaim
+    '' ?m.top.constants
+    '' ?m.top.cookies
+    '' ?m.top.uid
+    '' ?m.top.authtoken
+    '' ?m.top.channel
+    '' ?m.top.channelName
+    '' ?m.top.streamClaim
     m.top.output = getChatHistory(m.top.channel, m.top.channelName, m.top.streamClaim)
 End Sub
 
@@ -31,8 +31,8 @@ Function getChatHistory(channel, channelName, streamClaim)
         end if
     end while
 
-    ? channel
-    ? streamClaim
+    ' ?channel
+    ' ?streamClaim
 
     'used in both superchat+chat
     chatRegex = CreateObject("roRegex", "[^\x00-\x7F]","")
@@ -55,13 +55,13 @@ Function getChatHistory(channel, channelName, streamClaim)
                 end if
                 superchat = invalid
             catch e
-                ? "getChatHistory Error (superchat):"
-                ? e
+                ' ?"getChatHistory Error (superchat):"
+                ' ?e
             end try
         end for
     catch e
-        ? "getChatHistory Error (superchat):"
-        ? e
+        ' ?"getChatHistory Error (superchat):"
+        ' ?e
     end try
     ' free memory
     superChatLength = invalid
@@ -99,13 +99,13 @@ Function getChatHistory(channel, channelName, streamClaim)
         end if
         comment = invalid
         catch e
-            ? "getChatHistory error (chat):"
-            ? e
+            ' ?"getChatHistory error (chat):"
+            ' ?e
         end try
     end for
     catch e
-        ? "getChatHistory error (chat):"
-        ? e
+        ' ?"getChatHistory error (chat):"
+        ' ?e
     end try
     'free memory
     chatlength = invalid

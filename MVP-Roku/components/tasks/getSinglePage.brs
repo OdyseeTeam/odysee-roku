@@ -3,12 +3,12 @@ sub Init()
 end sub
 
 sub master()
-    '? m.top.constants
-    '? m.top.cookies
-    '? m.top.uid
-    '? m.top.authtoken
-    '? m.top.channels
-    '? m.top.rawname
+    '' ?m.top.constants
+    '' ?m.top.cookies
+    '' ?m.top.uid
+    '' ?m.top.authtoken
+    '' ?m.top.channels
+    '' ?m.top.rawname
     m.top.output = ChannelsToVideoGrid(m.top.channels, m.top.blocked)
 end sub
 
@@ -49,7 +49,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         result = []
         counter = 0
         content = createObject("RoSGNode", "ContentNode")
-        ? "got " + str(items.Count()) + " items from Odysee"
+        ' ?"got " + str(items.Count()) + " items from Odysee"
         for i = 0 to items.Count() - 1 step 1 'Parse response
             item = {}
             item.Title = items[i].value.title
@@ -121,10 +121,10 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             mediaindex[item.guid] = item
             item = invalid
         end for
-        '? type(content)
-        ? "exported" + Str(content.getChildCount() * 4) + " items from Odysee"
+        '' ?type(content)
+        ' ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"
 
-        '? "manufacturing finished for key: "+subkey
+        '' ?"manufacturing finished for key: "+subkey
         m.top.error = false
         return { contentarray: result: index: mediaindex: content: content } 'Returns the array
     catch e

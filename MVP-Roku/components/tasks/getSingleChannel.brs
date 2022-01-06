@@ -3,12 +3,12 @@ sub Init()
 end sub
 
 sub master()
-    '? m.top.constants
-    '? m.top.cookies
-    '? m.top.uid
-    '? m.top.authtoken
-    '? m.top.channels
-    '? m.top.rawname
+    '' ?m.top.constants
+    '' ?m.top.cookies
+    '' ?m.top.uid
+    '' ?m.top.authtoken
+    '' ?m.top.channels
+    '' ?m.top.rawname
     m.top.resolveAttempts = 0
     m.top.output = ChannelToVideoGrid(m.top.channel)
 end sub
@@ -55,7 +55,7 @@ function isLivestreaming(channel)
                     exit while
                 else
                     livestreamClaimData = livestreamClaimQuery
-                    ? "chat claim appears to be: " + livestreamClaimData.result.items[0].claim_id
+                    ' ?"chat claim appears to be: " + livestreamClaimData.result.items[0].claim_id
                 end if
                 exit while
             end if
@@ -74,10 +74,10 @@ function isLivestreaming(channel)
 end function
 function ChannelToVideoGrid(channel)
     streamStatus = isLivestreaming(channel)
-    ? streamStatus
-    ? Type(streamStatus)
+    ' ?streamStatus
+    ' ?Type(streamStatus)
     if streamStatus.success = true
-        ? channel + " is livestreaming with chat claimid: " + streamStatus.chatData.result.items[0].claim_id
+        ' ?channel + " is livestreaming with chat claimid: " + streamStatus.chatData.result.items[0].claim_id
         item = {}
         'since the user is livestreaming, we should add it here, before anything else.
         mediaindex = {}
@@ -109,7 +109,7 @@ function ChannelToVideoGrid(channel)
         curitem.setFields(item)
         currow.appendChild(curitem)
     else
-        ? channel + " is not livestreaming"
+        ' ?channel + " is not livestreaming"
         mediaindex = {}
         result = []
         content = createObject("RoSGNode", "ContentNode")
@@ -136,7 +136,7 @@ function ChannelToVideoGrid(channel)
     end while
     if m.top.error = false
         items = response.result.items
-        ? "got " + str(items.Count()) + " items from Odysee"
+        ' ?"got " + str(items.Count()) + " items from Odysee"
         for i = 0 to items.Count() - 1 step 1 'Parse response
             item = {}
             item.Title = items[i].value.title
@@ -207,10 +207,10 @@ function ChannelToVideoGrid(channel)
             mediaindex[item.guid] = item
             item = invalid
         end for
-        '? type(content)
-        ? "exported" + Str(content.getChildCount() * 4) + " items from Odysee"
+        '' ?type(content)
+        ' ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"
 
-        '? "manufacturing finished for key: "+subkey
+        '' ?"manufacturing finished for key: "+subkey
         return { contentarray: result: index: mediaindex: content: content } 'Returns the array
     else
         return { error: true }

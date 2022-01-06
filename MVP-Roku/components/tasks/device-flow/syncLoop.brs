@@ -3,7 +3,9 @@ sub Init()
 end sub
 
 sub master()
-    ? "Running Sync Loop"
+     ?"Running Sync Loop"
+     ? "Sync state is:"
+     ? m.top.syncState
     m.syncTimer = m.top.findNode("syncTimer") 'refresh timer
     if m.syncTimer.control <> "start"
         m.syncTimer.control = "start"
@@ -15,19 +17,27 @@ sub master()
                 '8081 sdk
                 '8082 api
                 '8086 OdyGetWalletData Custom API
-                ? m.top.constants
+                ' ?m.top.constants
+                
                 userData = getJSON(m.top.constants["ROOT_API"]+"/user/me", { "Authorization": "Bearer " + m.top.accessToken })
                 if isValid(userData.data)
                     m.top.uid = userData.data.id
                 end if
+                date = CreateObject("roDateTime")
+                ? date.ToISOString()+" Running sync_hash (SDK)"
+                date = invalid
                 synchash = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_hash", "params": {}, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
-                ? formatJSON(synchash)
+                ?formatJSON(synchash)
                 if isValid(synchash.result)
                     if synchash.result <> ""
                         m.top.newHash = synchash.result
                     end if
                 end if
+                date = CreateObject("roDateTime")
+                ? date.ToISOString()+" Running sync_get (API)"
+                date = invalid
                 walletfull = getJSON(m.top.constants["ROOT_API"]+"/sync/get?hash=" + m.top.newHash, { "Authorization": "Bearer " + m.top.accessToken })
+                ?formatJSON(walletfull)
                 if walletfull.success = true
                     if isValid(walletfull.data)
                         if isValid(walletfull.data.hash) and isValid(walletfull.data.data)
@@ -50,18 +60,28 @@ sub master()
                     end if
                 end if
                 if m.top.inSync = false
+                    ? "not in sync, running sync_apply+sync_set"
+                    date = CreateObject("roDateTime")
+                    ? date.ToISOString()+" Running sync_apply (SDK)"
+                    date=invalid
                     syncapply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "", "data": m.top.walletData, "blocking": true }, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
+                    ?FormatJson(syncapply)
                     if isValid(syncapply.data)
                         if isValid(syncapply.data.data) and isValid(syncapply.data.hash)
                             if syncapply.data.hash = m.top.newHash
-                                ? "sync apply successful"
+                                ' ?"sync apply successful"
                             end if
                         end if
                     end if
+                    date = CreateObject("roDateTime")
+                    ? date.ToISOString()+" Running Sync Set (API)"
+                    date=invalid
                     syncset = postURLEncoded({ old_hash: m.top.oldHash: new_hash: m.top.newHash: data: m.top.walletData }, m.top.constants["ROOT_API"]+"/sync/set", { "Authorization": "Bearer " + m.top.accessToken })
-                    ? formatJson(syncset)
+                     ?formatJson(syncset)
                     if syncset.success = true
-                        ? "Successfully synchronized data"
+                        date = CreateObject("roDateTime")
+                        ? date.ToISOString()+" Successfully synchronized data"
+                        date = invalid
                         m.top.syncState = 3
                         m.top.inSync = true
                     end if
@@ -69,20 +89,20 @@ sub master()
             end if
         end if
     end if
-    ? m.top.inSync
-    ? "Loop done."
+    ' ?m.top.inSync
+    ' ?"Loop done."
 end sub
 
 function string_deduplicate(array)
     if Type(array) <> "roArray"
-        ? "ERROR: must be roArray"
+        ' ?"ERROR: must be roArray"
         return ["error"]
     else
         deduper = {}
         deduparray = []
         for each item in array
             if type(item) <> "roString"
-                ? "ERROR: must be an array of roStrings"
+                ' ?"ERROR: must be an array of roStrings"
                 return ["error"]
             else
                 deduper.addReplace(item, "")

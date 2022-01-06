@@ -14,7 +14,7 @@ Sub init()
     m.threads = []
     'UI Logic/State Variables
     m.loaded = False 'Has the app finished its first load?
-    m.favoritesLoaded = false 'Were favorites loaded? (init only)
+    m.favoritesLoaded = false 'Were favorites loaded' ?(init only)
     m.favoritesUIFlag = true 'Is a post-init favorites transition allowed?
     m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
     m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
@@ -150,15 +150,15 @@ Sub init()
 
   'Get current (older non-token) auth
   if IsValid(GetRegistry("authRegistry", "uid")) and IsValid(GetRegistry("authRegistry", "authtoken")) and IsValid(GetRegistry("authRegistry", "cookies"))
-    ? "found current account with UID" + GetRegistry("authRegistry", "uid")
+    ' ?"found current account with UID" + GetRegistry("authRegistry", "uid")
     m.uid = StrToI(GetRegistry("authRegistry", "uid"))
     m.authToken = GetRegistry("authRegistry", "authtoken")
     m.cookies = ParseJSON(GetRegistry("authRegistry", "cookies"))
     m.authTask.setFields({ uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
   end if
   if IsValid(GetRegistry("preferencesRegistry", "loggedIn")) and IsValid(GetRegistry("preferencesRegistry", "preferences")) 'Get user preferences (if they exist)
-    ? "found preferences" + GetRegistry("preferencesRegistry", "preferences")
-    ? GetRegistry("preferencesRegistry", "loggedIn")
+    ' ?"found preferences" + GetRegistry("preferencesRegistry", "preferences")
+    ' ?GetRegistry("preferencesRegistry", "loggedIn")
     if GetRegistry("preferencesRegistry", "loggedIn") = "true"
       m.wasLoggedIn = true
     else
@@ -202,24 +202,24 @@ Sub init()
   m.syncTimerObserved = false
   'Get current search history
   if IsValid(GetRegistry("searchHistoryRegistry", "searchHistory"))
-    ? "found current search history"
+    ' ?"found current search history"
     m.searchHistoryItems = ParseJson(GetRegistry("searchHistoryRegistry", "searchHistory"))
     for each histitem in m.searchHistoryItems 'Not efficient. Research a way to convert between the items and ContentNode directly, without for.
       item = m.searchHistoryContent.createChild("ContentNode")
       item.title = histitem
     end for
-    ? m.searchHistoryItems
+    ' ?m.searchHistoryItems
   end if
   'LEGACY => CURRENT auth migration.
   'This will be removed in the version after this one, we want to seperate USER and AUTHENTICATION data.
   'Migrate Authentication
   if IsValid(GetRegistry("legacyRegistry", "uid"))
     if GetRegistry("legacyRegistry", "uid") <> "legacy" AND IsValid(GetRegistry("legacyRegistry", "authtoken")) AND IsValid(GetRegistry("legacyRegistry", "cookies"))
-      ? "found legacy account with UID"+GetRegistry("legacyRegistry", "uid")
+      ' ?"found legacy account with UID"+GetRegistry("legacyRegistry", "uid")
       m.uid = StrToI(GetRegistry("legacyRegistry", "uid"))
       m.authToken = GetRegistry("legacyRegistry", "authtoken")
       m.cookies = ParseJSON(GetRegistry("legacyRegistry", "cookies"))
-      ? "migrating legacy account"
+      ' ?"migrating legacy account"
       SetRegistry("authRegistry", "uid", GetRegistry("legacyRegistry", "uid"))
       SetRegistry("authRegistry", "authtoken", GetRegistry("legacyRegistry", "authtoken"))
       SetRegistry("authRegistry", "cookies", GetRegistry("legacyRegistry", "cookies"))
@@ -232,25 +232,25 @@ Sub init()
   'Migrate Search History
   if IsValid(GetRegistry("legacyRegistry", "searchHistory"))
     if GetRegistry("legacyRegistry", "searchHistory") <> "legacy"
-      ? "found legacy search history"
+      ' ?"found legacy search history"
       m.searchHistoryItems = GetRegistry("legacyRegistry", "searchHistory")
-      ? "migrating legacy search history"
+      ' ?"migrating legacy search history"
       SetRegistry("searchHistoryRegistry", "searchHistory", GetRegistry("legacyRegistry", "searchHistory"))
       SetRegistry("legacyRegistry", "searchHistory", "legacy")
     end if
   end if
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+  ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
   m.constantsTask.control = "RUN"
 End Sub
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
-? "task running state is:"
-? m.taskRunning
+' ?"task running state is:"
+' ?m.taskRunning
     if m.taskRunning = False
-      ? "key", key, "pressed with focus", m.focusedItem, "with press", press
-      ? "current ui layer:", m.uiLayer
-      ? "current ui array:"
-      ? m.uiLayers
+      ' ?"key", key, "pressed with focus", m.focusedItem, "with press", press
+      ' ?"current ui layer:", m.uiLayer
+      ' ?"current ui array:"
+      ' ?m.uiLayers
       if press = true
         if key = "back"  'If the back button is pressed
           if m.video.visible
@@ -272,7 +272,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             return true
           else if m.uiLayer > 0
             'go back a UI layer
-            ? "popping layer"
+            ' ?"popping layer"
             if m.uiLayers.Count() > 0
               if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.videoGrid.content <> m.categories["FAVORITES"]
                 m.videoGrid.content = m.categories["FAVORITES"]
@@ -285,18 +285,18 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                   end if
                 end if
                 m.uiLayer=m.uiLayer-1
-                ? "went back to", m.uiLayer
+                ' ?"went back to", m.uiLayer
               end if
             end if
             if m.categorySelector.itemFocused = 0 AND m.uiLayers.Count() = 0
               m.uiLayer=0
-              ? "(search) went back to", m.uiLayer
+              ' ?"(search) went back to", m.uiLayer
               backToKeyboard()
             end if
             if m.categorySelector.itemFocused > 1 AND m.uiLayers.Count() = 0 'not search, on category.
               'set focus to selector
               m.uiLayer=0
-              ? "(catsel) went back to", m.uiLayer
+              ' ?"(catsel) went back to", m.uiLayer
               ErrorDismissed()
               m.searchKeyboard.setFocus(false)
               m.searchKeyboardDialog.setFocus(false)
@@ -343,17 +343,17 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
         end if
         if key = "rewind"
-          ? m.video.visible
-          ? m.ffrwTimer.control
-          ? m.ffrwTimer.duration
-          ? m.videoVP
+          ' ?m.video.visible
+          ' ?m.ffrwTimer.control
+          ' ?m.ffrwTimer.duration
+          ' ?m.videoVP
           if m.video.visible
             if m.videoTransitionState <> 1
               m.ffrwTimer.duration = .5
             end if
             m.videoTransitionState = 1
             m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
-            ? m.ffrwTimer.control
+            ' ?m.ffrwTimer.control
             if m.ffrwTimer.control = "start"
               m.ffrwTimer.duration = m.ffrwTimer.duration / 2
               m.ffrwTimer.observeField("fire", "changeVideoPosition")
@@ -471,7 +471,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                     switchRow = 6
                 end if
                 m.searchHistoryBox.setFocus(false)
-                ? "itemArray:", m.searchKeyboardItemArray[switchRow-1]
+                ' ?"itemArray:", m.searchKeyboardItemArray[switchRow-1]
                 m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
                 switchRow = invalid
                 m.focusedItem = 3 '[search keyboard]
@@ -518,7 +518,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 column = Int(m.searchKeyboardGrid.currFocusColumn)
                 row = Int(m.searchKeyboardGrid.currFocusRow)
                 itemFocused = m.searchKeyboardGrid.itemFocused
-                ? row, column
+                ' ?row, column
                 if column = 4 AND row = 6 OR column = 5
                     if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
                         if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
@@ -542,7 +542,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         return true
       end if
     else
-      ? "task running, denying user input"
+      ' ?"task running, denying user input"
       return true
     end if
 end Function
@@ -568,21 +568,21 @@ Sub downsizeVideoGrid()
 End Sub
 
 sub failedSearch()
-  ? "search failed"
+  ' ?"search failed"
   m.videoGrid.visible = false
   m.videoSearch.control = "STOP"
   m.channelSearch.control = "STOP"
   m.taskRunning = False
-  ? "task stopped"
+  ' ?"task stopped"
   Error("No results.", "Nothing found on Odysee.")
 end sub
 
 
 sub categorySelectorFocusChanged(msg)
-  '? "[Selector] focus changed from:"
-  '? m.categorySelector.itemUnfocused
-  '? "to:"
-  '? m.categorySelector.itemFocused
+  '' ?"[Selector] focus changed from:"
+  '' ?m.categorySelector.itemUnfocused
+  '' ?"to:"
+  '' ?m.categorySelector.itemFocused
   if m.categorySelector.itemFocused <> -1 and m.loaded = True
     m.videoGrid.visible = true
     m.loadingText.visible = false
@@ -591,7 +591,7 @@ sub categorySelectorFocusChanged(msg)
         m.authTask.control = "STOP"
         m.authTaskTimer.control = "stop"
       end if
-      ? "in search UI"
+      ' ?"in search UI"
       m.videoGrid.visible = false
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
@@ -604,9 +604,9 @@ sub categorySelectorFocusChanged(msg)
       m.searchKeyboardDialog.visible = true
     end if
     if m.categorySelector.itemFocused = 1
-      ? "in following UI"
-      ? m.authTask.legacyAuthorized
-      ? m.authTask.authPhase
+      ' ?"in following UI"
+      ' ?m.authTask.legacyAuthorized
+      ' ?m.authTask.authPhase
       m.searchHistoryBox.visible = false
       m.searchHistoryLabel.visible = false
       m.searchHistoryDialog.visible = false
@@ -637,7 +637,7 @@ sub categorySelectorFocusChanged(msg)
         m.authTask.control = "RUN"
         m.authTaskTimer.control = "start"
       else if m.authTask.authPhase = -1
-        ? "Would show error status"
+        ' ?"Would show error status"
         m.authTask.control = "STOP"
         m.authTaskTimer.control = "stop"
       end if
@@ -660,8 +660,8 @@ sub categorySelectorFocusChanged(msg)
       m.videoGrid.visible = true
     end if
     if m.categorySelector.itemFocused > 1
-      ? m.categorySelector
-      ? m.categorySelector.itemFocused
+      ' ?m.categorySelector
+      ' ?m.categorySelector.itemFocused
       trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
       m.videoGrid.content = m.categories[trueName]
     end if
@@ -672,12 +672,12 @@ sub categorySelectorFocusChanged(msg)
 end sub
 
 sub handleInputEvent(msg)
-    '? "in handleInputEvent()"
+    '' ?"in handleInputEvent()"
     if type(msg) = "roSGNodeEvent" and msg.getField() = "inputData"
         deeplink = msg.getData()
         if deeplink <> invalid
-            ? "Got deeplink"
-            ? deeplink
+            ' ?"Got deeplink"
+            ' ?deeplink
             m.global.deeplink = deeplink
           end if
      end if
@@ -797,14 +797,14 @@ Sub vgridContentChanged(msg as Object)
 end Sub
 
 Sub resolveVideo(url = invalid) 
-  ? type(url)
+  ' ?type(url)
   if type(url) = "roSGNodeEvent" 'we might actually pass a URL (string) through to this as well.
     incomingData = url.getData()
     if type(incomingData) = "roArray"
       if incomingData.Count() > 1
         curItem = m.videoGrid.content.getChild(incomingData[0]).getChild(incomingData[1])
         if curItem.itemType = "video"
-          ? "Resolving a Video"
+          ' ?"Resolving a Video"
           m.currentVideoChannelIcon = curitem.channelicon
           m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.urlResolver.observeField("output", "playResolvedVideo")
@@ -816,7 +816,7 @@ Sub resolveVideo(url = invalid)
           m.loadingText.text = "Resolving Video..."
         end if
         if curItem.itemType = "channel"
-          ? "Resolving a Channel"
+          ' ?"Resolving a Channel"
           m.channelResolver.setFields({constants: m.constants, channel: curitem.channel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.channelResolver.observeField("output", "gotResolvedChannel")
           m.channelResolver.control = "RUN"
@@ -827,7 +827,7 @@ Sub resolveVideo(url = invalid)
           m.loadingText.text = "Resolving Channel..."
         end if
         if curItem.itemType = "livestream"
-          ? "Playing a livestream"
+          ' ?"Playing a livestream"
           m.currentVideoChannelIcon = curitem.channelicon
           m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
@@ -847,9 +847,9 @@ Sub resolveVideo(url = invalid)
           m.refreshes = 0
           m.videoVP = 0
           m.video.observeField("duration", "liveDurationChanged")
-          ? m.video.errorStr
-          ? m.video.videoFormat
-          ? m.video
+          ' ?m.video.errorStr
+          ' ?m.video.videoFormat
+          ' ?m.video
           m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:uid:m.uid:authtoken:m.authtoken:cookies:m.cookies})
           m.chatHistory.observeField("output", "gotChatHistory")
           m.chatHistory.control = "RUN"
@@ -859,7 +859,7 @@ Sub resolveVideo(url = invalid)
       end if
     end if
   else if type(url) = "roString"
-    ? "Resolving a Video (deeplink direct)"
+    ' ?"Resolving a Video (deeplink direct)"
     m.urlResolver.setFields({constants: m.constants, url: url, title: "deeplink video", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
     m.urlResolver.observeField("output", "playResolvedVideo")
     m.urlResolver.control = "RUN"
@@ -872,7 +872,7 @@ sub gotChatHistory(msg as Object)
   if type(msg) = "roSGNodeEvent"
     m.chatHistory.control = "STOP"
     data = msg.getData()
-    ? "Got Chat History:"
+    ' ?"Got Chat History:"
     try
       m.chatArray = data.chat
       m.ChatBox.text = m.chatArray.join(Chr(10))
@@ -895,8 +895,8 @@ sub gotChatHistory(msg as Object)
 end sub
 
 sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
-  ? m.video.position
-  ? m.video.duration
+  ' ?m.video.position
+  ' ?m.video.duration
   if m.refreshes = 0
     m.video.width = 1430
     m.ChatBackground.visible = true
@@ -969,7 +969,7 @@ end sub
 Sub watchmanRan(msg as Object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
-    ? formatJson(data)
+    ' ?formatJson(data)
     m.watchman.control = "STOP"
   end if
 End Sub
@@ -985,15 +985,15 @@ Sub playResolvedVideo(msg as Object)
     else
       m.videoGrid.visible = true
       m.loadingText.visible = false
-      ? "VPLAYDEBUG:"
-      ? formatJSON(data)
+      ' ?"VPLAYDEBUG:"
+      ' ?formatJSON(data)
       'preset video length in UI
       if m.videoEndingTimeSet = false
         m.videoProgressBarp2.text = getvideoLength(data.length)
         m.videoEndingTimeSet = true
       end if
       m.videoContent.url = data.videourl.Unescape()
-      ? m.videoContent.url
+      ' ?m.videoContent.url
       m.videoContent.streamFormat = data.videotype
       m.videoContent.title = data.title 'passthrough title
       m.videoContent.Live = false
@@ -1009,9 +1009,9 @@ Sub playResolvedVideo(msg as Object)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
       m.video.observeField("position", "videoPositionChanged")
-      ? m.video.errorStr
-      ? m.video.videoFormat
-      ? m.video
+      ' ?m.video.errorStr
+      ' ?m.video.videoFormat
+      ' ?m.video
       m.urlResolver.unobserveField("output")
       m.urlResolver.control = "STOP"
       m.taskRunning = False
@@ -1060,8 +1060,8 @@ End Function
 Function onVideoStateChanged(msg as Object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "state"
       state = msg.getData()
-      ? "==========VIDEO STATE==========="
-      ? state
+      ' ?"==========VIDEO STATE==========="
+      ' ?state
       if state = "finished"
           deleteSpinner()
           if m.global.constants.enableStatistics
@@ -1077,8 +1077,8 @@ Function onVideoStateChanged(msg as Object)
         m.videoButtonsPlayIcon.labelText = m.vjschars["pause"]
         m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
         m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
-        ? m.currentVideoChannelIcon
-        ? m.videoButtonsChannelIcon
+        ' ?m.currentVideoChannelIcon
+        ' ?m.videoButtonsChannelIcon
         if m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
           m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
         end if
@@ -1146,7 +1146,7 @@ sub search()
     m.searchFailed = true
     Error("Search too short", "Needs to be more than 2 characters long.")
   else
-    ? "======SEARCH======"
+    ' ?"======SEARCH======"
     if m.searchHistoryContent.getChildCount() = 0 OR m.searchHistoryContent.getChild(0).title <> m.searchKeyboard.text 'don't re-add items that already exist
       if m.searchHistoryContent.getChildCount() >= 8
           m.searchHistoryContent.removeChildIndex(8) 'removeChildIndex is basically pop
@@ -1162,13 +1162,13 @@ sub search()
           m.searchHistoryItems.unshift(m.searchKeyboard.text)
       end if
     end if
-    ? "======SEARCH======"
+    ' ?"======SEARCH======"
     SetRegistry("searchHistoryRegistry", "searchHistory", FormatJSON(m.searchHistoryItems))
     if m.searchKeyboardDialog.itemSelected = 1
-      ? "video search"
+      ' ?"video search"
       m.searchType = "video"
     else if m.searchKeyboardDialog.itemSelected = 0 OR m.searchKeyboardDialog.itemSelected = -1
-      ? "channel search"
+      ' ?"channel search"
       m.searchType = "channel"
     end if
     execSearch(m.searchKeyboard.text, m.searchType)
@@ -1176,11 +1176,11 @@ sub search()
 end sub
 
 sub execSearch(search, searchType)
-  ? "Valid Input"
+  ' ?"Valid Input"
   'search starting
-  ? search, searchType
+  ' ?search, searchType
   if searchType = "video"
-    ? "will run video search."
+    ' ?"will run video search."
     m.videoSearch.setFields({constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
     m.videoSearch.observeField("output", "gotVideoSearch")
     m.videoSearch.control = "RUN"
@@ -1194,7 +1194,7 @@ sub execSearch(search, searchType)
     m.loadingText.text = "Loading your search results.."
   end if
   if searchType = "channel"
-    ? "will run channel search."
+    ' ?"will run channel search."
     m.channelSearch.setFields({constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
     m.channelSearch.observeField("output", "gotChannelSearch")
     m.channelSearch.control = "RUN"
@@ -1245,7 +1245,7 @@ end sub
 sub gotChannelSearch(msg as Object)
   if type(msg) = "roSGNodeEvent" 
     data = msg.getData()
-    ? data
+    ' ?data
     if data.success = true
       downsizeVideoGrid()
       m.videoSearch.unobserveField("output")
@@ -1349,17 +1349,17 @@ function createBothItems(buttons, items, itemSize) as object
 end function
 
 sub historySearch()
-  ? "======HISTORY SEARCH======"
-  ? m.searchKeyboardDialog.itemFocused
+  ' ?"======HISTORY SEARCH======"
+  ' ?m.searchKeyboardDialog.itemFocused
   if m.searchKeyboardDialog.itemFocused = 1
-    ? "video search"
+    ' ?"video search"
     m.searchType = "video"
   else if m.searchKeyboardDialog.itemFocused = 0 OR m.searchKeyboardDialog.itemFocused = -1
-    ? "channel search"
+    ' ?"channel search"
     m.searchType = "channel"
   end if
   execSearch(m.searchHistoryContent.getChildren(-1, 0)[m.searchHistoryBox.itemSelected].TITLE, m.searchType)
-  ? "======HISTORY SEARCH======"
+  ' ?"======HISTORY SEARCH======"
 end sub
 
 sub clearHistory()
@@ -1375,7 +1375,7 @@ end sub
 '========================Task Flow===============================
 
 Sub gotConstants()
-  ? m.constantsTask.constants
+  ' ?m.constantsTask.constants
   m.constantsTask.unobserveField("constants")
   m.constantsTask.control = "STOP"
   if m.constantsTask.error
@@ -1391,8 +1391,8 @@ Sub gotConstants()
     m.authTask.observeField("uid", "gotUID")
     m.authTask.observeField("authtoken", "gotAuth")
     m.authTask.observeField("cookies", "gotCookies")
-    ? "Constants are done, running auth"
-    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    ' ?"Constants are done, running auth"
+    ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
     m.authTask.control = "RUN"
   end if
 End Sub
@@ -1407,7 +1407,7 @@ Sub retryConstants()
 End Sub
 
 Sub authDone()
-  ? "Running authDone"
+  ' ?"Running authDone"
   if m.authTask.authPhase = 1
     m.authTask.control = "STOP"
   end if
@@ -1416,12 +1416,12 @@ Sub authDone()
     retryError("Error authenticating with Odysee", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryAuth")
   else
     m.legacyAuthenticated = True
-    ? m.authTask.output
+    ' ?m.authTask.output
     m.uid = m.authTask.uid
     m.authtoken = m.authTask.authtoken
     m.cookies = m.authTask.cookies
-    ? "AUTH IS DONE!"
-    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    ' ?"AUTH IS DONE!"
+    ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
     if m.global.constants.enableStatistics
       m.rokuInstall.setFields({constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
       m.rokuInstall.observeField("output", "didInstall")
@@ -1454,18 +1454,18 @@ End Sub
 
 sub didInstall(msg as Object)
   if type(msg) = "roSGNodeEvent" 
-    ? "============================GOT ACCT DATA:======================================="
-    ? formatJSON(msg.getData())
+    ' ?"============================GOT ACCT DATA:======================================="
+    ' ?formatJSON(msg.getData())
     m.rokuInstall.control = "STOP"
     m.rokuInstall.unobserveField("output")
-    ? "============================GOT ACCT DATA:======================================="
+    ' ?"============================GOT ACCT DATA:======================================="
   end if
 end sub
 
 sub indexloaded(msg as Object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "mediaIndex"
       m.mediaIndex = msg.getData()
-      '? "m.mediaIndex= "; m.mediaIndex
+      '' ?"m.mediaIndex= "; m.mediaIndex
   end if
   'get run time deeplink updates'
   'm.global.observeField("deeplink", handleDeepLink)
@@ -1560,7 +1560,7 @@ end function
 'Registry+Utility Functions
 
 Sub gotCIDS()
-  ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+  ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
   m.cidsTask.control = "STOP"
   m.cidsTask.unobserveField("channelids")
   if m.cidsTask.error
@@ -1568,25 +1568,25 @@ Sub gotCIDS()
   else
     m.channelIDs = m.cidsTask.channelids
     m.categorySelectordata = m.cidsTask.categoryselectordata
-    ? m.channelIDs
-    ? "Got channelIDs+category selector data"
-    ? "Creating threads"
-    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    ' ?m.channelIDs
+    ' ?"Got channelIDs+category selector data"
+    ' ?"Creating threads"
+    ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
     blocked = []
     if m.wasLoggedIn AND m.preferences.Count() > 0
       if isValid(m.preferences.blocked)
-        ? "found blocked users"
+        ' ?"found blocked users"
         if m.preferences.blocked.Count() > 0
           blocked = m.preferences.blocked
-          ? formatJson(blocked)
+          ' ?formatJson(blocked)
         end if
       end if
     end if
     if m.wasLoggedIn AND m.preferences.Count() > 0
       if isValid(m.preferences.following)
         if m.preferences.following.Count() > 0
-          ? "found following"
-          ? formatJson(m.preferences["following"])
+          ' ?"found following"
+          ' ?formatJson(m.preferences["following"])
           thread = CreateObject("roSGNode", "getSinglePage")
           thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
           thread.observeField("output", "threadDone")
@@ -1607,11 +1607,11 @@ Sub gotCIDS()
       m.threads.push(thread)
       catData = invalid 'save memory
     end for
-    ? "Done, starting threader."
-    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    ' ?"Done, starting threader."
+    ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
     m.categorySelector.content = m.categorySelectordata
-    ? m.categorySelectordata
-    ? m.categorySelector.content
+    ' ?m.categorySelectordata
+    ' ?m.categorySelector.content
     for runvar = 0 to m.maxThreads-1
       m.runningthreads.Push(m.threads[runvar])
       m.threads.delete(runvar)
@@ -1619,8 +1619,8 @@ Sub gotCIDS()
     for each thread in m.runningthreads
       thread.control = "RUN" 'start threading
     end for
-    ? "Threader started."
-    ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    ' ?"Threader started."
+    ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
   end if
 End Sub
 
@@ -1657,7 +1657,7 @@ if type(msg) = "roSGNodeEvent"
     end if
   else
     m.mediaIndex.append(thread.output.index)
-    ? thread.rawname
+    ' ?thread.rawname
     m.categories.addReplace(thread.rawname, thread.output.content)
     thread.unObserveField("output")
     thread.control = "STOP"
@@ -1677,11 +1677,11 @@ if type(msg) = "roSGNodeEvent"
       thread.control = "RUN"
       m.runningthreads.Push(thread)
     else
-      ? m.mediaIndex
-      ? m.mediaIndex.Count()
-      ? m.categories
-      ? m.categories[m.categories.Keys()[0]]
-      ? "Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+      ' ?m.mediaIndex
+      ' ?m.mediaIndex.Count()
+      ' ?m.categories
+      ' ?m.categories[m.categories.Keys()[0]]
+      ' ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
       m.videoGrid.content = m.categories[m.categories.Keys()[0]]
       m.loadingText.visible = false
       m.loadingText.translation="[800,0]"
@@ -1701,7 +1701,7 @@ End Sub
 
 sub finishInit()
   m.InputTask.control="RUN" 'run input task, since user input is now needed (UI) 
-  ? "init finished."
+  ' ?"init finished."
   m.header.visible = true
   m.sidebarTrim.visible = true
   m.sidebarBackground.visible = true
@@ -1735,7 +1735,7 @@ end sub
 
 sub gotAuth(msg as object)
   auth = msg.getData()
-  ? "[gotAuth] Token should be " + auth
+  ' ?"[gotAuth] Token should be " + auth
   m.authToken = auth
   SetRegistry("authRegistry", "authtoken", m.authtoken)
 end sub
@@ -1748,7 +1748,7 @@ end sub
 sub didRefresh(msg as object)
   m.authTask.control = "STOP"
   'data = msg.getData()
-  '? data
+  '' ?data
   m.authTask.unObserveField("output")
   m.authTimerObserved = false
 end sub
@@ -1762,7 +1762,7 @@ end sub
 
 sub gotAccessToken(msg as object)
   m.accessToken = msg.getData()
-  ? "accessToken is", m.accessToken
+  ' ?"accessToken is", m.accessToken
   SetRegistry("deviceFlowRegistry", "accessToken", m.accessToken)
 end sub
 
@@ -1776,18 +1776,18 @@ sub authPhaseChanged(msg as object)
     m.authTask.control = "STOP"
     data = msg.getData()
     if data = 10
-      ? "Phase 10 (Logging Out)"
+      ' ?"Phase 10 (Logging Out)"
       Logout()
     end if
     if data = 4
       'Forced logout occurs either:
       ' 1. When a user forcefully pulls their permission given to the odysee-roku app
       ' 2. When the token expires due to Odysee reinitializing their servers
-      ? "Phase 4 (Forced Logout)"
+      ' ?"Phase 4 (Forced Logout)"
       Logout()
     end if
     if data = 3
-      ? "Phase 3 (Fully authenticated)"
+      ' ?"Phase 3 (Fully authenticated)"
       m.wasLoggedIn = true
       setRegistry("preferencesRegistry", "loggedIn", "true")
       if m.syncTimerObserved = false
@@ -1802,20 +1802,20 @@ sub authPhaseChanged(msg as object)
       end if
     end if
     if data = 2
-      ? "Phase 2"
+      ' ?"Phase 2"
       if m.authTimerObserved = false
         m.authTaskTimer.observeField("fire", "refreshAuth")
         m.authTimerObserved = true
       end if
     end if
     if data = 1
-      ? "Phase 1 (Legacy Authenticated)"
+      ' ?"Phase 1 (Legacy Authenticated)"
       if m.syncTimerObserved = true
         m.syncLoop.control = "STOP"
         m.syncLoopTimer.unobserveField("fire")
         m.syncTimerObserved = false
       end if
-      ? m.wasLoggedIn
+      ' ?m.wasLoggedIn
       if isValid(m.authTask.output)
         if m.wasLoggedIn AND m.authTask.output.authenticated = false
           authDone()
@@ -1826,17 +1826,17 @@ sub authPhaseChanged(msg as object)
       end if
       m.authTask.authPhase = 1
       m.authTask.control = "RUN"
-      ? "Task Restarted"
+      ' ?"Task Restarted"
     end if
     if data = 0
-      ? "Phase 0"
+      ' ?"Phase 0"
       m.authTask.control = "RUN"
     end if
   end if
 end sub
 
 sub Logout()
-  ? "Running Logout"
+  ' ?"Running Logout"
   if m.syncTimerObserved = true
     m.syncLoop.control = "STOP"
     m.syncLoopTimer.unobserveField("fire")
@@ -1896,11 +1896,11 @@ end sub
 
 'Sync Task related functions (post auth)
 sub getSync()
-  ? "GETSYNC DEBUG"
-  ? m.syncLoop.inSync
-  ? m.wasLoggedIn
-  ? m.favoritesLoaded
-  ? "GETSYNC DEBUG"
+  ' ?"GETSYNC DEBUG"
+  ' ?m.syncLoop.inSync
+  ' ?m.wasLoggedIn
+  ' ?m.favoritesLoaded
+  ' ?"GETSYNC DEBUG"
   if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn 'update
     gotSync()
   else 'get in sync first
@@ -1912,9 +1912,9 @@ end sub
 sub gotSync(msg as object)
   data = msg.getData()
   m.syncLoop.control = "STOP"
-  ? "GOTSyncDebug"
+  ' ?"GOTSyncDebug"
   if isValid(data)
-    ? data
+    ' ?data
   end if
   if m.preferences.Count() = 0 OR m.favoritesLoaded = false
     getUserPrefs()
@@ -1923,34 +1923,25 @@ end sub
 
 sub syncStateChanged(msg as object)
   data = msg.getData()
-  ? "SYNC LOOP STATE:"
-  ? data
+  ' ?"SYNC LOOP STATE:"
+  ' ?data
   if data = 4 'State 4 only. Run once.
     m.syncLoopState = 4
-    m.syncLoopTimer.duration = 5
+    m.syncLoopTimer.duration = 15
     getUserPrefs()
   end if
   if data = 3
     m.syncLoopState = 3
-    m.syncLoopTimer.duration = 2
+    m.syncLoopTimer.duration = 15
   end if
   if data = 2
     m.syncLoopState = 2
-  end if
-  if data = 1
-    if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
-      m.videoGrid.setFocus(false)
-      m.categorySelector.setFocus(true)
-      m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
-      m.videoGrid.visible = false
-      m.loadingText.visible = true
-    end if
   end if
 end sub
 
 'User Preference related tasks
 sub getUserPrefs()
-  ? "attempting to get user preferences"
+  ' ?"attempting to get user preferences"
   m.getpreferencesTask.setFields({ "accessToken": m.accessToken: uid: m.syncLoop.uid })
   m.getpreferencesTask.observeField("preferences", "gotUserPrefs")
   m.getpreferencesTask.control = "RUN"
@@ -1958,17 +1949,70 @@ end sub
 
 sub gotUserPrefs()
   m.getpreferencesTask.control = "STOP"
-  m.preferences = m.getpreferencesTask.preferences
+  preferencesChanged = false
+  newpreferences = m.getpreferencesTask.preferences
+  oldpreferences = m.preferences
+  ? "PREFERENCES (LOCAL)"
+  ?FormatJson(oldpreferences)
+  ? "PREFERENCES (TASK)"
+  ?FormatJson(newpreferences)
+  if oldpreferences.blocked.Count() <> newpreferences.blocked.Count()
+    preferencesChanged = true
+  end if
+  if oldpreferences.following.Count() <> newpreferences.following.Count()
+    preferencesChanged = true
+  end if
+  if oldpreferences.collections.Count() <> newpreferences.collections.Count()
+    preferencesChanged = true
+  end if
+  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
+    for ckey = 0 to oldpreferences.blocked.Count() - 1
+      if oldpreferences.blocked[ckey] <> newpreferences.blocked[ckey]
+        preferenceschanged = true
+      end if
+    end for
+  end if
+  ckey = invalid
+  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
+    for ckey = 0 to oldpreferences.blocked.Count() - 1
+      if oldpreferences.following[ckey] <> newpreferences.following[ckey]
+        preferenceschanged = true
+      end if
+    end for
+  end if
+  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
+    for ckey = 0 to oldpreferences.collections.count() - 1
+      if oldpreferences.collections[ckey].items.Count() <> newpreferences.collections[ckey].items.Count()
+        preferenceschanged = true
+      end if
+    end for
+  end if
+  if preferencesChanged
+    ? "Preferences appear to have changed"
+    if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
+      m.videoGrid.setFocus(false)
+      m.categorySelector.setFocus(true)
+      m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
+      m.videoGrid.visible = false
+      m.loadingText.visible = true
+    end if
+  else
+    ? "No change detected."
+  end if
+  ckey = invalid
+  m.preferences = newpreferences 'update it, just in case.
   setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
-  ? FormatJson(m.preferences)
   if m.legacyAuthenticated = false
     authDone()
   end if
-  if m.favoritesThread.state = "init" OR m.favoritesThread.state = "stop"
+  if m.favoritesThread.state = "init" OR m.favoritesThread.state = "stop" AND preferenceschanged = true
     m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if
+  oldpreferences = invalid
+  newpreferences = invalid
+  preferenceschanged = invalid
 end sub
 
 sub gotFavorites(msg as object)
@@ -1982,8 +2026,8 @@ sub gotFavorites(msg as object)
       thread.unObserveField("output")
       thread.control = "STOP"
       m.favoritesUIFlag = true
-      ? m.focusedItem
-      ? m.categorySelector.itemFocused
+      ' ?m.focusedItem
+      ' ?m.categorySelector.itemFocused
       if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0
         m.oauthHeader.visible = false
         m.oauthCode.visible = false
@@ -2008,7 +2052,7 @@ end sub
 
 sub gotReactions(msg as object)
   data = msg.getData()
-  ? formatJson(data)
+  ' ?formatJson(data)
   m.getreactionTask.control = "STOP"
 end sub
 
@@ -2020,7 +2064,7 @@ end sub
 
 sub setReactionDone(msg as object)
   data = msg.getData()
-  ? formatJson(data)
+  ' ?formatJson(data)
   m.setreactionTask.control = "STOP"
 end sub
 
@@ -2051,10 +2095,10 @@ end sub
 sub setPrefStateChanged()
   if m.setpreferencesTask.setState = 1
     m.setpreferencesTask.control = "STOP"
-    ? "SUCCESS: Set preferences remotely"
+    ' ?"SUCCESS: Set preferences remotely"
   else if m.setpreferencesTask.setState = 2
     m.setpreferencesTask.control = "STOP"
-    ? "FAILURE: Failed to set preferences for some reason."
+    ' ?"FAILURE: Failed to set preferences for some reason."
   end if
   'Logout()
 end sub
@@ -2091,9 +2135,9 @@ end sub
 sub gotCookies(msg as Object)
     cookies = msg.getData()
     if cookies.Count() > 0
-      ? "COOKIE:"
-      ? FormatJson(cookies)
-      ? "COOKIE_END"
+      ' ?"COOKIE:"
+      ' ?FormatJson(cookies)
+      ' ?"COOKIE_END"
       SetRegistry("authRegistry","cookies", FormatJSON(cookies))
       m.cookies = cookies
     end if

@@ -31,19 +31,19 @@ function set_reactions(action)
     success = false
     if action = "like"
         reaction = postURLEncoded({"claim_ids": m.top.claimID, "type": "like", "clear_types": "dislike"},m.top.constants["ROOT_API"]+"/reaction/react", { "Authorization": "Bearer " + m.top.accessToken })
-        ? FormatJson(reaction)
+        ' ?FormatJson(reaction)
         success = reaction.success
     end if
     if action = "dislike"
         reaction = postURLEncoded({"claim_ids": m.top.claimID, "type": "dislike", "clear_types": "like"},m.top.constants["ROOT_API"]+"/reaction/react", { "Authorization": "Bearer " + m.top.accessToken })
-        ? FormatJson(reaction)
+        ' ?FormatJson(reaction)
         success = reaction.success
     end if
     if action = "negate" 'negate: neither like nor dislike
         reaction1 = postURLEncoded({"claim_ids": m.top.claimID, "type": "like", "remove": "true"},m.top.constants["ROOT_API"]+"/reaction/react", { "Authorization": "Bearer " + m.top.accessToken })
         reaction2 = postURLEncoded({"claim_ids": m.top.claimID, "type": "dislike", "remove": "true"},m.top.constants["ROOT_API"]+"/reaction/react", { "Authorization": "Bearer " + m.top.accessToken })
-        ? FormatJson(reaction1)
-        ? FormatJson(reaction2)
+        ' ?FormatJson(reaction1)
+        ' ?FormatJson(reaction2)
         if reaction1.success OR reaction2.success
             success = true
         end if
@@ -53,14 +53,14 @@ end function
 
 function string_deduplicate(array)
     if Type(array) <> "roArray"
-        ? "ERROR: must be roArray"
+        ' ?"ERROR: must be roArray"
         return ["error"]
     else
         deduper = {}
         deduparray = []
         for each item in array
             if type(item) <> "roString"
-                ? "ERROR: must be an array of roStrings"
+                ' ?"ERROR: must be an array of roStrings"
                 return ["error"]
             else
                 deduper.addReplace(item, "")

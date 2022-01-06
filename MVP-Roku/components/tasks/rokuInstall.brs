@@ -3,12 +3,12 @@ Sub Init()
 End Sub
 
 sub master()
-    '? m.top.constants
-    '? m.top.cookies
-    '? m.top.uid
-    '? m.top.authtoken
-    '? m.top.channels
-    '? m.top.rawname
+    '' ?m.top.constants
+    '' ?m.top.cookies
+    '' ?m.top.uid
+    '' ?m.top.authtoken
+    '' ?m.top.channels
+    '' ?m.top.rawname
     m.top.output = installRoku()
 End Sub
 
@@ -41,8 +41,8 @@ Function installRoku()
     end try
 
     installQuery = {"auth_token": m.top.authToken, "app_version": appVersion, "domain": "odysee.com", "app_id": installID, "node_id": "", "daemon_version": daemon_version, "operating_system": "roku", "platform": fullPlatform}
-    ? "[rokuInstall]:"
-    ? installQuery
+    ' ?"[rokuInstall]:"
+    ' ?installQuery
     getInstall = getURLEncoded(installQuery, userAPI, [])
     return {installed: getInstall["success"]}
 End Function

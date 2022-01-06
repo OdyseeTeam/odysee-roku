@@ -30,12 +30,15 @@ function set_prefs()
     '8082 api
     m.top.oldHash = m.top.newHash
     m.inSync = true
-    ? "Step 2: Preference Get (for modification)"
+    ? "RUNNING setPreferencesTask"
+   ?"Step 2: Preference Get (for modification)"
     'Step 2: Preference Get (for modification)
     if m.inSync
+        ? "Getting preferences(SDK)"
         preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_get", "params": { "key": "shared" }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
+        ? formatJSON(preferences)
         'Step 3: Modification
-        ? "Step 3: Modification"
+         ?"Step 3: Modification"
         if isValid(preferences.result)
             if IsValid(preferences.result.shared)
                 if isValid(preferences.result.shared.value)
@@ -46,7 +49,7 @@ function set_prefs()
                         following = []
                         followingaa = {}
                         userPreferences = preferences.result.shared.value
-                        ? formatJson(userPreferences)
+                        ' ?formatJson(userPreferences)
                         if isValid(userPreferences.blocked)
                             for each user in userPreferences.blocked
                                 blocked.push(user.split("#")[1])
@@ -96,7 +99,7 @@ function set_prefs()
                                             preferences.result.shared.value.blocked.push(response.result.items[0]["permanent_url"])
                                         end if
                                     catch e
-                                        ? e
+                                        ' ?e
                                         stop
                                     end try
                                 end if
@@ -146,7 +149,7 @@ function set_prefs()
                                                 prenotify_new_follow(subclaim)
                                             end if
                                         catch e
-                                            ? e
+                                            ' ?e
                                             stop
                                         end try
                                     end if
@@ -195,7 +198,7 @@ function set_prefs()
                                                 preferences.result.shared.value.subscriptions.push(response.result.items[0]["permanent_url"])
                                             end if
                                         catch e
-                                            ? e
+                                            ' ?e
                                             stop
                                         end try
                                     end if
@@ -209,7 +212,7 @@ function set_prefs()
                                 if isValid(preferences.result.shared.value)
                                     try
                                         for i = 0 to preferences.result.shared.value.blocked.Count() - 1
-                                            ? preferences.result.shared.value.blocked[i]
+                                            ' ?preferences.result.shared.value.blocked[i]
                                             if isValid(preferences.result.shared.value.blocked[i])
                                                 for each change in m.top.preferences.blocked
                                                     if change.split("#").Count() > 1
@@ -226,8 +229,8 @@ function set_prefs()
                                         end for
                                         i = invalid
                                     catch e
-                                        ? "Modification Error:"
-                                        ? e
+                                        ' ?"Modification Error:"
+                                        ' ?e
                                     end try
                                     for i = 0 to preferences.result.shared.value.following.Count() - 1
                                         if isValid(preferences.result.shared.value.following[i])
@@ -265,29 +268,30 @@ function set_prefs()
                                         end for
                                         i = invalid
                                     catch e
-                                        ? "Modification Error:"
-                                        ? e
+                                        ' ?"Modification Error:"
+                                        ' ?e
                                     end try
                                     'TODO: Add collections to this (requires timestamp manip.)
                                 end if
                             end if
                         end if
                     end if
-                    ? formatJson(preferences.result.shared.value)
+                    ? "MODIFIED:"
+                    ?formatJson(preferences.result.shared.value)
                 end if
             end if
         end if
         'Step 4: preference_set (set what we altered)
-        ? "Step 4: preference_set (set what we altered)"
+         ?"Step 4: preference_set (set what we altered) TO SDK"
         preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_set", "params": { "key": "shared", "value": formatJson(preferences.result.shared) }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
-        ? FormatJson(preferences)
+         ?FormatJson(preferences)
         if isValid(preferences.result) = false
             needs_resync = true
         end if
         'Step 5: Sync Apply (to SDK)
-        ? "Step 5: Sync Apply (to SDK)"
+         ?"Step 5: Sync Apply (to SDK)"
         syncapply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "": "blocking": true }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
-        ? FormatJson(syncapply)
+         ?FormatJson(syncapply)
         if isValid(syncapply.data)
             if isValid(syncapply.data.data) and isValid(syncapply.data.hash)
                 m.top.newHash = "" + syncapply.result.hash
@@ -295,14 +299,14 @@ function set_prefs()
             end if
         end if
         'Step 6: Sync Set (to API)
-        ? "Step 6: Sync Set (to API)"
+         ?"Step 6: Sync Set (to API)"
         syncset = postURLEncoded({ old_hash: m.top.oldHash, new_hash: "" + syncapply.result.hash: data: "" + syncapply.result.data }, m.top.constants["ROOT_API"] + "/sync/set", { "Authorization": "Bearer " + m.top.accessToken })
-        ? formatJson(syncset)
+         ?formatJson(syncset)
         if syncset.success = true
-            ? "Successfully synchronized data"
+            ?"Successfully synchronized data"
             m.inSync = true
         else
-            ? "Failed to sync data (APIs do NOT MATCH)"
+            ?"Failed to sync data (APIs do NOT MATCH)"
             m.top.error = true
             m.inSync = false
         end if
@@ -316,14 +320,14 @@ end function
 
 function string_deduplicate(array)
     if Type(array) <> "roArray"
-        ? "ERROR: must be roArray"
+        ' ?"ERROR: must be roArray"
         return ["error"]
     else
         deduper = {}
         deduparray = []
         for each item in array
             if type(item) <> "roString"
-                ? "ERROR: must be an array of roStrings"
+                ' ?"ERROR: must be an array of roStrings"
                 return ["error"]
             else
                 deduper.addReplace(item, "")
@@ -336,12 +340,14 @@ function string_deduplicate(array)
 end function
 
 function prenotify_delete_follow(follow)
+    ?"Prenotifying ROOT API (/subscription/delete)"
     notifyURL = m.top.constants["ROOT_API"] + "/subscription/delete"
     notifyQuery = {claim_id: follow}
     postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
 end function
 
 function prenotify_new_follow(follow)
+    ?"Prenotifying ROOT API (/subscription/new)"
     notifyURL = m.top.constants["ROOT_API"] + "/subscription/new"
     notifyQuery = {claim_id: follow,notifications_disabled:true}
     postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })

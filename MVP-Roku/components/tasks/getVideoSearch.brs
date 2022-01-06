@@ -3,12 +3,12 @@ Sub Init()
 End Sub
 
 sub master()
-    '? m.top.constants
-    '? m.top.cookies
-    '? m.top.uid
-    '? m.top.authtoken
-    '? m.top.channels
-    '? m.top.rawname
+    '' ?m.top.constants
+    '' ?m.top.cookies
+    '' ?m.top.uid
+    '' ?m.top.authtoken
+    '' ?m.top.channels
+    '' ?m.top.rawname
     m.top.output = getLighthouseResult(m.top.search)
 End Sub
 Function getLighthouseResult(search)
@@ -18,17 +18,17 @@ Function getLighthouseResult(search)
     claimIds = []
     if type(queryResult) = "roArray"
         if queryResult.Count() > 0
-            ? "valid"
+            ' ?"valid"
             for each claim in queryResult
                 claimIds.push(claim.claimId)
             end for
             return {result: ClaimsToVideoGrid(claimIds), success: true}
         else
-            ? "no results"
+            ' ?"no results"
             return {result: {}, success: false}
         end if
     else
-        ? "no results"
+        ' ?"no results"
         return {result: {}, success: false}
     end if
 End Function
@@ -57,7 +57,7 @@ Function ClaimsToVideoGrid(claims)
     result=[]
     counter=0
     content=createObject("RoSGNode","ContentNode")
-    ? "got "+str(items.Count())+" items from Odysee (Video Search)"
+    ' ?"got "+str(items.Count())+" items from Odysee (Video Search)"
     For i=0 To items.Count()-1 Step 1 'Parse response
         item = {}
         item.Title = items[i].value.title
@@ -128,9 +128,9 @@ Function ClaimsToVideoGrid(claims)
         mediaindex[item.guid] = item
         item = invalid
     end for
-    '? type(content)
-    ? "exported"+Str(content.getChildCount()*4)+" items from Odysee (Video Search)"
+    '' ?type(content)
+    ' ?"exported"+Str(content.getChildCount()*4)+" items from Odysee (Video Search)"
 
-    '? "manufacturing finished for key: "+subkey
+    '' ?"manufacturing finished for key: "+subkey
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
 End Function
