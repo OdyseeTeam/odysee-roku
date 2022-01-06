@@ -1966,6 +1966,13 @@ sub gotUserPrefs()
     preferencesChanged = true
   end if
   if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
+    for ckey = 0 to oldpreferences.collections.count() - 1
+      if oldpreferences.collections[ckey].items.Count() <> newpreferences.collections[ckey].items.Count()
+        preferenceschanged = true
+      end if
+    end for
+  end if
+  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
     for ckey = 0 to oldpreferences.blocked.Count() - 1
       if oldpreferences.blocked[ckey] <> newpreferences.blocked[ckey]
         preferenceschanged = true
@@ -1976,13 +1983,6 @@ sub gotUserPrefs()
   if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
     for ckey = 0 to oldpreferences.blocked.Count() - 1
       if oldpreferences.following[ckey] <> newpreferences.following[ckey]
-        preferenceschanged = true
-      end if
-    end for
-  end if
-  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
-    for ckey = 0 to oldpreferences.collections.count() - 1
-      if oldpreferences.collections[ckey].items.Count() <> newpreferences.collections[ckey].items.Count()
         preferenceschanged = true
       end if
     end for
