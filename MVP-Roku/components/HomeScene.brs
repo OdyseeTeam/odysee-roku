@@ -1987,6 +1987,17 @@ sub gotUserPrefs()
       end if
     end for
   end if
+  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
+    for ckey = 0 to oldpreferences.collections.count() - 1
+      if oldpreferences.collections[ckey].items.Count() > 0
+        for subkey = 0 to oldpreferences.collections[ckey].items.Count() - 1
+          if oldpreferences.collections[ckey].items[subkey] <> newpreferences.collections[ckey].items[subkey]
+            preferencesChanged = true
+          end if
+        end for
+      end if
+    end for
+  end if
   if preferencesChanged
     ? "Preferences appear to have changed"
     if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
