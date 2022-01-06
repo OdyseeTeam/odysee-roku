@@ -1956,6 +1956,7 @@ sub gotUserPrefs()
   ?FormatJson(oldpreferences)
   ? "PREFERENCES (TASK)"
   ?FormatJson(newpreferences)
+  ' Count Checks (easy on CPU)
   if oldpreferences.blocked.Count() <> newpreferences.blocked.Count()
     preferencesChanged = true
   end if
@@ -1973,6 +1974,7 @@ sub gotUserPrefs()
     end for
     ckey = invalid
   end if
+  ' Item-by-item checks (harder on CPU, ran only if changes aren't obvious)
   if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
     for ckey = 0 to oldpreferences.blocked.Count() - 1
       if oldpreferences.blocked[ckey] <> newpreferences.blocked[ckey]
