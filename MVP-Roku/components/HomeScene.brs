@@ -89,22 +89,6 @@ Sub init()
     m.ModelNumber = m.DeviceInfo.GetModel()
     m.maxThumbHeight=220
     m.maxThumbWidth=390
-
-  if m.ModelNumber = "2710X" OR m.ModelNumber = "2720X" OR m.ModelNumber = "3700X" OR m.ModelNumber = "3710X" OR m.ModelNumber = "5000X"
-      m.errorSubtext.text = "Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur."
-      m.modelWarning = True
-      m.maxThumbHeight=m.maxThumbHeight/2
-      m.maxThumbWidth=m.maxThumbWidth/2
-  else if m.ModelNumber = "2700X" OR m.ModelNumber = "3500X"
-      m.errorSubtext.text = "Your Roku may not be supported! Certain models of Roku cannot play 1080p video. You are using one of them. Errors will occur."
-      m.modelWarning = True
-      m.maxThumbHeight=m.maxThumbHeight/2
-      m.maxThumbWidth=m.maxThumbWidth/2
-  end if
-  if m.ModelNumber = "4200X" OR m.ModelNumber = "4210X" OR m.ModelNumber = "4230X"
-      m.errorSubtext.text = "Your Roku may not be supported! Certain models of Roku may not meet the hardware requirements to play 1080p video. You are using one of them. Errors may occur."
-      m.modelWarning = True
-  end if
   
   'Tasks
   m.ws = createObject("roSGNode", "WebSocketClient")
@@ -562,15 +546,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       return true
     end if
 end Function
-
-sub modelWarning()
-  m.global.scene.signalBeacon("AppDialogInitiate")
-  m.errorText.visible = true
-  m.errorSubtext.visible = true
-  m.errorButton.visible = true
-  m.errorButton.observeField("buttonSelected", "warningdismissed")
-  m.errorButton.setFocus(true)
-end sub
 
 sub warningdismissed()
   m.errorText.visible = false
@@ -1713,9 +1688,7 @@ if type(msg) = "roSGNodeEvent"
       m.loadingText.vertAlign="center" 
       m.loadingText.horizAlign="left"
       if m.mediaIndex.Count() > 0
-        if m.modelWarning
-          modelWarning()
-        else
+        if m.authTask.authPhase > 0
           finishInit()
         end if
       else
@@ -1782,6 +1755,9 @@ end sub
 
 sub gotRokuCode(msg as object)
   m.oauthCode.text = msg.getData()
+  if m.videoGrid.visible = false AND m.loadingText.visible = false AND m.searchKeyboard.visible = false
+    m.oauthCode.visible = true
+  end if
 end sub
 
 sub gotAccessToken(msg as object)
@@ -1801,9 +1777,14 @@ sub authPhaseChanged(msg as object)
     data = msg.getData()
     if data = 10
       ? "Phase 10 (Logging Out)"
-      m.wasLoggedIn = false
-      m.authTask.setFields({ uid: 0, authtoken: "", cookies: [] })
-      setRegistry("preferencesRegistry", "loggedIn", "false")
+      Logout()
+    end if
+    if data = 4
+      'Forced logout occurs either:
+      ' 1. When a user forcefully pulls their permission given to the odysee-roku app
+      ' 2. When the token expires due to Odysee reinitializing their servers
+      ? "Phase 4 (Forced Logout)"
+      Logout()
     end if
     if data = 3
       ? "Phase 3 (Fully authenticated)"
@@ -1855,31 +1836,71 @@ sub authPhaseChanged(msg as object)
 end sub
 
 sub Logout()
-  m.syncLoop.control = "STOP"
-  m.syncLoopTimer.unobserveField("fire")
-  m.authTimerObserved = false
-  m.syncTimerObserved = false
+  ? "Running Logout"
+  if m.syncTimerObserved = true
+    m.syncLoop.control = "STOP"
+    m.syncLoopTimer.unobserveField("fire")
+    m.syncTimerObserved = false
+  end if
+  videoFocused = false
+  if m.focusedItem = 7
+    videoFocused = true
+  end if
   m.categorySelector.setFocus(true)
-  m.focusedItem = 1
-  m.categorySelector.jumpToItem = 2
+  if m.categorySelector.itemFocused = 1
+    m.focusedItem = 1
+    m.uiLayer = 0
+    m.uiLayers = []
+    m.categorySelector.jumpToItem = 1
+    if videoFocused = true
+      m.focusedItem = 7
+      m.video.setFocus(true)
+      videofocused = invalid
+    end if
+    if m.video.visible = false
+      m.videoGrid.visible = false
+      m.oauthLogoutButton.visible = false
+      m.oauthHeader.visible = true
+      m.oauthCode.text = ""
+      m.oauthCode.visible = true
+      m.oauthFooter.visible = true
+    end if
+  end if
   m.preferences = {}
   m.favoritesLoaded = false
+  m.favoritesUIFlag = false
+  m.categories.delete("FAVORITES")
   m.flowUID = ""
   m.accessToken = ""
   m.refreshToken = ""
-  m.wasLoggedIn = false
-  m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
-  SetRegistry("deviceFlowRegistry", "flowUID", m.flowUID.toStr().Trim())
-  SetRegistry("deviceFlowRegistry", "accessToken", m.accessToken)
-  SetRegistry("deviceFlowRegistry", "refreshToken", m.refreshToken)
-  setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
+  m.wallet = { "oldHash": "asdf", "newHash": "asdf", "walletData": "asdf" }
+  m.syncLoop.setFields({ "accessToken": m.accessToken, "oldHash": "", "newHash": "", "walletData": "" })
+  SetRegistry("deviceFlowRegistry", "flowUID", "")
   setRegistry("preferencesRegistry", "loggedIn", "false")
-  m.authTask.authPhase = 10 'logout
-  m.authTask.control = "RUN"
+  SetRegistry("deviceFlowRegistry", "accessToken", "")
+  SetRegistry("deviceFlowRegistry", "refreshToken", "")
+  setRegistry("preferencesRegistry", "preferences", "{}")
+  SetRegistry("deviceFlowRegistry", "walletOldHash", "")
+  SetRegistry("deviceFlowRegistry", "walletNewHash", "")
+  SetRegistry("deviceFlowRegistry", "walletData", "")
+  'if m.authTask.authPhase = 3
+  '  m.authTask.authPhase = 10 'logout
+  '  m.authTask.control = "RUN"
+  '  m.authTaskTimer.control = "start"
+  'else
+  '  m.authTask.authPhase = 2
+  '  m.authTask.control = "RUN"
+  '  m.authTaskTimer.control = "start"
+  'end if
 end sub
 
 'Sync Task related functions (post auth)
 sub getSync()
+  ? "GETSYNC DEBUG"
+  ? m.syncLoop.inSync
+  ? m.wasLoggedIn
+  ? m.favoritesLoaded
+  ? "GETSYNC DEBUG"
   if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn 'update
     gotSync()
   else 'get in sync first
@@ -1891,6 +1912,10 @@ end sub
 sub gotSync(msg as object)
   data = msg.getData()
   m.syncLoop.control = "STOP"
+  ? "GOTSyncDebug"
+  if isValid(data)
+    ? data
+  end if
   if m.preferences.Count() = 0 OR m.favoritesLoaded = false
     getUserPrefs()
   end if
@@ -1898,6 +1923,8 @@ end sub
 
 sub syncStateChanged(msg as object)
   data = msg.getData()
+  ? "SYNC LOOP STATE:"
+  ? data
   if data = 4 'State 4 only. Run once.
     m.syncLoopState = 4
     m.syncLoopTimer.duration = 5

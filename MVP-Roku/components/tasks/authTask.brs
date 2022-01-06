@@ -103,6 +103,14 @@ sub master()
         'authPhase is 3, so we need to refresh the Authentication Token.
         checkRefresh()
     end if
+    if m.top.authPhase = 4
+        'authPhase is 4, Forced logout.
+        ? "Inside forced logout phase"
+        m.top.accessToken = ""
+        m.top.refreshToken = ""
+        m.top.authPhase = 1
+        m.top.output = { authorized: false, state: "INVALID", debug: authreq }
+    end if
     if m.top.authPhase = 10 'User wants to log out.
         'https://stackoverflow.com/a/46769801 really helped me out with this
         json = {refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial"}
@@ -122,7 +130,7 @@ sub checkRefresh()
         accountRoot = m.top.constants["ROOT_SSO"]+""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
         if isValid(authreq.error)
-            m.top.authPhase = 1
+            m.top.authPhase = 4
             m.top.output = { authorized: false, state: "INVALID", debug: authreq }
         end if
         if isValid(authreq.access_token)
@@ -158,7 +166,7 @@ sub checkRefresh()
         if isValid(authreq.error)
             if authreq.error = "invalid_request"
                 ? "Session not found, assuming token invalid."
-                m.top.authPhase = 1
+                m.top.authPhase = 4
                 m.top.accessToken = ""
                 m.top.refreshToken = ""
                 m.top.output = { authorized: false, state: "INVALID", debug: authreq }
