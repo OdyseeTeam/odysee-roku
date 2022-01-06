@@ -1971,6 +1971,7 @@ sub gotUserPrefs()
         preferenceschanged = true
       end if
     end for
+    ckey = invalid
   end if
   if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
     for ckey = 0 to oldpreferences.blocked.Count() - 1
@@ -1978,14 +1979,15 @@ sub gotUserPrefs()
         preferenceschanged = true
       end if
     end for
+    ckey = invalid
   end if
-  ckey = invalid
   if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
     for ckey = 0 to oldpreferences.blocked.Count() - 1
       if oldpreferences.following[ckey] <> newpreferences.following[ckey]
         preferenceschanged = true
       end if
     end for
+    ckey = invalid
   end if
   if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
     for ckey = 0 to oldpreferences.collections.count() - 1
@@ -1997,6 +1999,7 @@ sub gotUserPrefs()
         end for
       end if
     end for
+    ckey = invalid
   end if
   if preferencesChanged
     ? "Preferences appear to have changed"
@@ -2010,7 +2013,6 @@ sub gotUserPrefs()
   else
     ? "No change detected."
   end if
-  ckey = invalid
   m.preferences = newpreferences 'update it, just in case.
   setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
   if m.legacyAuthenticated = false
