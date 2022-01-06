@@ -1965,7 +1965,7 @@ sub gotUserPrefs()
   if oldpreferences.collections.Count() <> newpreferences.collections.Count()
     preferencesChanged = true
   end if
-  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
+    if preferencesChanged = false
     for ckey = 0 to oldpreferences.collections.count() - 1
       if oldpreferences.collections[ckey].items.Count() <> newpreferences.collections[ckey].items.Count()
         preferenceschanged = true
