@@ -34,6 +34,7 @@ sub master()
                 if urlExists("https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/"+catData.icon.replace(" ", "")+".png")
                     dataItem.posterUrl = "https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/"+catData.icon.replace(" ", "")+".png"
                 else
+                    ? "No icon for "+catData.icon.replace(" ", "")
                     dataItem.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
                 end if
             end if
