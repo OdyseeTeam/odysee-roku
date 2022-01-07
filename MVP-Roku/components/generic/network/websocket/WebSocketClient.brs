@@ -109,10 +109,10 @@ function WebSocketClient() as object
     ' @param size integer max size of buffer in bytes
     ws.set_buffer_size = function (size as integer) as void
         if m._ready_state <> m.STATE.CLOSED
-            '' ?m.WARN, "WebSocketClient: Cannot resize buffer on a socket that is not closed"
+            '?m.WARN, "WebSocketClient: Cannot resize buffer on a socket that is not closed"
             return
         else if size < m._FRAME_SIZE
-            '' ?m.WARN, "WebSocketClient: Cannot set buffer to a size smaller than " + m._FRAME_SIZE.toStr() + " bytes"
+            '?m.WARN, "WebSocketClient: Cannot set buffer to a size smaller than " + m._FRAME_SIZE.toStr() + " bytes"
             return
         end if
         m._buffer_size = size
@@ -165,18 +165,18 @@ function WebSocketClient() as object
     ' @return integer amount of bytes sent
     ws.send = function (message as dynamic, _opcode = -1 as integer, silent = false as boolean, do_close = true as boolean) as integer
         if m._socket = invalid or not m._socket.isWritable()
-            '' ?"WebSocketClient: Failed to send data: socket is closed"
+            '?"WebSocketClient: Failed to send data: socket is closed"
             return -1
         end if
         if m._ready_state <> m.STATE.OPEN
-            '' ?"WebSocketClient: Failed to send data: connection not open"
+            '?"WebSocketClient: Failed to send data: connection not open"
             return -1
         end if
         if type(message) = "roString" or type(message) = "String" or type(message) = "roByteArray"
             message = [message]
         end if
         if message.count() <> 1
-            '' ?"WebSocketClient: Failed to send data: too many parameters"
+            '?"WebSocketClient: Failed to send data: too many parameters"
             return -1
         end if
         bytes = createObject("roByteArray")
@@ -190,15 +190,15 @@ function WebSocketClient() as object
             end for
             opcode = m.OPCODE.BINARY
         else
-            '' ?"WebSocketClient: Failed to send data: invalid parameter type"
+            '?"WebSocketClient: Failed to send data: invalid parameter type"
             return -1
         end if
         if _opcode > -1 and (_opcode >> 3) <> 1
-            '' ?"WebSocketClient: Failed to send data: specified opcode was not a control opcode"
+            '?"WebSocketClient: Failed to send data: specified opcode was not a control opcode"
             return -1
         else if _opcode > -1
             if bytes.count() > 125
-                '' ?"WebSocketClient: Failed to send data: control frames cannot have a payload larger than 125 bytes"
+                '?"WebSocketClient: Failed to send data: control frames cannot have a payload larger than 125 bytes"
                 return -1
             end if
             opcode = _opcode
@@ -262,15 +262,15 @@ function WebSocketClient() as object
             frame.append(masked_payload)
             ' Send frame
             if _opcode <> m.OPCODE.PING
-                '' ? "WebSocketClient: Sending frame: " + frame.toHexString()
+                '? "WebSocketClient: Sending frame: " + frame.toHexString()
             end if
             sent = 0
             sent = m._socket.send(frame, 0, frame.count())
             if _opcode <> m.OPCODE.PING
-                '' ?"WebSocketClient: Sent " + sent.toStr() + " bytes"
+                '?"WebSocketClient: Sent " + sent.toStr() + " bytes"
                 loop_wait = 0
                 while m._socket.GetCountSendBuf() > m._BUFFER_SOCKET_SIZE
-                    '' ?"WebSocketClient: Sleeping " + m._BUFFER_SLEEP.toStr() + "ms to reduce buffer"
+                    '?"WebSocketClient: Sleeping " + m._BUFFER_SLEEP.toStr() + "ms to reduce buffer"
                     sleep(m._BUFFER_SLEEP)
                     if loop_wait > m._BUFFER_LOOP_LIMIT
                         exit while
@@ -298,10 +298,10 @@ function WebSocketClient() as object
         if m._socket = invalid or not m._socket.isWritable() or m._sent_handshake or m._handshake = invalid
             return
         end if
-            '' ?m._handshake
+            '?m._handshake
             sent = 0
             sent = m._socket.sendStr(m._handshake)
-            '' ?"WebSocketClient: Sent " + sent.toStr() + " bytes"
+            '?"WebSocketClient: Sent " + sent.toStr() + " bytes"
             if sent = -1
                 m._close()
                 m._error(4, "Failed to send data: " + m._socket.status().toStr())
@@ -419,7 +419,7 @@ function WebSocketClient() as object
                     end if
                 end for
                 ' Handle the message
-                '' ?"WebSocketClient: Message: " + message
+                '?"WebSocketClient: Message: " + message
                 m._handle_handshake_response(message)
             end if
             m._data.fromAsciiString(data)
@@ -534,7 +534,7 @@ function WebSocketClient() as object
             frame_print  = "WebSocketClient: " + "Received frame:" + m._NL
             frame_print += "  Opcode: " + opcode.toStr() + m._NL
             frame_print += "  Payload: " + payload.toHexString()
-            '' ?frame_print
+            '?frame_print
         end if
         ' Close
         if opcode = m.OPCODE.CLOSE
@@ -590,7 +590,7 @@ function WebSocketClient() as object
     '                   from the protocol (ws: 80, wss: 443).
     ws.open = function (url as string) as void
         if m._ready_state <> m.STATE.CLOSED
-            '' ?"WebSocketClient: Tried to open a web socket that was already open"
+            '?"WebSocketClient: Tried to open a web socket that was already open"
             return
         end if
         if m._REGEX_URL.isMatch(url)
@@ -701,7 +701,7 @@ function WebSocketClient() as object
     ' @param code integer error code
     ' @param message string error message
     ws._error = function (code as integer, message as string) as void
-        '' ?"WebSocketClient: Error: " + message
+        '?"WebSocketClient: Error: " + message
         m._post_message("on_error", {
             code: code,
             message: message
@@ -752,7 +752,7 @@ function WebSocketClient() as object
         if params.count() > 0
             code = params[0]
             if type(code) <> "Integer" or code > &hffff
-                '' ?"WebSocketClient: close expects value at array index 0 to be a 16-bit integer"
+                '?"WebSocketClient: close expects value at array index 0 to be a 16-bit integer"
             end if
         end if
         if params.count() > 1
@@ -760,7 +760,7 @@ function WebSocketClient() as object
             if type(message) <> "roString" or type(message) <> "String"
                 reason.fromAsciiString(message)
             else
-                '' ?"WebSocketClient: close expects value at array index 1 to be a string"
+                '?"WebSocketClient: close expects value at array index 1 to be a string"
             end if
         end if
         m._close(code, reason)

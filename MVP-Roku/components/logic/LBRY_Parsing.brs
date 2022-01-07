@@ -56,6 +56,6 @@ Function ManufacturePlaceholderVideoGrid(amount, category) 'Create Placeholder G
         mediaindex[item.guid] = item
     end for
 
-    '' ?"manufacturing finished for key: "+subkey
+    '?"manufacturing finished for key: "+subkey
     return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
 End Function

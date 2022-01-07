@@ -137,7 +137,7 @@ end function
 ' Encrtpt a byte array with an RSA public key
 function rsa_encrypt(public_key as object, ba as object) as object
     rsa = createObject("roRSA")
-    ' ?public_key
+    ?public_key
     rsa.SetPrivateKey(public_key) 'because only the private key can decrypt it, right?
     encrypted_ba = rsa.Encrypt(ba)
     return encrypted_ba

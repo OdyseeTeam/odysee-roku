@@ -17,7 +17,7 @@ sub master()
                 '8081 sdk
                 '8082 api
                 '8086 OdyGetWalletData Custom API
-                ' ?m.top.constants
+                ?m.top.constants
                 
                 userData = getJSON(m.top.constants["ROOT_API"]+"/user/me", { "Authorization": "Bearer " + m.top.accessToken })
                 if isValid(userData.data)
@@ -69,7 +69,7 @@ sub master()
                     if isValid(syncapply.data)
                         if isValid(syncapply.data.data) and isValid(syncapply.data.hash)
                             if syncapply.data.hash = m.top.newHash
-                                ' ?"sync apply successful"
+                                ?"sync apply successful"
                             end if
                         end if
                     end if
@@ -89,20 +89,20 @@ sub master()
             end if
         end if
     end if
-    ' ?m.top.inSync
-    ' ?"Loop done."
+    ?m.top.inSync
+    ?"Loop done."
 end sub
 
 function string_deduplicate(array)
     if Type(array) <> "roArray"
-        ' ?"ERROR: must be roArray"
+        ?"ERROR: must be roArray"
         return ["error"]
     else
         deduper = {}
         deduparray = []
         for each item in array
             if type(item) <> "roString"
-                ' ?"ERROR: must be an array of roStrings"
+                ?"ERROR: must be an array of roStrings"
                 return ["error"]
             else
                 deduper.addReplace(item, "")

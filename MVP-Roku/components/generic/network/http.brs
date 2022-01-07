@@ -36,7 +36,7 @@ function postJSON(json, url, headers=invalid) as Object 'json, url, headers: {he
         http.asynccancel()
         return postJSON(json, url, headers)
       Else
-          ' ?"[LBRY_HTTP] AsyncPostFromString unknown event"
+          ?"[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
   end if
   cleanup()
@@ -58,7 +58,7 @@ function postJSONResponseOut(json, url, headers=invalid) as Object 'json, url, h
       http.asynccancel()
       return 500
       Else
-          ' ?"[LBRY_HTTP] AsyncPostFromString unknown event"
+          ?"[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
   end if
   cleanup()
@@ -105,7 +105,7 @@ function postURLEncoded(data, url, headers=invalid) as Object
         http.asynccancel()
         return postURLEncoded(json, url, headers)
       Else
-          ' ?"[LBRY_HTTP] AsyncPostFromString unknown event"
+          ?"[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
   end if
 cleanup()
@@ -123,13 +123,13 @@ function posturlencode(data)
       encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
     end if
   end for
-  ' ?encoded 'debug
+  ?encoded 'debug
   return encoded
 end function
 
 function getURLEncoded(data, url, headers=invalid) as Object
     currenturl = url+urlencode(data)
-    ' ?currenturl
+    ?currenturl
     http = httpPreSetup(currenturl)
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
@@ -162,7 +162,7 @@ function getURLEncoded(data, url, headers=invalid) as Object
           http.asynccancel()
           return getURLEncoded(data, url, headers)
         Else
-          ' ?"[LBRY_HTTP] AsyncGetToString unknown event"
+          ?"[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
   cleanup()
@@ -180,7 +180,7 @@ function urlencode(data)
       encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
     end if
   end for
-  '' ?encoded 'debug
+  '?encoded 'debug
   return encoded
 end function
 
@@ -219,7 +219,7 @@ function getJSON(url, headers=invalid) as Object
           http.asynccancel()
           return getJSON(url)
         Else
-          ' ?"[LBRY_HTTP] AsyncGetToString unknown event"
+          ?"[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
   cleanup()
@@ -253,7 +253,7 @@ function getRawText(url) as Object
           http.asynccancel()
           return getRawText(url)
         Else
-          ' ?"[LBRY_HTTP] AsyncGetToString unknown event"
+          ?"[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
   cleanup()
@@ -286,7 +286,7 @@ function urlExists(url) as Object
         http.asynccancel()
         return false
       Else
-        ' ?"[LBRY_HTTP] AsyncGetToString unknown event"
+        ?"[LBRY_HTTP] AsyncGetToString unknown event"
     end if
   end if
 cleanup()
@@ -316,7 +316,7 @@ if instr(url, m.top.constants["VIDEO_API"]) > 0
     cleanvurlarray.push(cleanurl)
   end for
   vregex = invalid
-  ' ?cleanvurlarray
+  ?cleanvurlarray
   url = m.top.constants["VIDEO_API"]+"/api/v4/streams/free/"+cleanvurlarray.Join("/")
 end if
 http = httpPreSetup(url)
@@ -355,7 +355,7 @@ if http.AsyncHead() then
       http.asynccancel()
       return url
     Else
-      ' ?"[LBRY_HTTP] AsyncGetToString unknown event"
+      ?"[LBRY_HTTP] AsyncGetToString unknown event"
   end if
 end if
 End Function

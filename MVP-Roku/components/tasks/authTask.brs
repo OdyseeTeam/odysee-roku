@@ -6,22 +6,22 @@ end sub
 sub master()
     if m.top.authPhase = 0
         '"Legacy" auth flow here
-        ' ?"Phase 0"
-        ' ?"Start 'Legacy'/older authentication"
-        ' ?"Current Constants are:"
-        ' ?m.top.constants
+        ?"Phase 0"
+        ?"Start 'Legacy'/older authentication"
+        ?"Current Constants are:"
+        ?m.top.constants
         userAPI = m.top.constants["ROOT_API"] + "/user"
         new = userAPI + "/new"
         existing = userAPI + "/me"
         currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, [])
-        ' ?currentUserStatus
+        ?currentUserStatus
         if currentUserStatus.success
-            ' ?"SUCCESS."
+            ?"SUCCESS."
             m.top.uid = currentUserStatus.data.id
             m.top.legacyAuthorized = true
             m.top.authPhase = 1
         else
-            ' ?"FAILURE!"
+            ?"FAILURE!"
             newUserData = parseJSON(getRawText(new))
             currentUserStatus = getURLEncoded({ auth_token: newUserData.data.auth_token.Trim() }, existing, [])
             if currentUserStatus.success = false
@@ -44,22 +44,22 @@ sub master()
         'http://odysee.com/$/activate
         ' Then you poll the token endpoint with the returned device_code to get an access token.
         'https://sso.odysee.com/auth/realms/Users/protocol/openid-connect/token
-        ' ?"authphase is 1: begin new auth"
+        ?"authphase is 1: begin new auth"
         accountRoot = m.top.constants["ROOT_SSO"]+""
         json = { response_type: "device_code": client_id: "odysee-roku-unofficial" }
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/auth/device", {})
         m.top.verifyURL = authreq.verification_uri
         m.top.deviceCode = authreq.device_code
         m.top.userCode = authreq.user_code
-        ' ?authreq.expires_in
-        ' ?"Interval is (TIMER/authtask):"
-        ' ?authreq.interval
+        ?authreq.expires_in
+        ?"Interval is (TIMER/authtask):"
+        ?authreq.interval
         m.authTimer.duration = authreq.interval + 1
         m.authTimer.control = "start"
-        ' ?authreq.verification_uri_complete
+        ?authreq.verification_uri_complete
         m.top.authPhase = 2
     else if m.top.authPhase = 1 and m.top.refreshToken <> ""
-        ' ?"got a valid Refresh Token from Registry"
+        ?"got a valid Refresh Token from Registry"
         m.authTimer.duration = 10
         m.authTimer.control = "start"
         checkRefresh()
@@ -68,7 +68,7 @@ sub master()
         accountRoot = m.top.constants["ROOT_SSO"]+""
         json = { grant_type: "urn:ietf:params:oauth:grant-type:device_code": client_id: "odysee-roku-unofficial": device_code: m.top.deviceCode }
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
-        ' ?FormatJson(authreq)
+        ?FormatJson(authreq)
         if isValid(authreq.error)
             if authreq.error = "slow_down"
                 m.authTimer.duration = m.authTimer.duration + 1
@@ -89,10 +89,10 @@ sub master()
             curUnixTime = CreateObject("roDateTime").AsSeconds()
             m.top.accessTokenExpiration = curUnixTime + authreq.expires_in
             m.top.refreshTokenExpiration = curUnixTime + authreq.refresh_expires_in
-            ' ?"Access Expires At:"
-            ' ?m.top.accessTokenExpiration
-            ' ?"Refresh Expires At:"
-            ' ?m.top.refreshTokenExpiration
+            ?"Access Expires At:"
+            ?m.top.accessTokenExpiration
+            ?"Refresh Expires At:"
+            ?m.top.refreshTokenExpiration
             curUnixTime = invalid
             m.authTimer.duration = 10
             m.top.authPhase = 3
@@ -105,7 +105,7 @@ sub master()
     end if
     if m.top.authPhase = 4
         'authPhase is 4, Forced logout.
-        ' ?"Inside forced logout phase"
+        ?"Inside forced logout phase"
         m.top.accessToken = ""
         m.top.refreshToken = ""
         m.top.authPhase = 1
@@ -124,7 +124,7 @@ end sub
 sub checkRefresh()
     curUnixTime = CreateObject("roDateTime").AsSeconds()
     if curUnixTime > m.top.accessTokenExpiration
-        ' ?"token expired, renew"
+        ?"token expired, renew"
         m.top.output = { authorized: false, state: "PENDING", debug: {} }
         json = { grant_type: "refresh_token": refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial" }
         accountRoot = m.top.constants["ROOT_SSO"]+""
@@ -141,31 +141,31 @@ sub checkRefresh()
             curUnixTime = CreateObject("roDateTime").AsSeconds()
             m.top.accessTokenExpiration = curUnixTime + authreq.expires_in
             m.top.refreshTokenExpiration = curUnixTime + authreq.refresh_expires_in
-            ' ?"Access Expires At:"
-            ' ?m.top.accessTokenExpiration
-            ' ?"Refresh Expires At:"
-            ' ?m.top.refreshTokenExpiration
+            ?"Access Expires At:"
+            ?m.top.accessTokenExpiration
+            ?"Refresh Expires At:"
+            ?m.top.refreshTokenExpiration
             curUnixTime = invalid
             m.top.output = { authorized: true, state: "OK", debug: authreq }
             m.top.authPhase = 3
         end if
     else
-        ' ?"token still valid"
-        ' ?"current time:"
-        ' ?curUnixTime
-        ' ?"expiration time"
-        ' ?m.top.accessTokenExpiration
-        ' ?"Token is:"
-        ' ?"`" + m.top.accessToken + "`"
-        ' ?"Refresh is:"
-        ' ?"`" + m.top.refreshToken + "`"
-        ' ?"getting user info (TEST)"
+        ?"token still valid"
+        ?"current time:"
+        ?curUnixTime
+        ?"expiration time"
+        ?m.top.accessTokenExpiration
+        ?"Token is:"
+        ?"`" + m.top.accessToken + "`"
+        ?"Refresh is:"
+        ?"`" + m.top.refreshToken + "`"
+        ?"getting user info (TEST)"
         accountRoot = m.top.constants["ROOT_SSO"]+""
         authreq = getJSON(accountRoot + "/auth/realms/Users/protocol/openid-connect/userinfo", { "Authorization": "Bearer " + m.top.accessToken })
-        ' ?FormatJson(authreq)
+        ?FormatJson(authreq)
         if isValid(authreq.error)
             if authreq.error = "invalid_request"
-                ' ?"Session not found, assuming token invalid."
+                ?"Session not found, assuming token invalid."
                 m.top.authPhase = 4
                 m.top.accessToken = ""
                 m.top.refreshToken = ""

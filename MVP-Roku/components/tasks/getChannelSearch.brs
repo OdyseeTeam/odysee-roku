@@ -3,12 +3,12 @@ sub Init()
 end sub
 
 sub master()
-    '' ?m.top.constants
-    '' ?m.top.cookies
-    '' ?m.top.uid
-    '' ?m.top.authtoken
-    '' ?m.top.channels
-    '' ?m.top.rawname
+    '?m.top.constants
+    '?m.top.cookies
+    '?m.top.uid
+    '?m.top.authtoken
+    '?m.top.channels
+    '?m.top.rawname
     m.top.output = getLighthouseResult(m.top.search)
 end sub
 function getLighthouseResult(search)
@@ -20,8 +20,8 @@ function getLighthouseResult(search)
         queryResult = getURLEncoded(queryRAW, queryURL, [])
         if type(queryResult) = "roArray"
             if queryResult.Count() > 0
-                ' ?"got" + Str(queryResult.Count() * 4) + " channels from Odysee (Channel Search)"
-                ' ?"valid"
+                ?"got" + Str(queryResult.Count() * 4) + " channels from Odysee (Channel Search)"
+                ?"valid"
                 exit while
             else
                 failcount += 1
@@ -38,14 +38,14 @@ function getLighthouseResult(search)
     end while
     if type(queryResult) = "roArray"
         if queryResult.Count() > 0
-            ' ?"valid"
+            ?"valid"
             return ClaimsToChannelGrid(queryResult)
         else
-            ' ?"no results"
+            ?"no results"
             return { result: {}, success: false }
         end if
     else
-        ' ?"no results"
+        ?"no results"
         return { result: {}, success: false }
     end if
 end function
@@ -62,7 +62,7 @@ function ClaimsToChannelGrid(claims)
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
     queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 50, "claim_type": "stream", "stream_types": ["video"], "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channelList, "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true, "limit_claims_per_channel": 1 } })
     cresponse = postJSON(queryJSON, queryURL, invalid)
-    ' ?cresponse
+    ?cresponse
     retries = 0
     while true
         if IsValid(cresponse.error)
@@ -143,7 +143,7 @@ function ClaimsToChannelGrid(claims)
             item = invalid
             i += 1
         end for
-        ' ?"exported" + Str(content.getChildCount() * 4) + " channels from Odysee (Channel Search)"
+        ?"exported" + Str(content.getChildCount() * 4) + " channels from Odysee (Channel Search)"
         return { contentarray: result: index: mediaindex: content: content: success: true }
     else
         return { result: {}, success: false }

@@ -49,7 +49,7 @@ function set_prefs()
                         following = []
                         followingaa = {}
                         userPreferences = preferences.result.shared.value
-                        ' ?formatJson(userPreferences)
+                        ?formatJson(userPreferences)
                         if isValid(userPreferences.blocked)
                             for each user in userPreferences.blocked
                                 blocked.push(user.split("#")[1])
@@ -99,7 +99,7 @@ function set_prefs()
                                             preferences.result.shared.value.blocked.push(response.result.items[0]["permanent_url"])
                                         end if
                                     catch e
-                                        ' ?e
+                                        ?e
                                         stop
                                     end try
                                 end if
@@ -149,7 +149,7 @@ function set_prefs()
                                                 prenotify_new_follow(subclaim)
                                             end if
                                         catch e
-                                            ' ?e
+                                            ?e
                                             stop
                                         end try
                                     end if
@@ -198,7 +198,7 @@ function set_prefs()
                                                 preferences.result.shared.value.subscriptions.push(response.result.items[0]["permanent_url"])
                                             end if
                                         catch e
-                                            ' ?e
+                                            ?e
                                             stop
                                         end try
                                     end if
@@ -212,7 +212,7 @@ function set_prefs()
                                 if isValid(preferences.result.shared.value)
                                     try
                                         for i = 0 to preferences.result.shared.value.blocked.Count() - 1
-                                            ' ?preferences.result.shared.value.blocked[i]
+                                            ?preferences.result.shared.value.blocked[i]
                                             if isValid(preferences.result.shared.value.blocked[i])
                                                 for each change in m.top.preferences.blocked
                                                     if change.split("#").Count() > 1
@@ -229,8 +229,8 @@ function set_prefs()
                                         end for
                                         i = invalid
                                     catch e
-                                        ' ?"Modification Error:"
-                                        ' ?e
+                                        ?"Modification Error:"
+                                        ?e
                                     end try
                                     for i = 0 to preferences.result.shared.value.following.Count() - 1
                                         if isValid(preferences.result.shared.value.following[i])
@@ -268,8 +268,8 @@ function set_prefs()
                                         end for
                                         i = invalid
                                     catch e
-                                        ' ?"Modification Error:"
-                                        ' ?e
+                                        ?"Modification Error:"
+                                        ?e
                                     end try
                                     'TODO: Add collections to this (requires timestamp manip.)
                                 end if
@@ -320,14 +320,14 @@ end function
 
 function string_deduplicate(array)
     if Type(array) <> "roArray"
-        ' ?"ERROR: must be roArray"
+        ?"ERROR: must be roArray"
         return ["error"]
     else
         deduper = {}
         deduparray = []
         for each item in array
             if type(item) <> "roString"
-                ' ?"ERROR: must be an array of roStrings"
+                ?"ERROR: must be an array of roStrings"
                 return ["error"]
             else
                 deduper.addReplace(item, "")

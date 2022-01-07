@@ -34,7 +34,7 @@ function get_prefs()
     ? date.ToISOString()+" Getting preferences (SDK)"
     date=invalid
     preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_get", "params": { "key": "shared" }, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
-    ' ?"=============================GETTING USER PREFS.============================="
+    ?"=============================GETTING USER PREFS.============================="
      ?formatJson(preferences)
     blocked = []
     following = []
@@ -42,9 +42,9 @@ function get_prefs()
     if isValid(preferences.result)
         if IsValid(preferences.result.shared)
             if isValid(preferences.result.shared.value)
-                ' ?formatJson(preferences)
+                ?formatJson(preferences)
                 userPreferences = preferences.result.shared.value
-                ' ?formatJson(userPreferences)
+                ?formatJson(userPreferences)
                 if isValid(userPreferences.blocked)
                     for each user in userPreferences.blocked
                         blocked.push(user.split("#").Pop())
@@ -120,24 +120,24 @@ function get_prefs()
             end if
         end if
     end if
-    ' ?"User has blocked channelids:"
-    ' ?blocked
-    ' ?"User has followed channelids:"
-    ' ?following
-    ' ?"===================================DONE==================================="
+    ?"User has blocked channelids:"
+    ?blocked
+    ?"User has followed channelids:"
+    ?following
+    ?"===================================DONE==================================="
     return { blocked: blocked: following: following: collections: collections }
 end function
 
 function string_deduplicate(array)
     if Type(array) <> "roArray"
-        ' ?"ERROR: must be roArray"
+        ?"ERROR: must be roArray"
         return ["error"]
     else
         deduper = {}
         deduparray = []
         for each item in array
             if type(item) <> "roString"
-                ' ?"ERROR: must be an array of roStrings"
+                ?"ERROR: must be an array of roStrings"
                 return ["error"]
             else
                 deduper.addReplace(item, "")

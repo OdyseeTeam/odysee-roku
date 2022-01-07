@@ -60,14 +60,14 @@ end function
 
 function string_deduplicate(array)
     if Type(array) <> "roArray"
-        ' ?"ERROR: must be roArray"
+        ?"ERROR: must be roArray"
         return ["error"]
     else
         deduper = {}
         deduparray = []
         for each item in array
             if type(item) <> "roString"
-                ' ?"ERROR: must be an array of roStrings"
+                ?"ERROR: must be an array of roStrings"
                 return ["error"]
             else
                 deduper.addReplace(item, "")
