@@ -57,7 +57,7 @@
       m.itemText.color = m.top.itemContent.outlineColor
     else
       m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
-      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"CC"
+      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"99"
     end if
   end function
   function init() 

@@ -264,6 +264,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
             'set focus to selector
             ErrorDismissed()
+            m.videoButtons.setFocus(false)
             m.searchKeyboard.setFocus(false)
             m.searchKeyboardDialog.setFocus(false)
             m.searchHistoryBox.setFocus(false)
@@ -321,6 +322,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         end if
         if key = "play"
           if m.video.visible
+            showVideoOverlay()
             if m.videoTransitionState = 0
               deleteSpinner()
               if m.video.state = "playing"
@@ -349,6 +351,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           ?m.ffrwTimer.duration
           ?m.videoVP
           if m.video.visible
+            showVideoOverlay()
             if m.videoTransitionState <> 1
               m.ffrwTimer.duration = .5
             end if
@@ -366,6 +369,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         end if
         if key = "fastforward"
           if m.video.visible
+            showVideoOverlay()
             if m.videoTransitionState <> 2
               m.ffrwTimer.duration = .3
             end if
@@ -392,6 +396,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
         end if
         if key = "up"
+            if m.video.visible
+              showVideoOverlay()
+            end if
             if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
                 m.searchKeyboardDialog.setFocus(false)
                 m.searchKeyboard.setFocus(true)
@@ -415,6 +422,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
         end if
         if key = "down"
+          if m.video.visible
+            hideVideoOverlay()
+          end if
             if m.focusedItem = 3 '[search keyboard] 
                 m.searchKeyboard.setFocus(false)
                 m.searchKeyboardDialog.setFocus(true)
@@ -436,6 +446,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
         end if
         if key = "left"
+          if m.video.visible
+            showVideoOverlay()
+          end if
             if m.focusedItem = 2 '[video grid] 
               if m.categorySelector.itemFocused = 0
                 m.videoGrid.setFocus(false)
@@ -494,50 +507,53 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             end if
         end if
         if key = "right"
+          if m.video.visible
+            showVideoOverlay()
+          end if
           if m.focusedItem = 1 and m.categorySelector.itemFocused = 0 '[selector]
             m.focusedItem = 3 '[search keyboard]
             m.categorySelector.setFocus(false)
             m.searchKeyboard.setFocus(true)
             m.focusedItem = 3 '[search keyboard]
-          else if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded AND m.favoritesUIFlag
+          else if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded AND m.favoritesUIFlag AND m.focusedItem <> 7
             m.categorySelector.setFocus(false)
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
-          else if m.categorySelector.itemFocused > 1
+          else if m.categorySelector.itemFocused > 1 AND m.focusedItem <> 7
             m.categorySelector.setFocus(false)
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
           end if
     
-            if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
-                m.searchKeyboardDialog.setFocus(false)
-                m.searchHistoryDialog.setFocus(true)
-                m.focusedItem = 6 '[clear history] 
-            end if
-    
-            if m.focusedItem = 3 '[search keyboard]  'Keyboard -> Search History
-                column = Int(m.searchKeyboardGrid.currFocusColumn)
-                row = Int(m.searchKeyboardGrid.currFocusRow)
-                itemFocused = m.searchKeyboardGrid.itemFocused
-                ?row, column
-                if column = 4 AND row = 6 OR column = 5
-                    if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
-                        if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
-                            m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                        else if row = 6
-                            m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                        else
-                            m.searchHistoryBox.jumpToItem = row
-                        end if
-                        m.searchKeyboard.setFocus(false)
-                        m.searchHistoryBox.setFocus(true)
-                        m.focusedItem = 5 '[search history list] 
-                    end if
-                end if
-                column = Invalid 'free memory
-                row = Invalid
-                itemFocused = Invalid
-            end if
+          if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
+              m.searchKeyboardDialog.setFocus(false)
+              m.searchHistoryDialog.setFocus(true)
+              m.focusedItem = 6 '[clear history] 
+          end if
+  
+          if m.focusedItem = 3 '[search keyboard]  'Keyboard -> Search History
+              column = Int(m.searchKeyboardGrid.currFocusColumn)
+              row = Int(m.searchKeyboardGrid.currFocusRow)
+              itemFocused = m.searchKeyboardGrid.itemFocused
+              ?row, column
+              if column = 4 AND row = 6 OR column = 5
+                  if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
+                      if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
+                          m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                      else if row = 6
+                          m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+                      else
+                          m.searchHistoryBox.jumpToItem = row
+                      end if
+                      m.searchKeyboard.setFocus(false)
+                      m.searchHistoryBox.setFocus(true)
+                      m.focusedItem = 5 '[search history list] 
+                  end if
+              end if
+              column = Invalid 'free memory
+              row = Invalid
+              itemFocused = Invalid
+          end if
         end if
       else
         return true
@@ -547,37 +563,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       return true
     end if
 end Function
-
-sub warningdismissed()
-  m.errorText.visible = false
-  m.errorSubtext.visible = false
-  m.errorButton.visible = false
-  m.errorButton.unobserveField("buttonSelected")
-  m.errorButton.setFocus(false)
-  m.global.scene.signalBeacon("AppDialogComplete")
-  finishInit()
-end sub
-
-Sub resetVideoGrid()
-  m.videoGrid.itemSize= [1920,365]
-  m.videoGrid.rowitemSize=[[380,350]]
-End Sub
-
-Sub downsizeVideoGrid()
-  m.videoGrid.itemSize= [1920,305]
-  m.videoGrid.rowitemSize=[[380,250]]
-End Sub
-
-sub failedSearch()
-  ?"search failed"
-  m.videoGrid.visible = false
-  m.videoSearch.control = "STOP"
-  m.channelSearch.control = "STOP"
-  m.taskRunning = False
-  ?"task stopped"
-  Error("No results.", "Nothing found on Odysee.")
-end sub
-
 
 sub categorySelectorFocusChanged(msg)
   '?"[Selector] focus changed from:"
@@ -670,6 +655,51 @@ sub categorySelectorFocusChanged(msg)
     'm.videoGrid.content = base["content"]
     'm.mediaIndex = base["index"]
   end if
+end sub
+
+sub showVideoOverlay()
+  m.videoUITimer.control = "stop"
+  m.videoUITimer.unobserveField("fire")
+  m.videoUITimer.duration = 5
+  m.videoUITimer.observeField("fire","hideVideoOverlay")
+  m.videoUITimer.control = "start"
+  m.videoOverlayGroup.visible = true
+end sub
+
+sub hideVideoOverlay()
+  m.videoUITimer.control = "stop"
+  m.videoUITimer.unobserveField("fire")
+  m.videoOverlayGroup.visible = false
+end sub
+
+sub warningdismissed()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.errorButton.setFocus(false)
+  m.global.scene.signalBeacon("AppDialogComplete")
+  finishInit()
+end sub
+
+Sub resetVideoGrid()
+  m.videoGrid.itemSize= [1920,365]
+  m.videoGrid.rowitemSize=[[380,350]]
+End Sub
+
+Sub downsizeVideoGrid()
+  m.videoGrid.itemSize= [1920,305]
+  m.videoGrid.rowitemSize=[[380,250]]
+End Sub
+
+sub failedSearch()
+  ?"search failed"
+  m.videoGrid.visible = false
+  m.videoSearch.control = "STOP"
+  m.channelSearch.control = "STOP"
+  m.taskRunning = False
+  ?"task stopped"
+  Error("No results.", "Nothing found on Odysee.")
 end sub
 
 sub handleInputEvent(msg)
@@ -841,8 +871,7 @@ Sub resolveVideo(url = invalid)
           m.videoProgressBar.visible = false 'its live, we don't need progress updates.
           m.videoProgressBarp1.visible = false
           m.videoProgressBarp2.visible = false
-          m.videoOverlayGroup.visible = true
-          m.videoOverlayGroup.setFocus(true)
+          m.videoButtons.setFocus(true)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
           m.refreshes = 0
@@ -985,6 +1014,9 @@ Sub playResolvedVideo(msg as Object)
       resolveError()
     else
       m.videoGrid.visible = true
+      m.videoGrid.setFocus(false)
+      m.categorySelector.setFocus(false)
+      m.video.setFocus(true)
       m.loadingText.visible = false
       ?"VPLAYDEBUG:"
       ?formatJSON(data)
@@ -1002,11 +1034,11 @@ Sub playResolvedVideo(msg as Object)
       m.video.width = 1920
       m.videoVP = 0
       m.video.visible = true
-      m.videoOverlayGroup.visible = true
       m.videoProgressBar.visible = true
       m.videoProgressBarp1.visible = true
       m.videoProgressBarp2.visible = true
-      m.videoOverlayGroup.setFocus(true)
+      m.video.setFocus(false)
+      m.videoButtons.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
       m.video.observeField("position", "videoPositionChanged")
@@ -1112,7 +1144,7 @@ sub deleteSpinner()
 end sub
 
 Function returnToUIPage()
-    m.videoOverlayGroup.setFocus(false)
+    m.videoButtons.setFocus(false)
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.videoProgressBar.width = 0
@@ -1132,6 +1164,8 @@ Function returnToUIPage()
       m.ws.control = "STOP"
     end if
     m.videoOverlayGroup.visible = false
+    m.videoUITimer.control = "stop"
+    m.videoUITimer.unobserveField("fire")
     m.video.visible = false 'Hide video
     m.video.control = "stop"  'Stop video from playing
     deleteSpinner()
@@ -1864,7 +1898,7 @@ sub Logout()
   end if
   if videoFocused = true
     m.focusedItem = 7
-    m.videoOverlayGroup.setFocus(true)
+    m.videoButtons.setFocus(true)
     videofocused = invalid
   end if
   m.preferences = {}
