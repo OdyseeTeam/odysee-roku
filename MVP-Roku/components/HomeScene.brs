@@ -33,6 +33,7 @@ Sub init()
     m.reinitChat = False
     m.chatID = ""
     m.totalVideoPings = 0 'analytics
+    m.videoButtonSelected = 0
     'UI Items
     m.errorText = m.top.findNode("warningtext")
     m.errorSubtext = m.top.findNode("warningsubtext")
@@ -63,6 +64,7 @@ Sub init()
     m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
     m.videoButtons.itemSize = [128,128]
     m.videoButtons.content = createBothItems(m.videoButtons, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoButtons.itemSize)
+    m.videoButtons.observeField("itemFocused", "videoButtonFocused")
     m.videoButtonsPlayIcon = m.videoButtons.content.getChildren(-1, 0)[3]
     m.videoButtonsChannelIcon = m.videoButtons.content.getChildren(-1, 0)[0]
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
@@ -121,7 +123,7 @@ Sub init()
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
   observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID" })
-  observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged": "syncState": "syncStateChanged" })
+  observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
   m.preferences = {} ' user preferences (blocked, following, collections)
@@ -563,6 +565,12 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       return true
     end if
 end Function
+
+sub videoButtonFocused(msg)
+  'TODO: if type(roint)
+  m.videoButtonSelected = msg.getData()
+  ? Type(m.videoButtonSelected)
+end sub
 
 sub categorySelectorFocusChanged(msg)
   '?"[Selector] focus changed from:"
@@ -1938,7 +1946,12 @@ sub getSync()
   ?"GETSYNC DEBUG"
   if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn 'update
     gotSync()
+    getUserPrefs()
+  else if m.preferencesChanged = true
+    getUserPrefs()
   else 'get in sync first
+    ? "NOT IN SYNC"
+    m.preferencesChanged = true
     m.syncLoop.control = "STOP"
     m.syncLoop.control = "RUN"
   end if
@@ -1949,28 +1962,12 @@ sub gotSync(msg as object)
   m.syncLoop.control = "STOP"
   ?"GOTSyncDebug"
   if isValid(data)
-    ?data
+    if data
+      m.preferencesChanged = false
+    end if
   end if
-  if m.preferences.Count() = 0 OR m.favoritesLoaded = false
+  if m.preferences.Count() = 0 OR m.favoritesLoaded = false OR m.preferencesChanged = true
     getUserPrefs()
-  end if
-end sub
-
-sub syncStateChanged(msg as object)
-  data = msg.getData()
-  ?"SYNC LOOP STATE:"
-  ?data
-  if data = 4 'State 4 only. Run once.
-    m.syncLoopState = 4
-    m.syncLoopTimer.duration = 15
-    getUserPrefs()
-  end if
-  if data = 3
-    m.syncLoopState = 3
-    m.syncLoopTimer.duration = 15
-  end if
-  if data = 2
-    m.syncLoopState = 2
   end if
 end sub
 
@@ -1984,85 +1981,23 @@ end sub
 
 sub gotUserPrefs()
   m.getpreferencesTask.control = "STOP"
-  preferencesChanged = false
-  newpreferences = m.getpreferencesTask.preferences
-  oldpreferences = m.preferences
-  ? "PREFERENCES (LOCAL)"
-  ?FormatJson(oldpreferences)
-  ? "PREFERENCES (TASK)"
-  ?FormatJson(newpreferences)
-  ' Count Checks (easy on CPU)
-  if oldpreferences.blocked.Count() <> newpreferences.blocked.Count()
-    preferencesChanged = true
+  m.preferences = m.getpreferencesTask.preferences
+  if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
+    m.videoGrid.setFocus(false)
+    m.categorySelector.setFocus(true)
+    m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
+    m.videoGrid.visible = false
+    m.loadingText.visible = true
   end if
-  if oldpreferences.following.Count() <> newpreferences.following.Count()
-    preferencesChanged = true
-  end if
-  if oldpreferences.collections.Count() <> newpreferences.collections.Count()
-    preferencesChanged = true
-  end if
-    if preferencesChanged = false
-    for ckey = 0 to oldpreferences.collections.count() - 1
-      if oldpreferences.collections[ckey].items.Count() <> newpreferences.collections[ckey].items.Count()
-        preferenceschanged = true
-      end if
-    end for
-    ckey = invalid
-  end if
-  ' Item-by-item checks (harder on CPU, ran only if changes aren't obvious)
-  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
-    for ckey = 0 to oldpreferences.blocked.Count() - 1
-      if oldpreferences.blocked[ckey] <> newpreferences.blocked[ckey]
-        preferenceschanged = true
-      end if
-    end for
-    ckey = invalid
-  end if
-  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
-    for ckey = 0 to oldpreferences.blocked.Count() - 1
-      if oldpreferences.following[ckey] <> newpreferences.following[ckey]
-        preferenceschanged = true
-      end if
-    end for
-    ckey = invalid
-  end if
-  if preferencesChanged = false 'run only if no easily visible changes (ex: length) can be seen
-    for ckey = 0 to oldpreferences.collections.count() - 1
-      if oldpreferences.collections[ckey].items.Count() > 0
-        for subkey = 0 to oldpreferences.collections[ckey].items.Count() - 1
-          if oldpreferences.collections[ckey].items[subkey] <> newpreferences.collections[ckey].items[subkey]
-            preferencesChanged = true
-          end if
-        end for
-      end if
-    end for
-    ckey = invalid
-  end if
-  if preferencesChanged
-    ? "Preferences appear to have changed"
-    if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
-      m.videoGrid.setFocus(false)
-      m.categorySelector.setFocus(true)
-      m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
-      m.videoGrid.visible = false
-      m.loadingText.visible = true
-    end if
-  else
-    ? "No change detected."
-  end if
-  m.preferences = newpreferences 'update it, just in case.
   setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
   if m.legacyAuthenticated = false
     authDone()
   end if
-  if m.favoritesThread.state = "init" OR m.favoritesThread.state = "stop" AND preferenceschanged = true
+  if m.favoritesThread.state = "init" OR m.favoritesThread.state = "stop"
     m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if
-  oldpreferences = invalid
-  newpreferences = invalid
-  preferenceschanged = invalid
 end sub
 
 sub gotFavorites(msg as object)

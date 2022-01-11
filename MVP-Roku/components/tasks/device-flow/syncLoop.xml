@@ -11,7 +11,6 @@
             <field id="cookies" type="roArray"/>
             <!--used to trigger external tasks if out-of-sync-->
             <field id="inSync" type="bool"/>
-            <field id="syncState" type="int"/>
             <field id="constants" type="assocarray"/>
     </interface>
     <children>

@@ -24,12 +24,10 @@ function resolve(lbry_url)
             ?spliturl
             ?friendlyname
             ?claimid
-            resQuery = postJSON(FormatJson({ "method": "claim_search", "params": { "claim_ids": [claimid], "has_source": true, "has_no_source": false, "page_size": 1, "no_totals": true, "include_purchase_receipt": false, "include_is_my_output": false } }), m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search", invalid)
+            resQuery = postJSON(FormatJson({ "method": "claim_search", "params": {"claim_type": "stream", "claim_ids": [claimid], "has_source": true, "has_no_source": false, "page_size": 1, "no_totals": true, "include_purchase_receipt": false, "include_is_my_output": false } }), m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search", invalid)
             sdHash = resQuery["result"]["items"][0]["value"]["source"]["sd_hash"]
             vurl = resolveRedirect(m.top.constants["VIDEO_API"] + "/api/v4/streams/free/" + friendlyname + "/" + claimid + "/" + Left(sdHash, 6))
-            if m.global.constants.enableStatistics
-                vLength = resQuery["result"]["items"][0]["value"]["video"]["duration"]
-            end if
+            vLength = resQuery["result"]["items"][0]["value"]["video"]["duration"]
             vresolvedRedirect = vurl.split(".")
             vresolvedRedirectLen = vresolvedRedirect.Count()
             if vresolvedRedirect[vresolvedRedirectLen - 1] = "m3u8"
@@ -40,13 +38,8 @@ function resolve(lbry_url)
                 vtype = "mp4"
                 vplayer = "use-p1" 'default to use-p1 since cdn.lbryplayer.xyz is use-p1
             end if
-            if m.global.constants.enableStatistics
-                m.top.error = false
-                return { videourl: vurl, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url } 'returns video+statdata
-            else
-                m.top.error = false
-                return { videourl: vurl, videotype: vtype, playtype: "normal", title: m.top.title } 'stat data is not needed for playback w/o statistics
-            end if
+            m.top.error = false
+            return { videourl: vurl, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url } 'returns video+statdata
         catch e
             'Slower: Site Method
             ?"Attempting secondary resolution method (slower!)"
