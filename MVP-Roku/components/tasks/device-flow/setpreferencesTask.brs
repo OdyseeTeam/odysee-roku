@@ -25,6 +25,10 @@ sub master()
 end sub
 
 function set_prefs()
+
+    'TODO: moving between # and ; in walletfiles (iOS), so parse both
+    'save as # by default
+    
     '8080 sso
     '8081 sdk
     '8082 api

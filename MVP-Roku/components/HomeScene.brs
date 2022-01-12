@@ -33,7 +33,7 @@ Sub init()
     m.reinitChat = False
     m.chatID = ""
     m.totalVideoPings = 0 'analytics
-    m.videoButtonSelected = 0
+    m.videoButtonSelected = -1
     'UI Items
     m.errorText = m.top.findNode("warningtext")
     m.errorSubtext = m.top.findNode("warningsubtext")
@@ -255,6 +255,27 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       ?"current ui array:"
       ?m.uiLayers
       if press = true
+        if key = "OK"
+          if m.video.visible = true AND m.videoOverlayGroup.visible = true
+            if m.videoButtonSelected <> -1
+              if m.videoButtonSelected = 0
+                ? "Go to channel"
+              else if m.videoButtonSelected = 1
+                ? "Subscribe"
+              else if m.videoButtonSelected = 2
+                ? "Rewind"
+              else if m.videoButtonSelected = 3
+                ? "Play/Pause"
+              else if m.videoButtonSelected = 4
+                ? "Fast Forward"
+              else if m.videoButtonSelected = 5
+                ? "Like"
+              else if m.videoButtonSelected = 6
+                ? "Dislike"
+              end if
+            end if
+          end if
+        end if
         if key = "back"  'If the back button is pressed
           if m.video.visible
               returnToUIPage()
@@ -569,7 +590,10 @@ end Function
 sub videoButtonFocused(msg)
   'TODO: if type(roint)
   m.videoButtonSelected = msg.getData()
-  ? Type(m.videoButtonSelected)
+  if Type(m.videoButtonSelected) = "roInt"
+    showVideoOverlay()
+    ? m.videoButtonSelected
+  end if
 end sub
 
 sub categorySelectorFocusChanged(msg)
@@ -1947,11 +1971,8 @@ sub getSync()
   if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn 'update
     gotSync()
     getUserPrefs()
-  else if m.preferencesChanged = true
-    getUserPrefs()
   else 'get in sync first
     ? "NOT IN SYNC"
-    m.preferencesChanged = true
     m.syncLoop.control = "STOP"
     m.syncLoop.control = "RUN"
   end if
@@ -1961,12 +1982,7 @@ sub gotSync(msg as object)
   data = msg.getData()
   m.syncLoop.control = "STOP"
   ?"GOTSyncDebug"
-  if isValid(data)
-    if data
-      m.preferencesChanged = false
-    end if
-  end if
-  if m.preferences.Count() = 0 OR m.favoritesLoaded = false OR m.preferencesChanged = true
+  if m.preferences.Count() = 0 OR m.favoritesLoaded = false
     getUserPrefs()
   end if
 end sub
@@ -1981,7 +1997,9 @@ end sub
 
 sub gotUserPrefs()
   m.getpreferencesTask.control = "STOP"
-  m.preferences = m.getpreferencesTask.preferences
+  favoritesChanged = false
+  oldpreferences = m.preferences
+  newpreferences = m.getpreferencesTask.preferences
   if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
     m.videoGrid.setFocus(false)
     m.categorySelector.setFocus(true)
@@ -1993,11 +2011,26 @@ sub gotUserPrefs()
   if m.legacyAuthenticated = false
     authDone()
   end if
-  if m.favoritesThread.state = "init" OR m.favoritesThread.state = "stop"
+
+  if oldpreferences.following.Count() <> newpreferences.following.Count()
+    favoritesChanged = true
+  end if
+  if favoritesChanged = false
+    for i = 0 to oldpreferences.following.Count() - 1
+      if oldpreferences.following[i] <> newpreferences.following[i]
+        favoritesChanged = true
+      end if
+    end for
+  end if
+  if m.favoritesThread.state = "init" AND favoritesChanged OR m.favoritesThread.state = "stop" AND favoritesChanged
     m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if
+  favoritesChanged = invalid
+  oldpreferences = invalid
+  newpreferences = invalid
+  m.preferences = m.getpreferencesTask.preferences
 end sub
 
 sub gotFavorites(msg as object)
