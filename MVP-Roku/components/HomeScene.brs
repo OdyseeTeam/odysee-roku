@@ -67,7 +67,11 @@ Sub init()
     m.videoButtons.observeField("itemFocused", "videoButtonFocused")
     m.videoButtonsPlayIcon = m.videoButtons.content.getChildren(-1, 0)[3]
     m.videoButtonsChannelIcon = m.videoButtons.content.getChildren(-1, 0)[0]
-    m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+    m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
+
+    m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
+    m.currentVideoClaimID = "" 'Current claim ID for Video
+
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
     m.searchHistoryItems = []
@@ -299,7 +303,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
             'go back a UI layer
             ?"popping layer"
             if m.uiLayers.Count() > 0
-              if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.videoGrid.content <> m.categories["FAVORITES"]
+              if m.categorySelector.itemFocused = 1
+                m.uiLayer = 0
+                m.uiLayers = []
                 m.videoGrid.content = m.categories["FAVORITES"]
               else
                 m.uiLayers.pop()
@@ -869,6 +875,8 @@ Sub resolveVideo(url = invalid)
         if curItem.itemType = "video"
           ?"Resolving a Video"
           m.currentVideoChannelIcon = curitem.channelicon
+          m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
+          m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
           m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.urlResolver.observeField("output", "playResolvedVideo")
           m.urlResolver.control = "RUN"
@@ -892,6 +900,8 @@ Sub resolveVideo(url = invalid)
         if curItem.itemType = "livestream"
           ?"Playing a livestream"
           m.currentVideoChannelIcon = curitem.channelicon
+          m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
+          m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
           m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
           m.videoContent.streamFormat = curItem.streamFormat
