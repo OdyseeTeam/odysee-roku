@@ -277,9 +277,19 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               else if m.videoButtonSelected = 4
                 ? "Fast Forward"
               else if m.videoButtonSelected = 5
-                ? "Like"
+                ' Dislike
+                if m.currentVideoReactions.mine.likes > 0
+                  setReaction(m.currentVideoClaimID, "negate")
+                else
+                  setReaction(m.currentVideoClaimID, "like")
+                end if
               else if m.videoButtonSelected = 6
-                ? "Dislike"
+                ' Like
+                if m.currentVideoReactions.mine.dislikes > 0
+                  setReaction(m.currentVideoClaimID, "negate")
+                else
+                  setReaction(m.currentVideoClaimID, "dislike")
+                end if
               end if
             end if
           end if
@@ -2107,7 +2117,6 @@ sub gotReactions(msg as object)
   end if
   m.getreactionTask.control = "STOP"
 end sub
-
 sub setReaction(videoID, reaction)
   m.setreactionTask.setfields({accessToken:m.accessToken:action:reaction:claimid:videoID:constants:m.constants})
   m.setreactionTask.observeField("status", "setReactionDone")
