@@ -277,18 +277,22 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               else if m.videoButtonSelected = 4
                 ? "Fast Forward"
               else if m.videoButtonSelected = 5
+                if m.wasLoggedIn
                 ' Dislike
-                if m.currentVideoReactions.mine.likes > 0
-                  setReaction(m.currentVideoClaimID, "negate")
-                else
-                  setReaction(m.currentVideoClaimID, "like")
+                  if m.currentVideoReactions.mine.likes > 0
+                    setReaction(m.currentVideoClaimID, "negate")
+                  else
+                    setReaction(m.currentVideoClaimID, "like")
+                  end if
                 end if
               else if m.videoButtonSelected = 6
                 ' Like
-                if m.currentVideoReactions.mine.dislikes > 0
-                  setReaction(m.currentVideoClaimID, "negate")
-                else
-                  setReaction(m.currentVideoClaimID, "dislike")
+                if m.wasLoggedIn
+                  if m.currentVideoReactions.mine.dislikes > 0
+                    setReaction(m.currentVideoClaimID, "negate")
+                  else
+                    setReaction(m.currentVideoClaimID, "dislike")
+                  end if
                 end if
               end if
             end if
