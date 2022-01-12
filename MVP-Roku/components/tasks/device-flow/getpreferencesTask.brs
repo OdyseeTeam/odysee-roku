@@ -30,6 +30,10 @@ function get_prefs()
     '8082 api
     '8086 OdyGetWalletData Custom API
     'Now we need our Odysee userData so we can sync over
+
+    'TODO: moving between # and ; in walletfiles (iOS), so replace ; with #
+    'save as # by default
+
     date = CreateObject("roDateTime")
     ? date.ToISOString()+" Getting preferences (SDK)"
     date=invalid
@@ -47,18 +51,21 @@ function get_prefs()
                 ?formatJson(userPreferences)
                 if isValid(userPreferences.blocked)
                     for each user in userPreferences.blocked
+                        user.replace(";","#")
                         blocked.push(user.split("#").Pop())
                     end for
                 end if
                 if isValid(userPreferences.following)
                     for each user in userPreferences.following
                         if Type(user) <> "String"
+                            user.uri.replace(";","#")
                             followingaa.addReplace(user.uri.split("#").Pop(), "a") '(for Following page)
                         end if
                     end for
                 end if
                 if isValid(userPreferences.subscriptions)
                     for each subscription in userPreferences.subscriptions
+                        subscription.replace(";","#")
                         followingaa.addReplace(subscription.split("#").Pop(), "a") '(abuse AssociativeArray addReplace to remove duplicates)
                     end for
                 end if
@@ -79,13 +86,19 @@ function get_prefs()
                                     if builtInCollections[collection].items.Count() >= 80
                                         curcollection = { name: builtInCollections[collection].name: items: [] }
                                         for i = 0 to 80
-                                            curcollection.items.push(builtInCollections[collection].items.Pop())
+                                            curcollection.items.push(builtInCollections[collection].items[i].replace(";","#"))
                                         end for
                                         collections.push(curcollection)
                                         curcollection = invalid
                                         i = invalid
                                     else
-                                        collections.push({ name: builtInCollections[collection].name, items: builtInCollections[collection].items })
+                                        curcollection = { name: builtInCollections[collection].name: items: [] }
+                                        for i = 0 to builtInCollections[collection].items.Count() - 1
+                                            curcollection.items.push(builtInCollections[collection].items[i].replace(";","#"))
+                                        end for
+                                        collections.push(curcollection)
+                                        curcollection = invalid
+                                        i = invalid
                                     end if
                                 end if
                             end if
@@ -102,13 +115,19 @@ function get_prefs()
                                     if unpublishedCollections[collection].items.Count() >= 80
                                         curcollection = { name: unpublishedCollections[collection].name: items: [] }
                                         for i = 0 to 80
-                                            curcollection.items.push(unpublishedCollections[collection].items.Pop())
+                                            curcollection.items.push(unpublishedCollections[collection].items[i].replace(";","#"))
                                         end for
                                         collections.push(curcollection)
                                         curcollection = invalid
                                         i = invalid
                                     else
-                                        collections.push({ name: unpublishedCollections[collection].name, items: unpublishedCollections[collection].items })
+                                        curcollection = { name: unpublishedCollections[collection].name: items: [] }
+                                        for i = 0 to unpublishedCollections[collection].items.Count() - 1
+                                            curcollection.items.push(unpublishedCollections[collection].items[i].replace(";","#"))
+                                        end for
+                                        collections.push(curcollection)
+                                        curcollection = invalid
+                                        i = invalid
                                     end if
                                 end if
                             end if

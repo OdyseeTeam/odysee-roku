@@ -25,18 +25,18 @@ sub master()
 end sub
 
 function set_prefs()
-
-    'TODO: moving between # and ; in walletfiles (iOS), so parse both
-    'save as # by default
-    
     '8080 sso
     '8081 sdk
     '8082 api
     m.top.oldHash = m.top.newHash
     m.inSync = true
     ? "RUNNING setPreferencesTask"
-   ?"Step 2: Preference Get (for modification)"
+    ? "Step 2: Preference Get (for modification)"
     'Step 2: Preference Get (for modification)
+
+    'moving between # and ; in walletfiles (iOS), so replace ; with #
+    'save as # by default
+
     if m.inSync
         ? "Getting preferences(SDK)"
         preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_get", "params": { "key": "shared" }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
@@ -56,18 +56,21 @@ function set_prefs()
                         ?formatJson(userPreferences)
                         if isValid(userPreferences.blocked)
                             for each user in userPreferences.blocked
+                                user.replace(";","#")
                                 blocked.push(user.split("#")[1])
                             end for
                         end if
                         if isValid(userPreferences.following)
                             for each user in userPreferences.following
                                 if Type(user) <> "roString"
+                                    user.uri.replace(";","#")
                                     followingaa.addReplace(user.uri.split("#")[1], "a") '(for Following page)
                                 end if
                             end for
                         end if
                         if isValid(userPreferences.subscriptions)
                             for each subscription in userPreferences.subscriptions
+                                subscription.replace(";","#")
                                 followingaa.addReplace(subscription.split("#")[1], "a") '(abuse AssociativeArray addReplace to remove duplicates)
                             end for
                         end if
@@ -77,6 +80,7 @@ function set_prefs()
                         'm.top.preferences = { blocked: blocked: following: following: collections: collections }
                         if isValid(preferences.result.shared.value.blocked) and isValid(m.top.preferences.blocked)
                             for each subclaim in m.top.preferences.blocked
+                                subclaim.replace(";","#")
                                 isDuplicate = false
                                 if subclaim.split("#").Count() > 1
                                     for each blockeduser in blocked
@@ -115,6 +119,7 @@ function set_prefs()
                                 isDuplicate = false
                                 if Type(subclaim) <> "roString" 'already in non-raw format, no need for additional parsing
                                     if isValid(subclaim.uri) and isValid(subclaim["notificationsDisabled"])
+                                        subclaim.uri.replace(";","#")
                                         for each followeduser in following
                                             if subclaim.uri.split("#").Pop() = followeduser
                                                 isDuplicate = true
@@ -126,6 +131,7 @@ function set_prefs()
                                         end if
                                     end if
                                 else 'in raw claim format: needs additional data
+                                    subclaim.replace(";","#")
                                     if subclaim.split("#").Count() > 1
                                         for each followeduser in following
                                             if subclaim.split("#").Pop() = followeduser
@@ -167,6 +173,7 @@ function set_prefs()
                                 isDuplicate = false
                                 if Type(subclaim) <> "roString" 'already in non-raw format, no need for additional parsing
                                     if isValid(subclaim.uri) and isValid(subclaim["notificationsDisabled"])
+                                        subclaim.uri.replace(";","#")
                                         for each followeduser in following
                                             if subclaim.uri.split("#").Pop() = followeduser
                                                 isDuplicate = true
@@ -177,6 +184,7 @@ function set_prefs()
                                         end if
                                     end if
                                 else 'in raw claim format: needs additional data
+                                    subclaim.replace(";","#")
                                     if subclaim.split("#").Count() > 1
                                         'assume that we are in non-legacy format inside legacy datastructure
                                         for each followeduser in following
@@ -216,8 +224,9 @@ function set_prefs()
                                 if isValid(preferences.result.shared.value)
                                     try
                                         for i = 0 to preferences.result.shared.value.blocked.Count() - 1
-                                            ?preferences.result.shared.value.blocked[i]
                                             if isValid(preferences.result.shared.value.blocked[i])
+                                                preferences.result.shared.value.blocked[i].replace(";","#")
+                                                ? preferences.result.shared.value.blocked[i]
                                                 for each change in m.top.preferences.blocked
                                                     if change.split("#").Count() > 1
                                                         if preferences.result.shared.value.blocked[i] = change
@@ -238,6 +247,7 @@ function set_prefs()
                                     end try
                                     for i = 0 to preferences.result.shared.value.following.Count() - 1
                                         if isValid(preferences.result.shared.value.following[i])
+                                            preferences.result.shared.value.following[i].replace(";","#")
                                             for each change in m.top.preferences.following
                                                 if change.split("#").Count() > 1
                                                     if preferences.result.shared.value.following[i]["uri"] = change
@@ -257,6 +267,7 @@ function set_prefs()
                                     try
                                         for i = 0 to preferences.result.shared.value.subscriptions.Count() - 1
                                             if isValid(preferences.result.shared.value.subscriptions[i])
+                                                preferences.result.shared.value.subscriptions[i].replace(";","#")
                                                 for each change in m.top.preferences.following
                                                     if change.split("#").Count() > 1
                                                         if preferences.result.shared.value.subscriptions[i] = change
