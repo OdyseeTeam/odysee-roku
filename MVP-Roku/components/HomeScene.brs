@@ -65,12 +65,16 @@ Sub init()
     m.videoButtons.itemSize = [128,128]
     m.videoButtons.content = createBothItems(m.videoButtons, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoButtons.itemSize)
     m.videoButtons.observeField("itemFocused", "videoButtonFocused")
+    m.videoButtonsLikeIcon = m.videoButtons.content.getChildren(-1, 0)[5]
+    m.videoButtonsDislikeIcon = m.videoButtons.content.getChildren(-1, 0)[6]
     m.videoButtonsPlayIcon = m.videoButtons.content.getChildren(-1, 0)[3]
     m.videoButtonsChannelIcon = m.videoButtons.content.getChildren(-1, 0)[0]
+
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
 
     m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
     m.currentVideoClaimID = "" 'Current claim ID for Video
+    m.currentVideoReactions = {}
 
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
@@ -877,6 +881,7 @@ Sub resolveVideo(url = invalid)
           m.currentVideoChannelIcon = curitem.channelicon
           m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
           m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
+          getReactions(curItem.guid)
           m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.urlResolver.observeField("output", "playResolvedVideo")
           m.urlResolver.control = "RUN"
@@ -902,6 +907,7 @@ Sub resolveVideo(url = invalid)
           m.currentVideoChannelIcon = curitem.channelicon
           m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
           m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
+          getReactions(curItem.guid)
           m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
           m.videoContent.streamFormat = curItem.streamFormat
@@ -2080,7 +2086,25 @@ end sub
 
 sub gotReactions(msg as object)
   data = msg.getData()
-  ?formatJson(data)
+  m.currentVideoReactions = data
+  '{"mine":{"dislikes":0,"likes":0},"total":{"dislikes":3,"likes":6}}
+  if isValid(data.mine) AND isValid(data.total)
+    if isValid(data.mine.dislikes) AND isValid(data.mine.likes) AND isValid(data.total.dislikes) AND isValid(data.total.likes)
+      if data.mine.likes > 0
+        m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64-selected.png"
+      else if data.mine.likes = 0
+        m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64.png"
+      else if data.mine.dislikes > 0
+        if data.total.dislikes >= 100
+          m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64-selected.png"
+        else
+          m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64-selected.png"
+        end if
+      else if data.mine.dislikes = 0 AND data.total.dislikes >= 100
+        m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64.png"
+      end if
+    end if
+  end if
   m.getreactionTask.control = "STOP"
 end sub
 
@@ -2092,7 +2116,11 @@ end sub
 
 sub setReactionDone(msg as object)
   data = msg.getData()
-  ?formatJson(data)
+  if data.success
+    if isValid(data.claimID)
+      getReactions(data.claimID)
+    end if
+  end if
   m.setreactionTask.control = "STOP"
 end sub
 

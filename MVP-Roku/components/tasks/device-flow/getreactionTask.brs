@@ -55,7 +55,7 @@ function get_reactions()
     mydislikes = rawreactions.data.my_reactions[m.top.claimID]["dislike"]
     otherlikes = rawreactions.data.others_reactions[m.top.claimID]["like"]
     otherdislikes = rawreactions.data.others_reactions[m.top.claimID]["dislike"]
-    return {mine: {likes: mylikes, dislikes: mydislikes}, total: {likes: mylikes+otherlikes, dislikes: mydislikes+otherdislikes}}
+    return {mine: {likes: mylikes, dislikes: mydislikes}, total: {likes: otherlikes, dislikes: otherdislikes}}
 end function
 
 function string_deduplicate(array)

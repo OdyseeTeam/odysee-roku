@@ -48,7 +48,7 @@ function set_reactions(action)
             success = true
         end if
     end if
-    return {success: success}
+    return {success: success, claimid: m.top.claimID}
 end function
 
 function string_deduplicate(array)
