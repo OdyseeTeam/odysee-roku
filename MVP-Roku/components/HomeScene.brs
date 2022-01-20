@@ -266,6 +266,8 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
         if key = "OK"
           if m.video.visible = true AND m.videoOverlayGroup.visible = true
             if m.videoButtonSelected <> -1
+              ? "Current Button:"
+              ? m.videoButtonSelected
               if m.videoButtonSelected = 0
                 ? "Go to channel"
               else if m.videoButtonSelected = 1
@@ -277,21 +279,25 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               else if m.videoButtonSelected = 4
                 ? "Fast Forward"
               else if m.videoButtonSelected = 5
+                ' Like
+                ? "like"
+                ? m.wasLoggedIn
+                if m.wasLoggedIn
+                  if m.currentVideoReactions.mine.dislikes > 0
+                    setReaction(m.currentVideoClaimID, "negate")
+                  else
+                    setReaction(m.currentVideoClaimID, "dislike")
+                  end if
+                end if
+              else if m.videoButtonSelected = 6
+                ? "dislike"
+                ? m.wasLoggedIn
                 if m.wasLoggedIn
                 ' Dislike
                   if m.currentVideoReactions.mine.likes > 0
                     setReaction(m.currentVideoClaimID, "negate")
                   else
                     setReaction(m.currentVideoClaimID, "like")
-                  end if
-                end if
-              else if m.videoButtonSelected = 6
-                ' Like
-                if m.wasLoggedIn
-                  if m.currentVideoReactions.mine.dislikes > 0
-                    setReaction(m.currentVideoClaimID, "negate")
-                  else
-                    setReaction(m.currentVideoClaimID, "dislike")
                   end if
                 end if
               end if
@@ -461,6 +467,10 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 end if
             end if
             if m.focusedItem = 2
+              ? m.categorySelector.itemFocused
+              ? m.favoritesLoaded
+              ? m.videoGrid.rowItemFocused[0]
+              ? m.videoGrid.rowItemFocused[1]
               if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded AND m.videoGrid.rowItemFocused[0] = 0 AND m.videoGrid.rowItemFocused[1] = 3
                 m.videoGrid.setFocus(false)
                 m.oauthLogoutButton.setFocus(true)
@@ -1874,7 +1884,7 @@ sub authPhaseChanged(msg as object)
     data = msg.getData()
     if data = 10
       ?"Phase 10 (Logging Out)"
-      Logout()
+      ? m.authTask
     end if
     if data = 4
       'Forced logout occurs either:
@@ -1900,6 +1910,11 @@ sub authPhaseChanged(msg as object)
     end if
     if data = 2
       ?"Phase 2"
+      if m.legacyAuthenticated = false
+        m.wasLoggedIn = false
+        authDone()
+      end if
+      ? m.wasLoggedin
       if m.authTimerObserved = false
         m.authTaskTimer.observeField("fire", "refreshAuth")
         m.authTimerObserved = true
@@ -1934,11 +1949,12 @@ end sub
 
 sub Logout()
   ?"Running Logout"
-  if m.syncTimerObserved = true
-    m.syncLoop.control = "STOP"
-    m.syncLoopTimer.unobserveField("fire")
-    m.syncTimerObserved = false
-  end if
+  m.wasLoggedIn = false
+  m.favoritesUIFlag = false
+  m.favoritesLoaded = false
+  m.syncLoop.control = "STOP"
+  m.syncLoopTimer.unobserveField("fire")
+  m.syncTimerObserved = false
   videoFocused = false
   if m.focusedItem = 7
     videoFocused = true
@@ -1980,15 +1996,15 @@ sub Logout()
   SetRegistry("deviceFlowRegistry", "walletOldHash", "")
   SetRegistry("deviceFlowRegistry", "walletNewHash", "")
   SetRegistry("deviceFlowRegistry", "walletData", "")
-  'if m.authTask.authPhase = 3
-  '  m.authTask.authPhase = 10 'logout
-  '  m.authTask.control = "RUN"
-  '  m.authTaskTimer.control = "start"
-  'else
-  '  m.authTask.authPhase = 2
-  '  m.authTask.control = "RUN"
-  '  m.authTaskTimer.control = "start"
-  'end if
+  if m.authTask.authPhase = 3
+    m.authTask.authPhase = 10 'logout
+    m.authTask.control = "RUN"
+    m.authTaskTimer.control = "start"
+  else
+    m.authTask.authPhase = 2
+    m.authTask.control = "RUN"
+    m.authTaskTimer.control = "start"
+  end if
 end sub
 
 'Sync Task related functions (post auth)
@@ -1998,9 +2014,10 @@ sub getSync()
   ?m.wasLoggedIn
   ?m.favoritesLoaded
   ?"GETSYNC DEBUG"
-  if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn 'update
-    gotSync()
+  if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn AND m.syncLoop.accessToken <> "" 'update
     getUserPrefs()
+  else if m.syncLoop.accessToken = "" 'logged out, stop loop. (fixes wasLoggedIn race condition)
+    m.syncLoop.control = "STOP"
   else 'get in sync first
     ? "NOT IN SYNC"
     m.syncLoop.control = "STOP"
@@ -2037,11 +2054,16 @@ sub gotUserPrefs()
     m.videoGrid.visible = false
     m.loadingText.visible = true
   end if
-  setRegistry("preferencesRegistry", "preferences", FormatJson(m.preferences))
+  setRegistry("preferencesRegistry", "preferences", FormatJson(m.getpreferencesTask.preferences))
   if m.legacyAuthenticated = false
     authDone()
   end if
-
+  if isValid(oldpreferences) = false OR oldpreferences.Count() = 0
+    if isValid(newpreferences) AND newpreferences.Count() > 0
+      oldpreferences = newpreferences
+      favoritesChanged = true
+    end if
+  end if
   if oldpreferences.following.Count() <> newpreferences.following.Count()
     favoritesChanged = true
   end if
@@ -2074,6 +2096,7 @@ sub gotFavorites(msg as object)
       thread.unObserveField("output")
       thread.control = "STOP"
       m.favoritesUIFlag = true
+      m.favoritesLoaded = true
       ?m.focusedItem
       ?m.categorySelector.itemFocused
       if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0

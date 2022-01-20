@@ -10,8 +10,8 @@ sub master()
     if isValid(globalAPIConstants["FRONTPAGE_URL"]) = false
         globalAPIConstants["FRONTPAGE_URL"] = "https://odysee.com/$/api/content/v1/get"
     end if
-    'globalAPIConstants["ROOT_API"] = "http://192.168.30.140:8082"
-    'globalAPIConstants["ROOT_SDK"] = "http://192.168.30.140:8081"
-    'globalAPIConstants["ROOT_SSO"] = "http://192.168.30.140:8080"
+    'globalAPIConstants["ROOT_API"] = "http://192.168.240.110:8082"
+    'globalAPIConstants["ROOT_SDK"] = "http://192.168.240.110:8081"
+    'globalAPIConstants["ROOT_SSO"] = "http://192.168.240.110:8080"
     m.top.constants = globalAPIConstants
 end sub

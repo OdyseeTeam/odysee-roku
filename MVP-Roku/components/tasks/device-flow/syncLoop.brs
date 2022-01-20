@@ -90,12 +90,14 @@ sub master()
             end if
         end if
     end if
-    m.top.newHash = sdkHash
-    m.top.oldHash = prodHash
+    if isValid(sdkHash) AND isValid(prodHash) AND isValid(inSync)
+        m.top.newHash = sdkHash
+        m.top.oldHash = prodHash
+        m.top.inSync = inSync
+    end if
     sdkHash = invalid
     prodHash = invalid
     sdkWallet = invalid
     prodWalletData = invalid
-    m.top.inSync = inSync
     ? "Loop done."
 end sub

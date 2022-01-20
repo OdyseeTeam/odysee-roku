@@ -116,6 +116,11 @@ sub master()
         json = {refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial"}
         accountRoot = m.top.constants["ROOT_SSO"]+""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/logout", { "Authorization": "Bearer " + m.top.accessToken })
+        ? json
+        ? accountRoot
+        ? formatJson(authreq)
+        m.top.accessToken = ""
+        m.top.refreshToken = ""
         m.top.authPhase = 1
         m.top.output = { authorized: false, state: "LOGOUT", debug: authreq }
     end if
@@ -131,6 +136,9 @@ sub checkRefresh()
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
         if isValid(authreq.error)
             m.top.authPhase = 4
+            m.top.accessToken = ""
+            m.top.refreshToken = ""
+            m.top.authPhase = 1
             m.top.output = { authorized: false, state: "INVALID", debug: authreq }
         end if
         if isValid(authreq.access_token)
