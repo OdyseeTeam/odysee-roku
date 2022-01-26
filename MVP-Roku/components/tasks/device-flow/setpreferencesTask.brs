@@ -24,6 +24,20 @@ sub master()
     end if
 end sub
 
+function prenotify_delete_follow(follow)
+    ?"Prenotifying ROOT API (/subscription/delete)"
+    notifyURL = m.top.constants["ROOT_API"] + "/subscription/delete"
+    notifyQuery = {claim_id: follow}
+    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
+end function
+
+function prenotify_new_follow(follow)
+    ?"Prenotifying ROOT API (/subscription/new)"
+    notifyURL = m.top.constants["ROOT_API"] + "/subscription/new"
+    notifyQuery = {claim_id: follow,notifications_disabled:"true"}
+    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
+end function
+
 function set_prefs()
     '8080 sso
     '8081 sdk
@@ -140,7 +154,7 @@ function set_prefs()
                                         end for
                                         'assume that we are in non-legacy format inside legacy datastructure
                                         if isDuplicate = false
-                                            preferences.result.shared.value.following.append([{ uri: subclaim, "notificationsDisabled": true }])
+                                            preferences.result.shared.value.following.append([{ uri: subclaim, "notificationsDisabled": "true" }])
                                             prenotify_new_follow(subclaim.split("#").Pop())
                                         end if
                                     else
@@ -148,20 +162,20 @@ function set_prefs()
                                         queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
                                         queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
                                         response = postJSON(queryJSON, queryURL, invalid)
-                                        try
+                                        'try
                                             for each followeduser in following
                                                 if response.result.items[0]["permanent_url"].split("#").Pop() = followeduser
                                                     isDuplicate = true
                                                 end if
                                             end for
                                             if isDuplicate = false
-                                                preferences.result.shared.value.following.append([{ uri: response.result.items[0]["permanent_url"], "notificationsDisabled": true }])
+                                                preferences.result.shared.value.following.append([{ uri: response.result.items[0]["permanent_url"], "notificationsDisabled": "true" }])
                                                 prenotify_new_follow(subclaim)
                                             end if
-                                        catch e
-                                            ?e
-                                            stop
-                                        end try
+                                        'catch e
+                                        '    ?e
+                                        '    stop
+                                        'end try
                                     end if
                                 end if
                             end for
@@ -247,7 +261,7 @@ function set_prefs()
                                     end try
                                     for i = 0 to preferences.result.shared.value.following.Count() - 1
                                         if isValid(preferences.result.shared.value.following[i])
-                                            preferences.result.shared.value.following[i].replace(";","#")
+                                            preferences.result.shared.value.following[i].uri.replace(";","#")
                                             for each change in m.top.preferences.following
                                                 if change.split("#").Count() > 1
                                                     if preferences.result.shared.value.following[i]["uri"] = change
@@ -352,18 +366,4 @@ function string_deduplicate(array)
         deduper = invalid
         return deduparray
     end if
-end function
-
-function prenotify_delete_follow(follow)
-    ?"Prenotifying ROOT API (/subscription/delete)"
-    notifyURL = m.top.constants["ROOT_API"] + "/subscription/delete"
-    notifyQuery = {claim_id: follow}
-    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
-end function
-
-function prenotify_new_follow(follow)
-    ?"Prenotifying ROOT API (/subscription/new)"
-    notifyURL = m.top.constants["ROOT_API"] + "/subscription/new"
-    notifyQuery = {claim_id: follow,notifications_disabled:true}
-    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
 end function

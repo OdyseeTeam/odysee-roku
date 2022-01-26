@@ -65,11 +65,11 @@ Sub init()
     m.videoButtons.itemSize = [128,128]
     m.videoButtons.content = createBothItems(m.videoButtons, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoButtons.itemSize)
     m.videoButtons.observeField("itemFocused", "videoButtonFocused")
+    m.videoButtonsChannelIcon = m.videoButtons.content.getChildren(-1, 0)[0]
+    m.videoButtonsFollowingIcon = m.videoButtons.content.getChildren(-1, 0)[1]
+    m.videoButtonsPlayIcon = m.videoButtons.content.getChildren(-1, 0)[3]
     m.videoButtonsLikeIcon = m.videoButtons.content.getChildren(-1, 0)[5]
     m.videoButtonsDislikeIcon = m.videoButtons.content.getChildren(-1, 0)[6]
-    m.videoButtonsPlayIcon = m.videoButtons.content.getChildren(-1, 0)[3]
-    m.videoButtonsChannelIcon = m.videoButtons.content.getChildren(-1, 0)[0]
-
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
 
     m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
@@ -110,6 +110,8 @@ Sub init()
   m.chatImageRegex = CreateObject("roRegex", "(?:!\[(.*?)\]\((.*?)\))","") 'incredibly scuffed
   m.channelIDs = {}
   m.mediaIndex = {}
+  m.baseMediaIndex = {}
+  m.favoritesMediaIndex = {}
   m.categories = {}
   m.authTask = createObject("roSGNode", "authTask")
   m.urlResolver = createObject("roSGNode", "resolveLBRYURL")
@@ -271,7 +273,14 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               if m.videoButtonSelected = 0
                 ? "Go to channel"
               else if m.videoButtonSelected = 1
-                ? "Subscribe"
+                ? "Subscribe/Follow"
+                if m.wasLoggedIn
+                  if m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+                    unFollow(m.currentVideoChannelID)
+                  else
+                    follow(m.currentVideoChannelID)
+                  end if
+                end if
               else if m.videoButtonSelected = 2
                 ? "Rewind"
               else if m.videoButtonSelected = 3
@@ -905,6 +914,26 @@ Sub resolveVideo(url = invalid)
           m.currentVideoChannelIcon = curitem.channelicon
           m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
           m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
+          isFollowed = false
+          if m.wasLoggedIn
+            if m.preferences.Count() > 0 AND isValid(m.preferences.following)
+              if m.preferences.following.Count() > 0
+                for each claimID in m.preferences.following
+                  if claimID = m.currentVideoChannelID
+                    ? "This user is being followed."
+                    isFollowed = true
+                  end if
+                end for
+              end if
+            end if
+          end if
+          if isFollowed
+            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+          else
+            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+          end if
+          isFollowed = invalid
+          m.videoButtons.jumpToItem = 3
           getReactions(curItem.guid)
           m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.urlResolver.observeField("output", "playResolvedVideo")
@@ -931,6 +960,26 @@ Sub resolveVideo(url = invalid)
           m.currentVideoChannelIcon = curitem.channelicon
           m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
           m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
+          isFollowed = false
+          if m.wasLoggedIn
+            if m.preferences.Count() > 0 AND isValid(m.preferences.following)
+              if m.preferences.following.Count() > 0
+                for each claimID in m.preferences.following
+                  if claimID = m.currentVideoChannelID
+                    ? "This user is being followed."
+                    isFollowed = true
+                  end if
+                end for
+              end if
+            end if
+          end if
+          if isFollowed
+            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+          else
+            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+          end if
+          isFollowed = invalid
+          m.videoButtons.jumpToItem = 3
           getReactions(curItem.guid)
           m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
@@ -1763,7 +1812,8 @@ if type(msg) = "roSGNodeEvent"
       thread.control = "RUN"
     end if
   else
-    m.mediaIndex.append(thread.output.index)
+    m.baseMediaIndex.append(thread.output.index)
+    m.mediaIndex = m.baseMediaIndex
     ?thread.rawname
     m.categories.addReplace(thread.rawname, thread.output.content)
     thread.unObserveField("output")
@@ -2091,8 +2141,10 @@ sub gotFavorites(msg as object)
     if thread.error
         thread.control = "STOP"
     else
-      m.mediaIndex.append(thread.output.index) 'TODO: Remove duplicates from mediaIndex.
-      m.categories.addReplace("favorites", thread.output.content)
+      m.favoritesMediaIndex.append(thread.output.index)
+      m.mediaIndex = m.baseMediaIndex
+      m.mediaIndex.append(m.favoritesMediaIndex)
+      m.categories.addReplace("FAVORITES", thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"
       m.favoritesUIFlag = true
@@ -2109,6 +2161,8 @@ sub gotFavorites(msg as object)
         m.videoGrid.setFocus(true)
         m.focusedItem = 2
         m.oauthLogoutButton.visible = true
+      else if m.focusedItem = 7 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 'update under video
+        m.videoGrid.content = m.categories["FAVORITES"]
       end if
     end if
   end if
@@ -2180,12 +2234,26 @@ sub follow(channelID)
   m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"following": [channelID]}:changeType:"append"})
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
+  m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+  m.preferences.following.push(channelID)
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+  m.favoritesThread.observeField("output", "gotFavorites")
+  m.favoritesThread.control = "RUN"
 end sub
 
 sub unFollow(channelID)
   m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"following": [channelID]}:changeType:"remove"})
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
+  m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+  for i = 0 to m.preferences.following.Count() - 1
+    if m.preferences.following[i] = channelID
+      m.preferences.following.Delete(i)
+    end if
+  end for
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+  m.favoritesThread.observeField("output", "gotFavorites")
+  m.favoritesThread.control = "RUN"
 end sub
 
 sub setPrefStateChanged()
