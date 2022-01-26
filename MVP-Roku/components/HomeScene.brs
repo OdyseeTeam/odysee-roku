@@ -2116,7 +2116,11 @@ end sub
 
 sub getReactions(videoID)
   'accesstoken, uid, cookies, claimid, constants
-  m.getreactionTask.setfields({accessToken:m.accessToken:uid:m.uid:cookies:m.cookies:claimid:videoID:constants:m.constants})
+  if isValid(m.accessToken) AND m.accessToken <> ""
+    m.getreactionTask.setfields({accessToken:m.accessToken:uid:m.uid:cookies:m.cookies:claimid:videoID:constants:m.constants})
+  else if isValid(m.authToken) AND m.authToken <> ""
+    m.getreactionTask.setfields({authToken:m.authToken:uid:m.uid:cookies:m.cookies:claimid:videoID:constants:m.constants})
+  end if
   m.getreactionTask.observeField("reactions", "gotReactions")
   m.getreactionTask.control = "RUN"
 end sub
@@ -2132,7 +2136,7 @@ sub gotReactions(msg as object)
       else if data.mine.likes = 0
         m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64.png"
       else if data.mine.dislikes > 0
-        if data.total.dislikes >= 100
+        if data.total.dislikes >= 99
           m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64-selected.png"
         else
           m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64-selected.png"

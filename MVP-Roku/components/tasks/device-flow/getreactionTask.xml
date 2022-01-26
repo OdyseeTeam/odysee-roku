@@ -5,6 +5,8 @@
             <!--accessToken from authTask-->
             <field id="accessToken" type="String"/>
             <field id="cookies" type="roArray"/>
+            <!--"Legacy"/Anonymous AuthToken (used when NOT logged in)-->
+            <field id="authToken" type="String"/>
             <!--Claim ID-->
             <field id="claimID" type="String"/>
             <!--Reaction Query Output-->

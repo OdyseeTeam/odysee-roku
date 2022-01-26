@@ -59,7 +59,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             
             try
                 if isValid(items[i].signing_channel.value.thumbnail.url)
-                    item.ChannelIcon = items[i].signing_channel.value.thumbnail.url
+                    item.ChannelIcon = m.top.constants["IMAGE_PROCESSOR"] + items[i].signing_channel.value.thumbnail.url
                 else
                     item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
                 end if

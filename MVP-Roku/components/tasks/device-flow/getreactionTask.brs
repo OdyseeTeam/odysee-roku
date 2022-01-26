@@ -21,6 +21,12 @@ sub master()
                 m.top.reactions = get_reactions()
             end if
         end if
+    else if isValid(m.top.authToken)
+        if Type(m.top.authToken) = "roString"
+            if m.top.authToken <> ""
+                m.top.reactions = get_reactions()
+            end if
+        end if
     end if
 end sub
 
@@ -50,12 +56,27 @@ function get_reactions()
     '      }
     '    }
     '  }
-    rawreactions = postURLEncoded({"claim_ids": m.top.claimID},m.top.constants["ROOT_API"]+"/reaction/list", { "Authorization": "Bearer " + m.top.accessToken })
-    mylikes = rawreactions.data.my_reactions[m.top.claimID]["like"]
-    mydislikes = rawreactions.data.my_reactions[m.top.claimID]["dislike"]
-    otherlikes = rawreactions.data.others_reactions[m.top.claimID]["like"]
-    otherdislikes = rawreactions.data.others_reactions[m.top.claimID]["dislike"]
-    return {mine: {likes: mylikes, dislikes: mydislikes}, total: {likes: otherlikes, dislikes: otherdislikes}}
+    if isValid(m.top.accessToken) ' logged in
+        if Type(m.top.accessToken) = "roString"
+            if m.top.accessToken <> ""
+                rawreactions = postURLEncoded({"claim_ids": m.top.claimID},m.top.constants["ROOT_API"]+"/reaction/list", { "Authorization": "Bearer " + m.top.accessToken })
+                mylikes = rawreactions.data.my_reactions[m.top.claimID]["like"]
+                mydislikes = rawreactions.data.my_reactions[m.top.claimID]["dislike"]
+                otherlikes = rawreactions.data.others_reactions[m.top.claimID]["like"]
+                otherdislikes = rawreactions.data.others_reactions[m.top.claimID]["dislike"]
+                return {mine: {likes: mylikes, dislikes: mydislikes}, total: {likes: otherlikes, dislikes: otherdislikes}}
+            end if
+        end if
+    else if isValid(m.top.authToken) ' not logged in
+        if Type(m.top.authToken) = "roString"
+            if m.top.authToken <> ""
+                rawreactions = postURLEncoded({"claim_ids": m.top.claimID, "auth_token": m.top.authToken},m.top.constants["ROOT_API"]+"/reaction/list", {})
+                otherlikes = rawreactions.data.others_reactions[m.top.claimID]["like"]
+                otherdislikes = rawreactions.data.others_reactions[m.top.claimID]["dislike"]
+                return {mine: {likes: 0, dislikes: 0}, total: {likes: otherlikes, dislikes: otherdislikes}}
+            end if
+        end if
+    end if
 end function
 
 function string_deduplicate(array)
