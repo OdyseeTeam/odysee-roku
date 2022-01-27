@@ -932,8 +932,6 @@ Sub resolveVideo(url = invalid)
           else
             m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
           end if
-          isFollowed = invalid
-          m.videoButtons.jumpToItem = 3
           getReactions(curItem.guid)
           m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
           m.urlResolver.observeField("output", "playResolvedVideo")
@@ -979,7 +977,6 @@ Sub resolveVideo(url = invalid)
             m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
           end if
           isFollowed = invalid
-          m.videoButtons.jumpToItem = 3
           getReactions(curItem.guid)
           m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
@@ -1001,6 +998,7 @@ Sub resolveVideo(url = invalid)
           ?m.video.errorStr
           ?m.video.videoFormat
           ?m.video
+          m.videoButtons.animateToItem = 3
           m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:uid:m.uid:authtoken:m.authtoken:cookies:m.cookies})
           m.chatHistory.observeField("output", "gotChatHistory")
           m.chatHistory.control = "RUN"
@@ -1162,6 +1160,7 @@ Sub playResolvedVideo(msg as Object)
       m.videoButtons.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
+      m.videoButtons.animateToItem = 3
       m.video.observeField("position", "videoPositionChanged")
       ?m.video.errorStr
       ?m.video.videoFormat
