@@ -273,6 +273,16 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               ? m.videoButtonSelected
               if m.videoButtonSelected = 0
                 ? "Go to channel"
+                returnToUIPage()
+                curChannel = m.currentVideoChannelID
+                m.channelResolver.setFields({constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+                m.channelResolver.observeField("output", "gotResolvedChannel")
+                m.channelResolver.control = "RUN"
+                m.taskRunning = True
+                m.videoGrid.setFocus(false)
+                m.videoGrid.visible = false
+                m.loadingText.visible = true
+                m.loadingText.text = "Resolving Channel..."
               else if m.videoButtonSelected = 1
                 ? "Subscribe/Follow"
                 if m.wasLoggedIn
@@ -516,6 +526,9 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 m.channelResolver.control = "RUN"
                 m.taskRunning = True
                 m.videoGrid.setFocus(false)
+                m.videoGrid.visible = false
+                m.loadingText.visible = true
+                m.loadingText.text = "Resolving Channel..."
               end if
             end if
         end if
