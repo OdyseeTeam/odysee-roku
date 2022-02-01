@@ -75,6 +75,7 @@ Sub init()
     m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
     m.currentVideoClaimID = "" 'Current claim ID for Video
     m.currentVideoReactions = {}
+    m.currentVideoPosition = [0,0]
 
     m.searchHistoryBox = m.top.findNode("searchHistory")
     m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
@@ -282,11 +283,72 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                   end if
                 end if
               else if m.videoButtonSelected = 2
-                ? "Rewind"
+                'Back Button/Previous Video
+                ? m.currentVideoPosition
+                if m.currentVideoPosition[1] = 0 'First video in row, attempt to go back
+                  if m.currentVideoPosition[0] > 0
+                    if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]-1).getChild(3))
+                      curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]-1).getChild(3)
+                      returnToUIPage()
+                      m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0]-1,3]
+                      m.currentVideoPosition = [m.currentVideoPosition[0]-1,3]
+                      resolveEvaluatedVideo(curItem)
+                    end if
+                  end if
+                else 'Go back by one, not the first video.
+                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]-1))
+                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]-1)
+                    returnToUIPage()
+                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0],m.currentVideoPosition[1]-1]
+                    m.currentVideoPosition = [m.currentVideoPosition[0],m.currentVideoPosition[1]-1]
+                    resolveEvaluatedVideo(curItem)
+                  end if
+                end if
               else if m.videoButtonSelected = 3
-                ? "Play/Pause"
+                'Play Button
+                if m.video.visible
+                  showVideoOverlay()
+                  if m.videoTransitionState = 0
+                    deleteSpinner()
+                    if m.video.state = "playing"
+                      m.video.control = "pause"
+                    else if m.video.state = "paused"
+                      m.video.control = "resume"
+                    end if
+                  else
+                    m.ffrwTimer.control = "stop"
+                    m.ffrwTimer.unobserveField("fire")
+                    m.videoTransitionState = 0
+                    deleteSpinner()
+                    if m.video.control = "stop"
+                      m.video.control = "prebuffer"
+                      m.video.control = "play"
+                    else
+                      m.video.control = "pause"
+                      m.video.control = "resume"
+                    end if
+                  end if
+                end if
               else if m.videoButtonSelected = 4
-                ? "Fast Forward"
+                'Forward Button/Next Video
+                ? m.currentVideoPosition
+                if m.currentVideoPosition[1] = 3 'Last video in row, move down.
+                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]+1).getChild(0))
+                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]+1).getChild(0)
+                    returnToUIPage()
+                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0]+1,0]
+                    m.currentVideoPosition = [m.currentVideoPosition[0],m.currentVideoPosition[1]+1]
+                    resolveEvaluatedVideo(curItem)
+                  end if
+                else 'Not the last, move forward
+                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]+1))
+                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]+1)
+                    returnToUIPage()
+                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0],m.currentVideoPosition[1]+1]
+                    m.currentVideoPosition = [m.currentVideoPosition[0],m.currentVideoPosition[1]+1]
+                    resolveEvaluatedVideo(curItem)
+                  end if
+                end if
               else if m.videoButtonSelected = 5
                 ' Like
                 ? "like"
@@ -908,39 +970,10 @@ Sub resolveVideo(url = invalid)
     incomingData = url.getData()
     if type(incomingData) = "roArray"
       if incomingData.Count() > 1
+        m.currentVideoPosition = incomingData
         curItem = m.videoGrid.content.getChild(incomingData[0]).getChild(incomingData[1])
         if curItem.itemType = "video"
-          ?"Resolving a Video"
-          m.currentVideoChannelIcon = curitem.channelicon
-          m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
-          m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
-          isFollowed = false
-          if m.wasLoggedIn
-            if m.preferences.Count() > 0 AND isValid(m.preferences.following)
-              if m.preferences.following.Count() > 0
-                for each claimID in m.preferences.following
-                  if claimID = m.currentVideoChannelID
-                    ? "This user is being followed."
-                    isFollowed = true
-                  end if
-                end for
-              end if
-            end if
-          end if
-          if isFollowed
-            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
-          else
-            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
-          end if
-          getReactions(curItem.guid)
-          m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
-          m.urlResolver.observeField("output", "playResolvedVideo")
-          m.urlResolver.control = "RUN"
-          m.taskRunning = True
-          m.videoGrid.setFocus(false)
-          m.videoGrid.visible = false
-          m.loadingText.visible = true
-          m.loadingText.text = "Resolving Video..."
+          resolveEvaluatedVideo(curItem) 'used for this AND next video/previous video
         end if
         if curItem.itemType = "channel"
           ?"Resolving a Channel"
@@ -1016,6 +1049,40 @@ Sub resolveVideo(url = invalid)
     m.videoGrid.setFocus(false)
   end if
 End Sub
+
+sub resolveEvaluatedVideo(curItem)
+  ?"Resolving a Video"
+  m.currentVideoChannelIcon = curitem.channelicon
+  m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
+  m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
+  isFollowed = false
+  if m.wasLoggedIn
+    if m.preferences.Count() > 0 AND isValid(m.preferences.following)
+      if m.preferences.following.Count() > 0
+        for each claimID in m.preferences.following
+          if claimID = m.currentVideoChannelID
+            ? "This user is being followed."
+            isFollowed = true
+          end if
+        end for
+      end if
+    end if
+  end if
+  if isFollowed
+    m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+  else
+    m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+  end if
+  getReactions(curItem.guid)
+  m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+  m.urlResolver.observeField("output", "playResolvedVideo")
+  m.urlResolver.control = "RUN"
+  m.taskRunning = True
+  m.videoGrid.setFocus(false)
+  m.videoGrid.visible = false
+  m.loadingText.visible = true
+  m.loadingText.text = "Resolving Video..."
+end sub
 
 sub gotChatHistory(msg as Object)
   if type(msg) = "roSGNodeEvent"
@@ -1534,7 +1601,7 @@ Sub gotConstants()
   m.constantsTask.unobserveField("constants")
   m.constantsTask.control = "STOP"
   if m.constantsTask.error
-    retryError("Error getting constants from Github", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryConstants")
+    retryError("Error getting constants from Github", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
   else
     m.constants = m.constantsTask.constants
     m.authTask.setField("constants", m.constants)
@@ -1568,7 +1635,7 @@ Sub authDone()
   end if
   m.authTask.unobserveField("output")
   if m.authTask.error
-    retryError("Error authenticating with Odysee", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryAuth")
+    retryError("Error authenticating with Odysee", "Please e-mail rokusupport@halitesoftware.com.", "retryAuth")
   else
     m.legacyAuthenticated = True
     ?m.authTask.output
@@ -1719,7 +1786,7 @@ Sub gotCIDS()
   m.cidsTask.control = "STOP"
   m.cidsTask.unobserveField("channelids")
   if m.cidsTask.error
-    retryError("Error getting frontpage channel IDs", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryCIDS")
+    retryError("Error getting frontpage channel IDs", "Please e-mail rokusupport@halitesoftware.com.", "retryCIDS")
   else
     m.channelIDs = m.cidsTask.channelids
     m.categorySelectordata = m.cidsTask.categoryselectordata
@@ -1848,7 +1915,7 @@ if type(msg) = "roSGNodeEvent"
           finishInit()
         end if
       else
-        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "If this happens more than once, go here: https://discord.gg/lbry #odysee-roku", "retryConstants")
+        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
       end if
     end if
   end if
