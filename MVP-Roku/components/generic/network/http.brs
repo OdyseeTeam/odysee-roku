@@ -294,7 +294,7 @@ end function
 
 Function resolveRedirect(url As String) As String
 url = url.Unescape()
-if instr(url, m.top.constants["VIDEO_API"]) > 0
+if url.instr(m.top.constants["VIDEO_API"]) > 0
   'Unicode video fix, because the video API doesn't accept escaped unicode correctly.
   spliturl = url.split("/")
   spliturlcount = spliturl.Count()
@@ -309,7 +309,7 @@ if instr(url, m.top.constants["VIDEO_API"]) > 0
     'if cleanurl = ""
     '  cleanurl = "roku"
     'end if
-    'if instr(cleanurl, " ") > 0
+    'if cleanurl.instr(" ") > 0
     '  cleanurl = "roku"
     'end if
     cleanurl = vurlarray[i].EncodeUri()

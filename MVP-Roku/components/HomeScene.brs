@@ -1,4 +1,6 @@
 Sub init()
+'IF EVERYTHING IS BROKEN:
+'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
     m.appTimer = CreateObject("roTimeSpan")
     m.appTimer.Mark()
     if m.global.constants.enableStatistics
@@ -1726,8 +1728,8 @@ function on_message(event as object) as void
         curComment = jsonMessage.data.comment.comment
         curChannel = jsonMessage.data.comment.channel_name
         curMessage = "["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment, "") 'add newline
-        if instr(curComment, "![") > 0 'TODO: find a proper way to parse Markdown on Roku
-          if instr(curComment, "](") > 0
+        if curComment.instr("![") > 0 'TODO: find a proper way to parse Markdown on Roku
+          if curComment.instr("](") > 0
             message_valid = false
           end if
         end if
@@ -1954,7 +1956,7 @@ sub finishInit()
     if isValid(m.global.deeplink.contentId)
       'TODO: create reverse livestream resolver so that livestreams can be deeplinked
       'for now, if you try to play a livestream, this will break.
-      if instr(m.global.deeplink.contentId, "http") < 1
+      if m.global.deeplink.contentId.instr("http") < 1
         resolveVideo(m.global.deeplink.contentId)
       end if
     end if
