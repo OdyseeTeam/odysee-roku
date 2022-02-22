@@ -5,6 +5,7 @@ sub Main(args)
     screen.setMessagePort(m.port)  'Set message port to listen to screen
     debug = true
     scene = screen.CreateScene("HomeScene")  'Create HomeScene
+    scene.signalBeacon("AppLaunchInitiate")
     m.global = screen.getGlobalNode()
     constants = {}
     constants.enableStatistics = true 'allows user preference, easy location of related code, and quick debugging if stats cause problems indev. will be added to user settings later.

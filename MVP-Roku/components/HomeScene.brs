@@ -631,6 +631,7 @@ Sub resolveVideo(url = invalid)
           m.video.setFocus(true)
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
+          m.global.scene.signalBeacon("LiveStartComplete")
           m.refreshes = 0
           m.video.observeField("duration", "liveDurationChanged")
           ? m.video.errorStr
@@ -747,6 +748,7 @@ Sub playResolvedVideo(msg as Object)
       m.video.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
+      m.global.scene.signalBeacon("VODStartComplete")
       if m.global.constants.enableStatistics
         m.video.observeField("position", "vStatsChanged")
       end if
