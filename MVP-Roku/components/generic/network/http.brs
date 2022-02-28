@@ -1,4 +1,4 @@
-function postJSON(json, url, headers=invalid) as Object 'json, url, headers: {header: headerdata}
+function postJSON(json, url, headers) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
@@ -32,18 +32,22 @@ function postJSON(json, url, headers=invalid) as Object 'json, url, headers: {he
           http.asynccancel()
           return postJSON(json, url, headers)
         end if
+        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+          http.asynccancel()
+          return postJSON(json, url, headers)
+        end if
       else if event = invalid then
         http.asynccancel()
         return postJSON(json, url, headers)
       Else
-          ?"[LBRY_HTTP] AsyncPostFromString unknown event"
+          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
   end if
   cleanup()
   return response
 end function
 
-function postJSONResponseOut(json, url, headers=invalid) as Object 'json, url, headers: {header: headerdata}
+function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
@@ -58,14 +62,14 @@ function postJSONResponseOut(json, url, headers=invalid) as Object 'json, url, h
       http.asynccancel()
       return 500
       Else
-          ?"[LBRY_HTTP] AsyncPostFromString unknown event"
+          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
   end if
   cleanup()
   return responseCode
 end function
 
-function postURLEncoded(data, url, headers=invalid) as Object
+function postURLEncoded(data, url, headers) as Object
   http = httpPreSetup(url)
   if IsValid(headers)
     http.SetHeaders(headers) 'in some cases, this is actually needed!
@@ -101,11 +105,15 @@ function postURLEncoded(data, url, headers=invalid) as Object
           http.asynccancel()
           return postURLEncoded(json, url, headers)
         end if
+        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+          http.asynccancel()
+          return postURLEncoded(json, url, headers)
+        end if
       else if event = invalid then
         http.asynccancel()
         return postURLEncoded(json, url, headers)
       Else
-          ?"[LBRY_HTTP] AsyncPostFromString unknown event"
+          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
     end if
   end if
 cleanup()
@@ -123,13 +131,13 @@ function posturlencode(data)
       encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
     end if
   end for
-  ?encoded 'debug
+  ? encoded 'debug
   return encoded
 end function
 
-function getURLEncoded(data, url, headers=invalid) as Object
+function getURLEncoded(data, url, headers) as Object
     currenturl = url+urlencode(data)
-    ?currenturl
+    ? currenturl
     http = httpPreSetup(currenturl)
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
@@ -158,11 +166,15 @@ function getURLEncoded(data, url, headers=invalid) as Object
             http.asynccancel()
             return getURLEncoded(data, url, headers)
           end if
+          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+            http.asynccancel()
+            return getURLEncoded(data, url, headers)
+          end if
         else if event = invalid then
           http.asynccancel()
           return getURLEncoded(data, url, headers)
         Else
-          ?"[LBRY_HTTP] AsyncGetToString unknown event"
+          ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
   cleanup()
@@ -180,15 +192,12 @@ function urlencode(data)
       encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
     end if
   end for
-  '?encoded 'debug
+  '? encoded 'debug
   return encoded
 end function
 
-function getJSON(url, headers=invalid) as Object
+function getJSON(url) as Object
     http = httpPreSetup(url)
-    if IsValid(headers)
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
-    end if
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
@@ -215,11 +224,15 @@ function getJSON(url, headers=invalid) as Object
             http.asynccancel()
             return getJSON(url)
           end if
+          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+            http.asynccancel()
+            return getJSON(url)
+          end if
         else if event = invalid then
           http.asynccancel()
           return getJSON(url)
         Else
-          ?"[LBRY_HTTP] AsyncGetToString unknown event"
+          ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
   cleanup()
@@ -249,11 +262,15 @@ function getRawText(url) as Object
             http.asynccancel()
             return getRawText(url)
           end if
+          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+            http.asynccancel()
+            return getRawText(url)
+          end if
         else if event = invalid then
           http.asynccancel()
           return getRawText(url)
         Else
-          ?"[LBRY_HTTP] AsyncGetToString unknown event"
+          ? "[LBRY_HTTP] AsyncGetToString unknown event"
       end if
     end if
   cleanup()
@@ -282,11 +299,15 @@ function urlExists(url) as Object
           http.asynccancel()
           return false
         end if
+        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+          http.asynccancel()
+          return urlExists(url)
+        end if
       else if event = invalid then
         http.asynccancel()
         return false
       Else
-        ?"[LBRY_HTTP] AsyncGetToString unknown event"
+        ? "[LBRY_HTTP] AsyncGetToString unknown event"
     end if
   end if
 cleanup()
@@ -316,7 +337,7 @@ if url.instr(m.top.constants["VIDEO_API"]) > 0
     cleanvurlarray.push(cleanurl)
   end for
   vregex = invalid
-  ?cleanvurlarray
+  ? cleanvurlarray
   url = m.top.constants["VIDEO_API"]+"/api/v4/streams/free/"+cleanvurlarray.Join("/")
 end if
 http = httpPreSetup(url)
@@ -351,11 +372,14 @@ if http.AsyncHead() then
       if responseCode <= 599 AND responseCode >= 500
         return url
       end if
+      if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+        return url
+      end if
     else if event = invalid then
       http.asynccancel()
       return url
     Else
-      ?"[LBRY_HTTP] AsyncGetToString unknown event"
+      ? "[LBRY_HTTP] AsyncGetToString unknown event"
   end if
 end if
 End Function
