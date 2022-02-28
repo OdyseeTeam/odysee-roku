@@ -32,7 +32,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
           http.asynccancel()
           return postJSON(json, url, headers)
         end if
-        if event <> invalid
+        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
           http.asynccancel()
           return postJSON(json, url, headers)
         end if
@@ -105,7 +105,7 @@ function postURLEncoded(data, url, headers) as Object
           http.asynccancel()
           return postURLEncoded(json, url, headers)
         end if
-        if event <> invalid
+        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
           http.asynccancel()
           return postURLEncoded(json, url, headers)
         end if
@@ -166,7 +166,7 @@ function getURLEncoded(data, url, headers) as Object
             http.asynccancel()
             return getURLEncoded(data, url, headers)
           end if
-          if event <> invalid
+          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
             http.asynccancel()
             return getURLEncoded(data, url, headers)
           end if
@@ -224,7 +224,7 @@ function getJSON(url) as Object
             http.asynccancel()
             return getJSON(url)
           end if
-          if event <> invalid
+          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
             http.asynccancel()
             return getJSON(url)
           end if
@@ -262,7 +262,7 @@ function getRawText(url) as Object
             http.asynccancel()
             return getRawText(url)
           end if
-          if event <> invalid
+          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
             http.asynccancel()
             return getRawText(url)
           end if
@@ -299,7 +299,7 @@ function urlExists(url) as Object
           http.asynccancel()
           return false
         end if
-        if event <> invalid
+        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
           http.asynccancel()
           return urlExists(url)
         end if
@@ -372,7 +372,7 @@ if http.AsyncHead() then
       if responseCode <= 599 AND responseCode >= 500
         return url
       end if
-      if event <> invalid
+      if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
         return url
       end if
     else if event = invalid then
