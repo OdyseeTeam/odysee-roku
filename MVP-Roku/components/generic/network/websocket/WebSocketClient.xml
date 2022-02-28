@@ -13,6 +13,13 @@
         <field id="on_open" type="assocarray" alwaysNotify="true" />
         <field id="on_close" type="string" alwaysNotify="true" />
         <field id="on_message" type="assocarray" alwaysNotify="true" />
+        <field id="on_chat" type="assocArray" alwaysNotify="true" /> <!--Chat AssocArray/Data, contains Superchat and Chat-->
+        <field id="thumbnailCache" type="assocArray" alwaysNotify="true"/>  <!--Caches thumbnails for Task Wrapper-->
+        <field id="messageHeights" type="roArray" alwaysNotify="true"/>
+        <field id="constants" type="assocarray"/>
+        <field id="allowedHeight" type="Int" value="960"/> <!--Set allowed height of chat here.-->
+        <field id="currentViewers" type="Int" value="0"/>
+        <field id="blocked" type="roArray"/> <!--Blocked users from preferences-->
         <field id="on_error" type="assocarray" alwaysNotify="true" />
         <field id="STATE_CONNECTING" type="integer" />
         <field id="STATE_OPEN" type="integer" />
@@ -28,6 +35,8 @@
         <field id="send" type="array" alwaysNotify="true" />
         <field id="close" type="array" alwaysNotify="true" />
     </interface>
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/network/websocket/WebSocketClient.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/network/websocket/WebSocketClientTask.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/network/websocket/ByteUtil.brs" />
