@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+ 
+<component name="chatBox" extends="Group">
+ 
+<interface> 
+  <field id="itemContent" type="node" onChange="itemContentChanged"/>
+</interface>
+
+<script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+<script type="text/brightscript" uri="pkg:/components/ui/chatbox.brs" />
+
+<children>
+    <Rectangle id="background" width="450" height="400" translation="[0,0]" color="#000000DD"/>
+    <Poster id="usericon" width="48" height="48" translation="[10,10]"/> 
+    <Label id="username" width="360" height="40" horizAlign="left" wrap="false" color="#ffffff" translation="[75,20]" font="font:Inter-Emoji">
+      <Font role="font" uri = "pkg:/components/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="30"/>
+    </Label>
+    <Label id="message" width="420" height="150" horizAlign="left" wrap="true" color="#ffffff" translation="[13,65]" font="font:Inter-Emoji">
+      <Font role="font" uri = "pkg:/components/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="30"/>
+    </Label>
+</children>
+
+</component>

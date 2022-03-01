@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+ 
+<component name="chatdata" extends="ContentNode">
+ 
+<interface>
+  <field id="username" type="string" />
+  <field id="usericon" type="string" />
+  <field id="comment_id" type="string" />
+  <field id="message" type="string"/>
+  <field id="height" type="int"/>
+</interface>
+
+</component>

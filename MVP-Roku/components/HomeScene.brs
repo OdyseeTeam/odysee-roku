@@ -44,7 +44,6 @@ Sub init()
     m.header = m.top.findNode("headerrectangle")
     m.chatBox = m.top.findNode("ChatBox")
     m.superChatBox = m.top.findNode("SuperChatBox")
-    m.ChatBackground = m.top.findNode("ChatBackground")
     m.sidebarTrim = m.top.findNode("sidebartrim")
     m.sidebarBackground = m.top.findNode("sidebarbackground")
     m.odyseeLogo = m.top.findNode("odyseelogo")
@@ -1129,8 +1128,6 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
   ?m.video.position
   ?m.video.duration
   if m.refreshes = 0
-    m.video.width = 1430
-    m.ChatBackground.visible = true
     m.chatBox.visible = true
     m.superChatBox.visible = true
   end if
@@ -1232,7 +1229,6 @@ Sub playResolvedVideo(msg as Object)
       m.videoContent.title = data.title 'passthrough title
       m.videoContent.Live = false
       m.video.content = m.videoContent
-      m.video.width = 1920
       m.videoVP = 0
       m.video.visible = true
       m.videoProgressBar.visible = true
@@ -1355,7 +1351,6 @@ Function returnToUIPage()
     m.ws.unobserveField("on_error")
     m.superChatBox.visible = false
     m.chatBox.visible = false
-    m.ChatBackground.visible = false
     m.superChatArray = []
     m.superChatBox.text = ""
     m.chatArray = []
@@ -1374,8 +1369,7 @@ Function returnToUIPage()
     m.videoEndingTimeSet = false
     m.video.unObserveField("position")
     m.videoGrid.setFocus(true)
-    m.focusedItem = 2 '[video grid] 
-    m.video.width = 1920
+    m.focusedItem = 2 '[video grid]
 end Function
 
 sub search()
@@ -1762,7 +1756,6 @@ function on_message(event as object) as void
             m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
             m.ChatBox.visible = true
             m.superChatBox.visible = true
-            m.ChatBackground.visible = true
             m.lastMessage = curMessage
             m.reinitChat = False
             m.superChatBox.text = m.superchatArray.join(" | ")
@@ -1773,7 +1766,6 @@ function on_message(event as object) as void
             m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
             m.ChatBox.visible = true
             m.superChatBox.visible = true
-            m.ChatBackground.visible = true
             m.lastMessage = curMessage
             m.reinitChat = False
           end if

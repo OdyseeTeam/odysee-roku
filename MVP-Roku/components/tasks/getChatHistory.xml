@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--Parser for a single page (homepage)-->
+<!--
+reimplimentation of GetChatHistory for the new chat UI.
+-->
 <component name="getChatHistory" extends="Task">
     <interface>
-            <!--Universal (determined) constants-->
-            <field id="constants" type="assocarray"/>
-            <!--Channel Params-->
-            <field id="channel" type="String"/>
-            <field id="channelName" type="String"/>
-            <field id="streamClaim" type="String"/>
-            <!--Account-Specific Vars-->
-            <field id="uid" type="Int"/>
-            <field id="authtoken" type="String"/>
+            <!--
+                Planned to cache associated information of channels, AKA:
+                - Channel Name
+                - Channel Thumbnail URL
+                
+                This is so that we only resolve channels ONCE, before that we hit the thumbnailCache.
+            -->
+            <field id="allowedHeight" type="Int" value="960"/> <!--Set allowed height of chat here.-->
+            <field id="chatCIDS" type="roArray"/>
+            <field id="thumbnailCache" type="assocArray"/> 
+            <field id="messageHeights" type="roArray"/> <!-- This is the height values for all chat messages. This is used in the chat markupGrid for rowHeights. -->
+            <field id="channelID" type="String"/>
+            <field id="output" type="assocArray"/>
+            <field id="constants" type="assocArray"/>
             <field id="cookies" type="roArray"/>
-            <!--Universal Output-->
-            <field id="output" type="assocarray"/>
     </interface>
-    <script type="text/brightscript" uri="pkg:/components/tasks/getChatHistory.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+    <script type="text/brightscript" uri="pkg:/components/tasks/getChatHistory.brs" />
 </component>
