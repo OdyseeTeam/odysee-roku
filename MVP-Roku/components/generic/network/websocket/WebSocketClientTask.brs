@@ -30,6 +30,7 @@ function runtask() as void
     m.totalMesgHeight = 0
     m.comments = []
     m.messageHeights = []
+    m.superChatArray = []
     m.commentsContentNode = CreateObject("roSGNode", "ContentNode")
     m.ws = WebSocketClient()
     m.port = createObject("roMessagePort")
@@ -128,11 +129,21 @@ function runtask() as void
                                             end for
                                         end if
                                        ' ? FormatJson(curcomment)
-                                        if isValid(curcomment["is_moderator"]) = true or curcomment["is_fiat"] = true or curcomment["support_amount"] > 0 or isValid(m.top.thumbnailCache[curComment.channel_id]) 'if they are a moderator or they have just donated, add them to the cache.
+                                        if curcomment["is_fiat"] = true or curcomment["support_amount"] > 0 or isValid(m.top.thumbnailCache[curComment.channel_id]) 'if they have just donated, add them to the cache.
                                             isPremium = true
                                            ' ? "Is premium"
+                                           if m.superChatArray.Count() < 5
+                                            m.superChatArray.push("[" + m.chatRegex.Replace(superchat["channel_name"] + "]: " + superchat["comment"].replace("\n", " ").Trim(), ""))
+                                           else
+                                            m.superChatArray.Shift()
+                                            m.superChatArray.push("[" + m.chatRegex.Replace(superchat["channel_name"] + "]: " + superchat["comment"].replace("\n", " ").Trim(), ""))
+                                           end if
                                         else
-                                            isPremium = false
+                                            if isValid(curcomment["is_moderator"]) = true 'if they are a moderator, add them to the cache.
+                                                isPremium = true
+                                            else
+                                                isPremium = false
+                                            end if
                                            ' ? "NOT premium"
                                         end if
                                         if needToRemove > 0
@@ -150,6 +161,7 @@ function runtask() as void
                                             pastHeights = m.top.messageHeights
                                             m.top.messageHeights = messageHeights
                                         end if
+                                        m.top.superChat = m.superChatArray
                                         ? "WSC: Parsing Chat Took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                     end if
                                 end if

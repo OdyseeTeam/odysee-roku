@@ -43,7 +43,11 @@ sub master()
     m.commentsArray = []
     m.thumbnailCache = {}
     m.channelName = ""
-    m.top.output = getChat(m.top.channelID)
+    if m.top.streamClaim <> "none"
+        m.top.output = getChat(m.top.channel, m.top.streamClaim)
+    else
+        m.top.output = getChat(m.top.channel)
+    end if
 end sub
 
 function resolveStreamID(channel)
@@ -102,9 +106,10 @@ function isLivestreaming(channel)
     end try
 end function
 
-function getChat(channelID)
-    ? channelID
-    streamClaim = resolveStreamID(channelID)
+function getChat(channelID, streamClaim as invalid)
+    if m.top.streamClaim = "none" 'fallback to internal resolution if legacy fails
+        streamClaim = resolveStreamID(channelID)
+    end if
     'streamClaim = "2fe87e0e67a179ee7776286776c316b5df80541d"
     'Before anything begins: Add livestream owner to the Thumbnail Cache.
     resolvedThumb = getThumbnail(channelID)

@@ -59,6 +59,7 @@ Sub init()
     m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
     m.ffrwTimer = m.top.findNode("ffrwTimer")
     m.videoUITimer = m.top.findNode("videoUITimer")
+    'TODO: make this relative positioning (child identifies self) instead of hardcoded.
     m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
     m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
     m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
@@ -106,8 +107,10 @@ Sub init()
   'Tasks
   m.ws = createObject("roSGNode", "WebSocketClient")
   m.date = CreateObject("roDateTime")
-  m.chatArray = []
+  m.chatArray = [] 'legacy: left in for now.
   m.superChatArray = []
+  m.thumbnailCache = []
+  m.messageHeights = []
   m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]","")
   m.chatImageRegex = CreateObject("roRegex", "(?:!\[(.*?)\]\((.*?)\))","") 'incredibly scuffed
   m.channelIDs = {}
@@ -1046,8 +1049,10 @@ Sub resolveVideo(url = invalid)
           ?m.video.videoFormat
           ?m.video
           m.videoButtons.animateToItem = 3
-          m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:uid:m.uid:authtoken:m.authtoken:cookies:m.cookies})
+          m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:cookies:m.cookies})
           m.chatHistory.observeField("output", "gotChatHistory")
+          m.chatHistory.observeField("messageHeights", "messageHeightsChanged")
+          m.chatHistory.observeField("thumbnailCache", "thumbnailCacheChanged")
           m.chatHistory.control = "RUN"
           m.taskRunning = True
           m.videoGrid.setFocus(false)
@@ -1100,26 +1105,29 @@ end sub
 
 sub gotChatHistory(msg as Object)
   if type(msg) = "roSGNodeEvent"
+    m.thumbnailCache = []
+    m.messageHeights = []
     m.chatHistory.control = "STOP"
     data = msg.getData()
-    ?"Got Chat History:"
-    try
-      m.chatArray = data.chat
-      m.ChatBox.text = m.chatArray.join(Chr(10))
-    catch e
-    end try
-    try
-      m.superChatArray = data.superchat
-      m.superChatBox.text = m.superchatArray.join(" | ")
-    catch e
-    end try
+    ? "GOT DATA"
+    m.cmData = data.comments
+    m.chatBox.content = m.cmData
     m.ws.observeField("on_close", "on_close")
-    m.ws.observeField("on_message", "on_message")
     m.ws.observeField("on_error", "on_error")
+    m.ws.setFields({"thumbnailCache": m.thumbnailCache, "messageHeights": m.messageHeights, "constants": m.global.constants, "on_chat": m.getChatHistory.output})
+    'm.ws.thumbnailCache = m.thumbnailCache
+    'm.ws.messageHeights = m.messageHeights
+    'm.ws.constants = m.global.constants
+    'm.ws.on_chat = m.getChatHistory.output 'pass output along
     m.ws.protocols = []
     m.ws.headers = []
-    m.SERVER = m.constants["CHAT_API"]+"/commentron?id="+m.chatID+"&category="+m.chatID
+    m.SERVER = m.global.constants["CHAT_API"] + "/commentron?id="+m.getChatHistory.output.chatID+"&category="+m.getChatHistory.output.channelName+":c&sub_category=viewer"
+    ? m.SERVER
     m.ws.open = m.SERVER
+    m.ws.observeField("thumbnailCache", "thumbnailCacheChanged")
+    m.ws.observeField("messageHeights", "messageHeightsChanged")
+    m.ws.observeField("on_chat", "on_chat")
+    m.ws.observeField("superchat", "on_superchat")
     m.ws.control = "RUN"
   end if
 end sub
@@ -1347,14 +1355,13 @@ Function returnToUIPage()
     m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     m.videoProgressBar.width = 0
     m.ws.unobserveField("on_close")
-    m.ws.unobserveField("on_message")
+    m.ws.unobserveField("on_chat")
     m.ws.unobserveField("on_error")
     m.superChatBox.visible = false
     m.chatBox.visible = false
+    m.chatBox.content = CreateObject("roSGNode", "ContentNode")
     m.superChatArray = []
     m.superChatBox.text = ""
-    m.chatArray = []
-    m.chatBox.text = ""
     if m.videoContent.streamFormat = "hls"
       m.reinitialize = false
       m.ws.close = [1000, "livestreamStopped"]
@@ -1703,6 +1710,20 @@ sub indexloaded(msg as Object)
   m.LoadTask.control = "STOP"
 end sub
 
+sub messageHeightsChanged(event as object) as void
+  m.messageHeights = event.getData()
+  m.chatBox.rowHeights = m.messageHeights
+  ? "got message heights"
+end sub
+
+sub thumbnailCacheChanged(event as object) as void
+  'TODO: clear thumbnail cache on stream exit.
+  ? "Thumbnail cache changed."
+  message = event.getData()
+  ? FormatJSON(message)
+  m.thumbnailCache = message
+end sub
+
 function on_close(event as object) as void
   print "WebSocket closed"
   if m.reinitialize
@@ -1711,76 +1732,90 @@ function on_close(event as object) as void
   end if
 end function
 
-' Socket message event
-function on_message(event as object) as void
+function on_chat(event as object) as void
+  ? "GOT CHAT MESG"
   message = event.getData().message
-  message_supported = false
-  message_valid = true
-  if type(message) = "roString"
-    jsonMessage = ParseJson(message)
-      try
-        curComment = jsonMessage.data.comment.comment
-        curChannel = jsonMessage.data.comment.channel_name
-        curMessage = "["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment, "") 'add newline
-        if curComment.instr("![") > 0 'TODO: find a proper way to parse Markdown on Roku
-          if curComment.instr("](") > 0
-            message_valid = false
-          end if
-        end if
-
-        try 'validate message not empty
-          if m.chatRegex.Replace(curComment) = ""
-            message_valid = false
-          end if
-        catch e
-        end try
-
-        try 'check if supported
-          support_amount = jsonMessage.data.comment.support_amount
-          if support_amount > 0
-            message_supported = true
-          end if
-        catch e
-        end try
-        if curMessage = m.lastMessage and m.reinitChat = False 'Restart webSocket to prevent duplicate connections.
-          m.reinitialize = false
-          m.ws.close = [1000, "livestreamStopped"]
-          m.ws.control = "STOP"
-          m.ws.open = m.SERVER
-          m.ws.control = "RUN"
-          m.reinitChat = True
-        else
-          if message_supported = true and message_valid = true
-            m.superChatBox.visible = true
-            m.superChatArray.push("["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment.replace("\n", " ").Trim()))
-            m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
-            m.ChatBox.visible = true
-            m.superChatBox.visible = true
-            m.lastMessage = curMessage
-            m.reinitChat = False
-            m.superChatBox.text = m.superchatArray.join(" | ")
-            if m.superChatArray.Count() > 5
-              m.superChatArray.shift()
-            end if
-          else if message_valid = true
-            m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
-            m.ChatBox.visible = true
-            m.superChatBox.visible = true
-            m.lastMessage = curMessage
-            m.reinitChat = False
-          end if
-        end if
-      catch e
-      end try
-  end if
-  m.ChatBox.text = m.chatArray.join(Chr(10))
-  if m.chatArray.Count() > 20
-    m.chatArray.Shift()
-  end if
-  message_valid = invalid
-  message_supported = invalid
+  ? message
+  m.cmData = message.comments
+  m.chatBox.content = m.cmData
 end function
 
+function on_superchat(event as object) as void
+  ? "superchat changed"
+  m.superChatArray = event.getData()
+  m.superChatBox.text = m.superchatArray.join(" | ")
+end function
+
+' Socket message event (OLD CODE!)
+'function on_message(event as object) as void
+'  message = event.getData().message
+'  message_supported = false
+'  message_valid = true
+'  if type(message) = "roString"
+'    jsonMessage = ParseJson(message)
+'      try
+'        curComment = jsonMessage.data.comment.comment
+'        curChannel = jsonMessage.data.comment.channel_name
+'        curMessage = "["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment, "") 'add newline
+'        if curComment.instr("![") > 0 'TODO: find a proper way to parse Markdown on Roku
+'          if curComment.instr("](") > 0
+'            message_valid = false
+'          end if
+'        end if
+'
+'        try 'validate message not empty
+'          if m.chatRegex.Replace(curComment) = ""
+'            message_valid = false
+'          end if
+'        catch e
+'        end try
+'
+'        try 'check if supported
+'          support_amount = jsonMessage.data.comment.support_amount
+'          if support_amount > 0
+'            message_supported = true
+'          end if
+'        catch e
+'        end try
+'        if curMessage = m.lastMessage and m.reinitChat = False 'Restart webSocket to prevent duplicate connections.
+'          m.reinitialize = false
+'          m.ws.close = [1000, "livestreamStopped"]
+'          m.ws.control = "STOP"
+'          m.ws.open = m.SERVER
+'          m.ws.control = "RUN"
+'          m.reinitChat = True
+'        else
+'          if message_supported = true and message_valid = true
+'            m.superChatBox.visible = true
+'            m.superChatArray.push("["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment.replace("\n", " ").Trim()))
+'            m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
+'            m.ChatBox.visible = true
+'            m.superChatBox.visible = true
+'            m.lastMessage = curMessage
+'            m.reinitChat = False
+'            m.superChatBox.text = m.superchatArray.join(" | ")
+'            if m.superChatArray.Count() > 5
+'              m.superChatArray.shift()
+'            end if
+'          else if message_valid = true
+'            m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
+'            m.ChatBox.visible = true
+'            m.superChatBox.visible = true
+'            m.lastMessage = curMessage
+'            m.reinitChat = False
+'          end if
+'        end if
+'      catch e
+'      end try
+'  end if
+'  m.ChatBox.text = m.chatArray.join(Chr(10))
+'  if m.chatArray.Count() > 20
+'    m.chatArray.Shift()
+'  end if
+'  message_valid = invalid
+'  message_supported = invalid
+'end function
+'
 ' Socket Error event
 function on_error(event as object) as void
   print "WebSocket error"

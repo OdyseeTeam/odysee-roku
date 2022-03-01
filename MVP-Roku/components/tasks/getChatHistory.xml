@@ -15,7 +15,9 @@ reimplimentation of GetChatHistory for the new chat UI.
             <field id="chatCIDS" type="roArray"/>
             <field id="thumbnailCache" type="assocArray"/> 
             <field id="messageHeights" type="roArray"/> <!-- This is the height values for all chat messages. This is used in the chat markupGrid for rowHeights. -->
-            <field id="channelID" type="String"/>
+            <field id="channel" type="String"/>
+            <field id="channelName" type="String"/>
+            <field id="streamClaim" type="String" value="none"/>
             <field id="output" type="assocArray"/>
             <field id="constants" type="assocArray"/>
             <field id="cookies" type="roArray"/>
