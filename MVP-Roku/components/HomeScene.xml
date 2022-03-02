@@ -209,8 +209,8 @@
         jumpToItem="true"
         />
     </Group>
-    
-    <MarkupGrid id="chatbox" itemComponentName="chatbox" itemSize="[450, 200]" rowHeights="[]" rowSpacings="[5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5]" translation="[1330,53]" numColumns="1" numRows="19" />
+
+    <MarkupGrid id="chatbox" itemComponentName="chatbox" visible="false" itemSize="[450, 200]" rowHeights="[]" rowSpacings="[5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5]" translation="[1330,53]" numColumns="1" numRows="19" />
 
     <ScrollingLabel id = "SuperChatBox"
     maxwidth = "1430"

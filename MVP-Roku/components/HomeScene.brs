@@ -1105,23 +1105,26 @@ end sub
 
 sub gotChatHistory(msg as Object)
   if type(msg) = "roSGNodeEvent"
-    m.thumbnailCache = []
-    m.messageHeights = []
+    m.thumbnailCache = m.chatHistory.thumbnailCache
+    m.messageHeights = m.chatHistory.messageHeights
+    m.superChatArray = m.chatHistory.output.superchat
+    m.superChatBox.text = m.superchatArray.join(" | ")
     m.chatHistory.control = "STOP"
+    m.taskRunning = False
     data = msg.getData()
     ? "GOT DATA"
     m.cmData = data.comments
     m.chatBox.content = m.cmData
     m.ws.observeField("on_close", "on_close")
     m.ws.observeField("on_error", "on_error")
-    m.ws.setFields({"thumbnailCache": m.thumbnailCache, "messageHeights": m.messageHeights, "constants": m.global.constants, "on_chat": m.getChatHistory.output})
+    m.ws.setFields({"thumbnailCache": m.thumbnailCache, "messageHeights": m.messageHeights, "constants": m.constants, "on_chat": m.chatHistory.output, "superChat": m.superChatArray})
     'm.ws.thumbnailCache = m.thumbnailCache
     'm.ws.messageHeights = m.messageHeights
     'm.ws.constants = m.global.constants
-    'm.ws.on_chat = m.getChatHistory.output 'pass output along
+    'm.ws.on_chat = m.chatHistory.output 'pass output along
     m.ws.protocols = []
     m.ws.headers = []
-    m.SERVER = m.global.constants["CHAT_API"] + "/commentron?id="+m.getChatHistory.output.chatID+"&category="+m.getChatHistory.output.channelName+":c&sub_category=viewer"
+    m.SERVER = m.constants["CHAT_API"] + "/commentron?id="+m.chatHistory.streamClaim+"&category="+m.chatHistory.channelName+":c&sub_category=viewer"
     ? m.SERVER
     m.ws.open = m.SERVER
     m.ws.observeField("thumbnailCache", "thumbnailCacheChanged")
@@ -1711,17 +1714,21 @@ sub indexloaded(msg as Object)
 end sub
 
 sub messageHeightsChanged(event as object) as void
+  if isValid(event.getData())
   m.messageHeights = event.getData()
   m.chatBox.rowHeights = m.messageHeights
   ? "got message heights"
+  end if
 end sub
 
 sub thumbnailCacheChanged(event as object) as void
   'TODO: clear thumbnail cache on stream exit.
+  if isValid(event.getData())
   ? "Thumbnail cache changed."
   message = event.getData()
   ? FormatJSON(message)
   m.thumbnailCache = message
+  end if
 end sub
 
 function on_close(event as object) as void
@@ -1733,17 +1740,21 @@ function on_close(event as object) as void
 end function
 
 function on_chat(event as object) as void
+  if isValid(event.getData().message)
   ? "GOT CHAT MESG"
   message = event.getData().message
   ? message
   m.cmData = message.comments
   m.chatBox.content = m.cmData
+  end if
 end function
 
 function on_superchat(event as object) as void
+  if isValid(event.getData())
   ? "superchat changed"
   m.superChatArray = event.getData()
   m.superChatBox.text = m.superchatArray.join(" | ")
+  end if
 end function
 
 ' Socket message event (OLD CODE!)

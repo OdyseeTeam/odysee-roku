@@ -25,12 +25,20 @@ function runtask() as void
     m.parseTimer = CreateObject("roTimespan")
     m.parseTimer.Mark()
     m.fontReg = CreateObject("roFontRegistry")
-    m.fontReg.Register("pkg://components/fonts/Inter-Emoji.otf")
+    m.fontReg.Register("pkg://components/generic/fonts/Inter-Emoji.otf")
     m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]", "")
     m.totalMesgHeight = 0
     m.comments = []
     m.messageHeights = []
-    m.superChatArray = []
+    if isValid(m.top.superChat)
+        if m.top.superChat.Count() > 0
+            m.superChatArray = m.top.superChatArray
+        else
+            m.superChatArray = []
+        end if
+    else
+        m.superChatArray = []
+    end if
     m.commentsContentNode = CreateObject("roSGNode", "ContentNode")
     m.ws = WebSocketClient()
     m.port = createObject("roMessagePort")
@@ -88,17 +96,17 @@ function runtask() as void
                 m.top.on_message = msg.data
                 message = msg.data
                 'Bake parsing into WebSocketClient.
-               ' ? "GOT MESSAGE, TYPE:"
-               ' ? type(message)
+                ' ? "GOT MESSAGE, TYPE:"
+                ' ? type(message)
                 if type(message) = "roAssociativeArray"
                     m.parseTimer.Mark()
                     if isValid(message.message)
                         message = ParseJson(message.message)
                         if message.type = "delta"
-                           ' ? "GOT DELTA MESSAGE!"
+                            ' ? "GOT DELTA MESSAGE!"
                             if isValid(message.data)
                                 if isValid(message.data.comment)
-                                   ' ? "Seems to be a comment"
+                                    ' ? "Seems to be a comment"
                                     'THE CURRENT ISSUE:
                                     'Comments come in too fast to process.
                                     '
@@ -109,7 +117,7 @@ function runtask() as void
                                     'We don't need any fancy transformation, this is in SEQUENTIAL ORDER!
                                     trimmedComment = curcomment.comment.Trim()
                                     if curcomment["is_pinned"] = false and curcomment["is_hidden"] = false and m.chatRegex.Replace(trimmedComment, "") <> "" and trimmedComment.instr("![") = -1 and trimmedComment.instr("](") = -1 and isValid(m.blocked[curComment["channel_id"]]) = false
-                                       ' ? "passed checks"
+                                        ' ? "passed checks"
                                         commentHeight = getMessageHeight(curcomment.comment, 30, 420)
                                         currentComments = m.top.on_chat.comments.getChildren(-1, 0)
                                         totalHeight = 0
@@ -128,23 +136,25 @@ function runtask() as void
                                                 removalHeight += comment.height
                                             end for
                                         end if
-                                       ' ? FormatJson(curcomment)
-                                        if curcomment["is_fiat"] = true or curcomment["support_amount"] > 0 or isValid(m.top.thumbnailCache[curComment.channel_id]) 'if they have just donated, add them to the cache.
-                                            isPremium = true
-                                           ' ? "Is premium"
-                                           if m.superChatArray.Count() < 5
-                                            m.superChatArray.push("[" + m.chatRegex.Replace(superchat["channel_name"] + "]: " + superchat["comment"].replace("\n", " ").Trim(), ""))
-                                           else
-                                            m.superChatArray.Shift()
-                                            m.superChatArray.push("[" + m.chatRegex.Replace(superchat["channel_name"] + "]: " + superchat["comment"].replace("\n", " ").Trim(), ""))
-                                           end if
-                                        else
-                                            if isValid(curcomment["is_moderator"]) = true 'if they are a moderator, add them to the cache.
+                                        ' ? FormatJson(curcomment)
+                                        if isValid(curComment["is_fiat"]) and isValid(curComment["support_amount"])
+                                            if curcomment["is_fiat"] = true or curcomment["support_amount"] > 0 or isValid(m.top.thumbnailCache[curComment.channel_id]) 'if they have just donated, add them to the cache.
                                                 isPremium = true
+                                                ' ? "Is premium"
+                                                if m.superChatArray.Count() < 5
+                                                    m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
+                                                else
+                                                    m.superChatArray.Shift()
+                                                    m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
+                                                end if
                                             else
-                                                isPremium = false
+                                                if isValid(curcomment["is_moderator"]) = true 'if they are a moderator, add them to the cache.
+                                                    isPremium = true
+                                                else
+                                                    isPremium = false
+                                                end if
+                                                ' ? "NOT premium"
                                             end if
-                                           ' ? "NOT premium"
                                         end if
                                         if needToRemove > 0
                                             for i = 1 to needToRemove step 1
@@ -181,15 +191,15 @@ function runtask() as void
                             cid = invalid
                             ? "WSC: Removing message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                         else if message.type = "viewers"
-                           ' ? "GOT VIEWERS MESSAGE!"
+                            ' ? "GOT VIEWERS MESSAGE!"
                             if isValid(message.data)
                                 if isValid(message.data.connected)
                                     m.top.currentViewers = message.data.connected
-                                   ' ? str(m.top.currentViewers) + " Watching"
+                                    ' ? str(m.top.currentViewers) + " Watching"
                                 end if
                             end if
                         else
-                           ' ? message.type
+                            ' ? message.type
                         end if
                     end if
                 end if
@@ -216,7 +226,7 @@ function runtask() as void
 end function
 
 function commentToSGNode(comment)
-   ' ? "parsing a comment"
+    ' ? "parsing a comment"
     newComment = CreateObject("roSGNode", "chatdata")
     newComment.message = comment.message
     newComment.height = comment.height
@@ -226,7 +236,7 @@ function commentToSGNode(comment)
 end function
 
 function legacyParseComment(comment, height, isPremium = false)
-   ' ? "parsing a comment"
+    ' ? "parsing a comment"
     newComment = CreateObject("roSGNode", "chatdata")
     'Note that each comment is actually based on chatdata.xml, this is because we are feeding it directly into m.chatBox
     newComment.message = m.chatRegex.Replace(comment.comment, "")
@@ -290,7 +300,7 @@ function getMessageHeight(inputText, fontSize, maxfontWidth)
             calcWidth = fontWidthCalculated / numLines
         end while
     end if
-   ' ? calcWidth
-   ' ? numLines
+    ' ? calcWidth
+    ' ? numLines
     return (font.GetOneLineHeight() * numLines) + 70
 end function

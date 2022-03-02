@@ -33,7 +33,7 @@ sub master()
     'used in both superchat+chat
     ? "getChatHistory: Getting chat history"
     m.fontReg = CreateObject("roFontRegistry")
-    m.fontReg.Register("pkg://components/fonts/Inter-Emoji.otf")
+    m.fontReg.Register("pkg://components/generic/fonts/Inter-Emoji.otf")
     m.timer = CreateObject("roTimespan")
     m.htimer = CreateObject("roTimespan")
     m.htimer.Mark()
@@ -106,7 +106,7 @@ function isLivestreaming(channel)
     end try
 end function
 
-function getChat(channelID, streamClaim as invalid)
+function getChat(channelID, streamClaim)
     if m.top.streamClaim = "none" 'fallback to internal resolution if legacy fails
         streamClaim = resolveStreamID(channelID)
     end if
@@ -239,7 +239,7 @@ function getChat(channelID, streamClaim as invalid)
     m.top.thumbnailCache = m.thumbnailCache
     m.comments.appendChildren(m.commentsArray)
   '  ? "getChatHistory: Task took " + (m.timer.TotalMilliseconds() / 1000).ToStr() + "s"
-    return { comments: m.comments, superchat: superChatArray, chatID: streamClaim, channelName: m.channelName }
+    return { comments: m.comments, superchat: superChatArray }
 end function
 
 sub parseComment(comment, height)
