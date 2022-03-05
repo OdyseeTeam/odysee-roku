@@ -30,13 +30,13 @@ function runtask() as void
     m.totalMesgHeight = 0
     m.comments = []
     m.messageHeights = []
-    if isValid(m.top.superChat)
+    if isValid(m.top.superChat) AND isValid(m.superChatArray) = false
         if m.top.superChat.Count() > 0
             m.superChatArray = m.top.superChatArray
-        else
+        else if isValid(m.superChatArray) = false
             m.superChatArray = []
         end if
-    else
+    else if isValid(m.superChatArray) = false
         m.superChatArray = []
     end if
     m.commentsContentNode = CreateObject("roSGNode", "ContentNode")
@@ -142,10 +142,10 @@ function runtask() as void
                                                 isPremium = true
                                                 ' ? "Is premium"
                                                 if m.superChatArray.Count() < 5
-                                                    m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
+                                                    m.superChatArray.Unshift("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
                                                 else
-                                                    m.superChatArray.Shift()
-                                                    m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
+                                                    m.superChatArray.Pop()
+                                                    m.superChatArray.Unshift("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
                                                 end if
                                             else
                                                 if isValid(curcomment["is_moderator"]) = true 'if they are a moderator, add them to the cache.

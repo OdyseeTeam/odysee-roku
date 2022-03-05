@@ -46,6 +46,7 @@ Sub init()
     m.superChatBox = m.top.findNode("SuperChatBox")
     m.sidebarTrim = m.top.findNode("sidebartrim")
     m.sidebarBackground = m.top.findNode("sidebarbackground")
+    m.superChatBackground = m.top.findNode("SuperChatBackground")
     m.odyseeLogo = m.top.findNode("odyseelogo")
     m.video = m.top.findNode("Video")
     m.videoContent = createObject("roSGNode", "ContentNode")
@@ -67,8 +68,8 @@ Sub init()
     'TODO: create spacing for this
     m.standardButtonsLoggedIn = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}], m.videoButtons.itemSize) 
     m.standardButtonsLoggedOut = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"}], m.videoButtons.itemSize) 
-    m.liveButtonsLoggedIn = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: m.vjschars["picture-in-picture-exit"], itemID: "toggleChat"}], m.videoButtons.itemSize)
-    m.liveButtonsLoggedOut = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"}, {item: m.vjschars["picture-in-picture-exit"], itemID: "toggleChat"}], m.videoButtons.itemSize)
+    m.liveButtonsLoggedIn = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: Chr(61729), itemID: "toggleChat"}], m.videoButtons.itemSize)
+    m.liveButtonsLoggedOut = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"}, {item: Chr(61729), itemID: "toggleChat"}], m.videoButtons.itemSize)
     m.videoButtons.content = m.standardButtonsLoggedOut
     m.videoButtons.observeField("itemFocused", "videoButtonFocused")
     m.standardVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon"}
@@ -135,6 +136,10 @@ Sub init()
   m.videoSearch.observeField("cookies", "gotCookies")
   m.channelSearch.observeField("cookies", "gotCookies")
   m.chatHistory.observeField("cookies", "gotCookies")
+  m.chatHistory.observeField("superChat", "on_superchat")
+  m.chatHistory.observeField("output", "gotChatHistory")
+  m.chatHistory.observeField("messageHeights", "messageHeightsChanged")
+  m.chatHistory.observeField("thumbnailCache", "thumbnailCacheChanged")
   m.constantsTask = createObject("roSGNode", "getConstants")
   m.constantsTask.observeField("constants", "gotConstants")
   m.authTask = createObject("roSGNode", "authTask")
@@ -1089,9 +1094,6 @@ Sub resolveVideo(url = invalid)
           ?m.video
           m.videoButtons.animateToItem = 3
           m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:cookies:m.cookies})
-          m.chatHistory.observeField("output", "gotChatHistory")
-          m.chatHistory.observeField("messageHeights", "messageHeightsChanged")
-          m.chatHistory.observeField("thumbnailCache", "thumbnailCacheChanged")
           m.chatHistory.control = "RUN"
           m.taskRunning = True
           m.videoGrid.setFocus(false)
@@ -1158,7 +1160,7 @@ sub gotChatHistory(msg as Object)
   if type(msg) = "roSGNodeEvent"
     m.thumbnailCache = m.chatHistory.thumbnailCache
     m.messageHeights = m.chatHistory.messageHeights
-    m.superChatArray = m.chatHistory.output.superchat
+    m.superChatArray = m.chatHistory.superChat
     m.superChatBox.text = m.superchatArray.join(" | ")
     m.chatHistory.control = "STOP"
     m.taskRunning = False
@@ -1192,6 +1194,7 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
   if m.refreshes = 0
     m.chatBox.visible = true
     m.superChatBox.visible = true
+    m.superChatBackground.visible = true
   end if
   m.refreshes += 1
   if m.video.duration > 0 and m.videoContent.Live and m.video.position < m.video.duration and m.refreshes < 4
@@ -1414,7 +1417,11 @@ Function returnToUIPage()
     m.ws.unobserveField("on_close")
     m.ws.unobserveField("on_chat")
     m.ws.unobserveField("on_error")
+    m.ws.unobserveField("thumbnailCache")
+    m.ws.unobserveField("messageHeights")
+    m.ws.unobserveField("superchat")
     m.superChatBox.visible = false
+    m.superChatBackground.visible = false
     m.chatBox.visible = false
     m.chatBox.content = CreateObject("roSGNode", "ContentNode")
     m.superChatArray = []
@@ -1617,6 +1624,7 @@ function createBothItems(buttons, items, itemSize) as object
   for each item in items
       if item.split(":")[0] = "http" or item.split(":")[0] = "https" or item.split(":")[0] = "pkg"
           dataItem = data.CreateChild("horizontalButtonItemData")
+          dataItem.fontUrl = ""
           dataItem.posterUrl = item
           dataItem.width = itemSize[0]
           dataItem.height = itemSize[1]
@@ -1625,12 +1633,12 @@ function createBothItems(buttons, items, itemSize) as object
           dataItem.labelText = ""
       else
           dataItem = data.CreateChild("horizontalButtonItemData")
-          if Asc(item) < 61697 OR Asc(item) > 61730
-              dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
-              dataItem.fontSize = (itemSize[1]/64)*35
+          if item.split("").Count() < 2
+            dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+            dataItem.fontSize = (itemSize[1]/64)*60
           else
-              dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-              dataItem.fontSize = (itemSize[1]/64)*60
+            dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
+            dataItem.fontSize = (itemSize[1]/64)*35
           end if
           dataItem.posterUrl = ""
           dataItem.width = itemSize[0]
@@ -1659,12 +1667,12 @@ function createBothItemsIdentified(buttons, items, itemSize) as object
         dataItem["itemID"] = item.itemid
     else
         dataItem = data.CreateChild("horizontalButtonItemData")
-        if Asc(item.item) < 61697 OR Asc(item.item) > 61730
-            dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
-            dataItem.fontSize = (itemSize[1]/64)*35
-        else
+        if item.item.split("").Count() < 2
             dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
             dataItem.fontSize = (itemSize[1]/64)*60
+        else
+            dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
+            dataItem.fontSize = (itemSize[1]/64)*35
         end if
         dataItem.posterUrl = ""
         dataItem.width = itemSize[0]
@@ -1840,9 +1848,9 @@ end function
 
 function on_superchat(event as object) as void
   if isValid(event.getData())
-  ? "superchat changed"
-  m.superChatArray = event.getData()
-  m.superChatBox.text = m.superchatArray.join(" | ")
+    ? "superchat changed"
+    m.superChatArray = event.getData()
+    m.superChatBox.text = m.superchatArray.join(" | ")
   end if
 end function
 

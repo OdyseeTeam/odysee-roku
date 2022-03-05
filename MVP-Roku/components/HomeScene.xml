@@ -211,9 +211,16 @@
     </Group>
 
     <MarkupGrid id="chatbox" itemComponentName="chatbox" visible="false" itemSize="[450, 200]" rowHeights="[]" rowSpacings="[5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5]" translation="[1330,53]" numColumns="1" numRows="19" />
+    
+    <Rectangle id = "SuperChatBackground"
+    width = "1200"
+    height = "125"
+    visible="false"
+    translation="[0, 0]"
+    color = "0x000000BB"/>
 
     <ScrollingLabel id = "SuperChatBox"
-    maxwidth = "1430"
+    maxwidth = "1200"
     height = "125"
     text = ""
     visible="false"

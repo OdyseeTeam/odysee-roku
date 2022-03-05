@@ -153,18 +153,17 @@ function getChat(channelID, streamClaim)
     end while
     retries = 0
 
-    superChatArray = []
+    m.superChatArray = []
     superChatLength = 0
     try
         for each superchat in superchatResponse.result.items
             try
                 if m.chatRegex.Replace(superchat["comment"].Trim(), "") <> "" and superchat["comment"].Trim().instr("![") = -1 and superchat["comment"].Trim().instr("](") = -1
-                    if superchat["support_amount"] > 0
                         if superChatLength > 4
                             superchat = invalid
                             exit for
                         end if
-                        superChatArray.push("[" + m.chatRegex.Replace(superchat["channel_name"] + "]: " + superchat["comment"].replace("\n", " ").Trim(), ""))
+                        m.superChatArray.Unshift("[" + m.chatRegex.Replace(superchat["channel_name"] + "]: " + superchat["comment"].replace("\n", " ").Trim(), ""))
                         resolvedThumb = getThumbnail(superchat.channel_id)
                        ' ? "pushing to thumbnail cache ID:"
                        ' ? superchat.channel_id
@@ -175,7 +174,6 @@ function getChat(channelID, streamClaim)
                         end if
                         superChatLength += 1
                     end if
-                end if
                 superchat = invalid
             catch e
                 ?"getChatHistory Error (superchat):"
@@ -239,7 +237,8 @@ function getChat(channelID, streamClaim)
     m.top.thumbnailCache = m.thumbnailCache
     m.comments.appendChildren(m.commentsArray)
   '  ? "getChatHistory: Task took " + (m.timer.TotalMilliseconds() / 1000).ToStr() + "s"
-    return { comments: m.comments, superchat: superChatArray }
+    m.top.superChat = m.superChatArray
+    return { comments: m.comments, superchat: m.superChatArray }
 end function
 
 sub parseComment(comment, height)
