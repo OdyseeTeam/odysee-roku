@@ -35,7 +35,7 @@ Sub init()
     m.reinitChat = False
     m.chatID = ""
     m.totalVideoPings = 0 'analytics
-    m.videoButtonSelected = -1
+    m.videoButtonSelected = "none"
     'UI Items
     m.errorText = m.top.findNode("warningtext")
     m.errorSubtext = m.top.findNode("warningsubtext")
@@ -65,13 +65,13 @@ Sub init()
     m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
     m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
     m.videoButtons.itemSize = [128,128]
-    m.videoButtons.content = createBothItems(m.videoButtons, ["pkg:/images/generic/bad_icon_requires_usage_rights.png","pkg://images/png/Heart.png",m.vjschars["previous-item"],m.vjschars["pause"],m.vjschars["next-item"], "pkg:/images/generic/tu64.png", "pkg:/images/generic/td64.png"], m.videoButtons.itemSize)
+    m.standardButtons = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}], m.videoButtons.itemSize) 
+    m.liveButtons = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: m.vjschars["picture-in-picture-exit"], itemID: "toggleChat"}], m.videoButtons.itemSize)
+    m.videoButtons.content = m.standardButtons
     m.videoButtons.observeField("itemFocused", "videoButtonFocused")
-    m.videoButtonsChannelIcon = m.videoButtons.content.getChildren(-1, 0)[0]
-    m.videoButtonsFollowingIcon = m.videoButtons.content.getChildren(-1, 0)[1]
-    m.videoButtonsPlayIcon = m.videoButtons.content.getChildren(-1, 0)[3]
-    m.videoButtonsLikeIcon = m.videoButtons.content.getChildren(-1, 0)[5]
-    m.videoButtonsDislikeIcon = m.videoButtons.content.getChildren(-1, 0)[6]
+    m.standardVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon"}
+    m.liveVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle"}
+    regenerateNormalButtonRefs()
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
 
     m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
@@ -272,10 +272,19 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
       if press = true
         if key = "OK"
           if m.video.visible = true AND m.videoOverlayGroup.visible = true
-            if m.videoButtonSelected <> -1
+            'TODO: redo videoButtonSelected for these text strings
+            '"channelButton": "videoButtonsChannelIcon", 0
+            '"following": "videoButtonsFollowingIcon", 1
+            '"like": "videoButtonsLikeIcon", 
+            '"dislike": "videoButtonsDislikeIcon",
+            '"toggleChat": "videoButtonsChatToggle",
+            '"playPause": "videoButtonsPlayIcon", 3
+            '"previousItem", 2
+            '"nextItem"
+            if m.videoButtonSelected <> "none"
               ? "Current Button:"
               ? m.videoButtonSelected
-              if m.videoButtonSelected = 0
+              if m.videoButtonSelected = "channelButton"
                 ? "Go to channel"
                 returnToUIPage()
                 curChannel = m.currentVideoChannelID
@@ -287,7 +296,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 m.videoGrid.visible = false
                 m.loadingText.visible = true
                 m.loadingText.text = "Resolving Channel..."
-              else if m.videoButtonSelected = 1
+              else if m.videoButtonSelected = "following"
                 ? "Subscribe/Follow"
                 if m.wasLoggedIn
                   if m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
@@ -296,7 +305,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                     follow(m.currentVideoChannelID)
                   end if
                 end if
-              else if m.videoButtonSelected = 2
+              else if m.videoButtonSelected = "previousItem"
                 'Back Button/Previous Video
                 ? m.currentVideoPosition
                 if m.currentVideoPosition[1] = 0 'First video in row, attempt to go back
@@ -318,7 +327,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                     resolveEvaluatedVideo(curItem)
                   end if
                 end if
-              else if m.videoButtonSelected = 3
+              else if m.videoButtonSelected = "playPause"
                 'Play Button
                 if m.video.visible
                   showVideoOverlay()
@@ -343,7 +352,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                     end if
                   end if
                 end if
-              else if m.videoButtonSelected = 4
+              else if m.videoButtonSelected = "nextItem"
                 'Forward Button/Next Video
                 ? m.currentVideoPosition
                 if m.currentVideoPosition[1] = 3 'Last video in row, move down.
@@ -363,7 +372,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                     resolveEvaluatedVideo(curItem)
                   end if
                 end if
-              else if m.videoButtonSelected = 5
+              else if m.videoButtonSelected = "like"
                 ' Like
                 ? "like"
                 ? m.wasLoggedIn
@@ -374,7 +383,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                     setReaction(m.currentVideoClaimID, "dislike")
                   end if
                 end if
-              else if m.videoButtonSelected = 6
+              else if m.videoButtonSelected = "dislike"
                 ? "dislike"
                 ? m.wasLoggedIn
                 if m.wasLoggedIn
@@ -384,6 +393,13 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                   else
                     setReaction(m.currentVideoClaimID, "like")
                   end if
+                end if
+              else if m.videoButtonSelected = "toggleChat"
+                'TODO: change toggleChat video button's image.
+                if m.chatBox.visible
+                  m.chatBox.visible = false
+                else
+                  m.chatBox.visible = true
                 end if
               end if
             end if
@@ -459,7 +475,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
         end if
         if key = "play"
-          if m.video.visible
+          if m.video.visible AND m.videoContent.Live = false
             showVideoOverlay()
             if m.videoTransitionState = 0
               deleteSpinner()
@@ -488,7 +504,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           ?m.ffrwTimer.control
           ?m.ffrwTimer.duration
           ?m.videoVP
-          if m.video.visible
+          if m.video.visible AND m.videoContent.Live = false
             showVideoOverlay()
             if m.videoTransitionState <> 1
               m.ffrwTimer.duration = .5
@@ -506,7 +522,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
           end if
         end if
         if key = "fastforward"
-          if m.video.visible
+          if m.video.visible AND m.videoContent.Live = false
             showVideoOverlay()
             if m.videoTransitionState <> 2
               m.ffrwTimer.duration = .3
@@ -533,6 +549,13 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 m.videoGrid.visible = false
                 m.loadingText.visible = true
                 m.loadingText.text = "Resolving Channel..."
+              end if
+            else if m.video.visible AND m.videoContent.Live
+              'TODO: change toggleChat video button's image.
+              if m.chatBox.visible
+                m.chatBox.visible = false
+              else
+                m.chatBox.visible = true
               end if
             end if
         end if
@@ -710,11 +733,11 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
 end Function
 
 sub videoButtonFocused(msg)
-  'TODO: if type(roint)
-  m.videoButtonSelected = msg.getData()
-  if Type(m.videoButtonSelected) = "roInt"
-    showVideoOverlay()
-    ? m.videoButtonSelected
+  mData = msg.getData()
+  if Type(mData) = "roInt"
+    if isValid(m.videoButtons.content.getChildren(-1, 0)[mData].itemID)
+      m.videoButtonSelected = m.videoButtons.content.getChildren(-1, 0)[mData].itemID
+    end if
   end if
 end sub
 
@@ -990,6 +1013,9 @@ Sub resolveVideo(url = invalid)
         m.currentVideoPosition = incomingData
         curItem = m.videoGrid.content.getChild(incomingData[0]).getChild(incomingData[1])
         if curItem.itemType = "video"
+          'switch to normal buttons
+          m.videoButtons.content = m.standardButtons
+          regenerateNormalButtonRefs()
           resolveEvaluatedVideo(curItem) 'used for this AND next video/previous video
         end if
         if curItem.itemType = "channel"
@@ -1004,6 +1030,9 @@ Sub resolveVideo(url = invalid)
           m.loadingText.text = "Resolving Channel..."
         end if
         if curItem.itemType = "livestream"
+          'switch to live buttons
+          m.videoButtons.content = m.liveButtons
+          regenerateLiveButtonRefs()
           ?"Playing a livestream"
           m.currentVideoChannelIcon = curitem.channelicon
           m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
@@ -1571,7 +1600,7 @@ function createBothItems(buttons, items, itemSize) as object
           dataItem.labelText = ""
       else
           dataItem = data.CreateChild("horizontalButtonItemData")
-          if Asc(item) <> 61728 AND Asc(item) <> 61697 AND Asc(item) <> 61727
+          if Asc(item) < 61697 OR Asc(item) > 61730
               dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
               dataItem.fontSize = (itemSize[1]/64)*35
           else
@@ -1585,6 +1614,41 @@ function createBothItems(buttons, items, itemSize) as object
           dataItem.outlineColor = "0xFFFFFFFF"
           dataItem.labelText = item
       end if
+  end for
+  return data
+end function
+
+function createBothItemsIdentified(buttons, items, itemSize) as object
+  'item = {item: "item", id: "itemID"}
+  data = CreateObject("roSGNode", "ContentNode")
+  buttons.numColumns = items.Count()
+  for each item in items
+    if item.item.split(":")[0] = "http" or item.item.split(":")[0] = "https" or item.item.split(":")[0] = "pkg"
+        dataItem = data.CreateChild("horizontalButtonItemData")
+        dataItem.posterUrl = item.item
+        dataItem.width = itemSize[0]
+        dataItem.height = itemSize[1]
+        dataItem.backgroundColor = "0x00000000"
+        dataItem.outlineColor = "0xFFFFFFFF"
+        dataItem.labelText = ""
+        dataItem["itemID"] = item.itemid
+    else
+        dataItem = data.CreateChild("horizontalButtonItemData")
+        if Asc(item.item) < 61697 OR Asc(item.item) > 61730
+            dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
+            dataItem.fontSize = (itemSize[1]/64)*35
+        else
+            dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+            dataItem.fontSize = (itemSize[1]/64)*60
+        end if
+        dataItem.posterUrl = ""
+        dataItem.width = itemSize[0]
+        dataItem.height = itemSize[1]
+        dataItem.backgroundColor = "0x00000000"
+        dataItem.outlineColor = "0xFFFFFFFF"
+        dataItem.labelText = item.item
+        dataItem["itemID"] = item.itemid
+    end if
   end for
   return data
 end function
@@ -2194,6 +2258,24 @@ sub getSync()
   end if
 end sub
 
+'These relink the references to the buttons when switching between Live and VOD
+
+sub regenerateNormalButtonRefs()
+  for each child in m.videoButtons.content.getChildren(-1, 0)
+    if isValid(m.standardVideoButtonNameTable[child.itemID])
+      m[m.standardVideoButtonNameTable[child.itemID]] = child
+    end if
+  end for
+end sub
+
+sub regenerateLiveButtonRefs()
+  for each child in m.videoButtons.content.getChildren(-1, 0)
+    if isValid(m.liveVideoButtonNameTable[child.itemID])
+      m[m.liveVideoButtonNameTable[child.itemID]] = child
+    end if
+  end for
+end sub
+
 sub gotSync(msg as object)
   data = msg.getData()
   m.syncLoop.control = "STOP"
@@ -2447,7 +2529,11 @@ Function SetRegistry(registry, key, value) As boolean
 End Function
 
 Function IsValid(value As Dynamic) As Boolean 'TheEndless Roku Development forums
+  try
     Return Type(value) <> "<uninitialized>" And value <> invalid
+  catch e
+    return false
+  end try
 End Function
 
 Function deleteReg (section = "" As String) As Void 'belltown Roku Development forums (https://community.roku.com/t5/Roku-Developer-Program/Registry-not-Cleared-if-App-is-deleted/m-p/428861/highlight/true#M30587)
