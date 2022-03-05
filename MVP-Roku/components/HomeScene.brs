@@ -59,15 +59,17 @@ Sub init()
     m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
     m.ffrwTimer = m.top.findNode("ffrwTimer")
     m.videoUITimer = m.top.findNode("videoUITimer")
-    'TODO: make this relative positioning (child identifies self) instead of hardcoded.
     m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
     m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
     m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
     m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
     m.videoButtons.itemSize = [128,128]
-    m.standardButtons = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}], m.videoButtons.itemSize) 
-    m.liveButtons = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: m.vjschars["picture-in-picture-exit"], itemID: "toggleChat"}], m.videoButtons.itemSize)
-    m.videoButtons.content = m.standardButtons
+    'TODO: create spacing for this
+    m.standardButtonsLoggedIn = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}], m.videoButtons.itemSize) 
+    m.standardButtonsLoggedOut = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"}], m.videoButtons.itemSize) 
+    m.liveButtonsLoggedIn = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: m.vjschars["picture-in-picture-exit"], itemID: "toggleChat"}], m.videoButtons.itemSize)
+    m.liveButtonsLoggedOut = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"}, {item: m.vjschars["picture-in-picture-exit"], itemID: "toggleChat"}], m.videoButtons.itemSize)
+    m.videoButtons.content = m.standardButtonsLoggedOut
     m.videoButtons.observeField("itemFocused", "videoButtonFocused")
     m.standardVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon"}
     m.liveVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle"}
@@ -298,6 +300,7 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 m.loadingText.text = "Resolving Channel..."
               else if m.videoButtonSelected = "following"
                 ? "Subscribe/Follow"
+                ? m.wasLoggedIn
                 if m.wasLoggedIn
                   if m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
                     unFollow(m.currentVideoChannelID)
@@ -1013,9 +1016,6 @@ Sub resolveVideo(url = invalid)
         m.currentVideoPosition = incomingData
         curItem = m.videoGrid.content.getChild(incomingData[0]).getChild(incomingData[1])
         if curItem.itemType = "video"
-          'switch to normal buttons
-          m.videoButtons.content = m.standardButtons
-          regenerateNormalButtonRefs()
           resolveEvaluatedVideo(curItem) 'used for this AND next video/previous video
         end if
         if curItem.itemType = "channel"
@@ -1030,15 +1030,19 @@ Sub resolveVideo(url = invalid)
           m.loadingText.text = "Resolving Channel..."
         end if
         if curItem.itemType = "livestream"
-          'switch to live buttons
-          m.videoButtons.content = m.liveButtons
-          regenerateLiveButtonRefs()
           ?"Playing a livestream"
           m.currentVideoChannelIcon = curitem.channelicon
           m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
           m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
           isFollowed = false
           if m.wasLoggedIn
+            m.videoButtons.content = m.liveButtonsLoggedIn
+            m.videoButtons.itemSpacing="[20, 20]"
+            m.videoButtons.columnSpacings="[400, 0, 0, 0, 0]"
+            m.videoButtons.numColumns = 5
+            m.videoButtons.animateToItem = 2
+            getReactions(curItem.guid)
+            m.videoButtons.animateToItem = 3
             if m.preferences.Count() > 0 AND isValid(m.preferences.following)
               if m.preferences.following.Count() > 0
                 for each claimID in m.preferences.following
@@ -1049,14 +1053,20 @@ Sub resolveVideo(url = invalid)
                 end for
               end if
             end if
-          end if
-          if isFollowed
-            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+            if isFollowed
+              m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+            else
+              m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+            end if
           else
-            m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+            m.videoButtons.content = m.liveButtonsLoggedOut
+            m.videoButtons.itemSpacing="[20, 20]"
+            m.videoButtons.columnSpacings="[400, 0, 0, 0]"
+            m.videoButtons.numColumns = 4
+            m.videoButtons.animateToItem = 2
           end if
+          regenerateLiveButtonRefs()
           isFollowed = invalid
-          getReactions(curItem.guid)
           m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
           m.videoContent.streamFormat = curItem.streamFormat
@@ -1105,6 +1115,12 @@ sub resolveEvaluatedVideo(curItem)
   m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
   isFollowed = false
   if m.wasLoggedIn
+    m.videoButtons.content = m.standardButtonsLoggedIn
+    m.videoButtons.itemSpacing="[20, 20]"
+    m.videoButtons.columnSpacings="[0, 200, 0, 0, 200, 0]"
+    getReactions(curItem.guid)
+    m.videoButtons.numColumns = 6
+    m.videoButtons.animateToItem = 3
     if m.preferences.Count() > 0 AND isValid(m.preferences.following)
       if m.preferences.following.Count() > 0
         for each claimID in m.preferences.following
@@ -1115,13 +1131,19 @@ sub resolveEvaluatedVideo(curItem)
         end for
       end if
     end if
-  end if
-  if isFollowed
-    m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+    if isFollowed
+      m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+    else
+      m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+    end if
   else
-    m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+    m.videoButtons.content = m.standardButtonsLoggedOut
+    m.videoButtons.itemSpacing="[20, 20]"
+    m.videoButtons.columnSpacings="[400, 0, 0, 0]"
+    m.videoButtons.numColumns = 4
+    m.videoButtons.animateToItem = 2
   end if
-  getReactions(curItem.guid)
+  regenerateNormalButtonRefs()
   m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
   m.urlResolver.observeField("output", "playResolvedVideo")
   m.urlResolver.control = "RUN"
@@ -1278,7 +1300,6 @@ Sub playResolvedVideo(msg as Object)
       m.videoButtons.setFocus(true)
       m.focusedItem = 7 '[video player/overlay] 
       m.video.control = "play"
-      m.videoButtons.animateToItem = 3
       m.video.observeField("position", "videoPositionChanged")
       ?m.video.errorStr
       ?m.video.videoFormat
@@ -1345,13 +1366,15 @@ Function onVideoStateChanged(msg as Object)
           returnToUIPage()
       end if
       if state = "playing" OR state = "buffering"
-        m.videoButtonsPlayIcon.labelText = m.vjschars["pause"]
-        m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-        m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
-        ?m.currentVideoChannelIcon
-        ?m.videoButtonsChannelIcon
-        if m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-          m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
+        if m.videoContent.Live = false
+          m.videoButtonsPlayIcon.labelText = m.vjschars["pause"]
+          m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+          m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+          ?m.currentVideoChannelIcon
+          ?m.videoButtonsChannelIcon
+          if m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+            m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
+          end if
         end if
         if state = "playing"
           deleteSpinner()
@@ -1359,9 +1382,11 @@ Function onVideoStateChanged(msg as Object)
           addSpinner()
         end if
       else if state = "paused"
-        m.videoButtonsPlayIcon.labelText = m.vjschars["play"]
-        m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-        m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+        if m.videoContent.Live = false
+          m.videoButtonsPlayIcon.labelText = m.vjschars["play"]
+          m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+          m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+        end if
       end if
   end if
 end Function
