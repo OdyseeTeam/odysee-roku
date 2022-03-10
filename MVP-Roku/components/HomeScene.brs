@@ -109,6 +109,7 @@ Sub init()
   
   'Tasks
   m.ws = createObject("roSGNode", "WebSocketClient")
+  m.wsChat = m.ws.findNode("chat")
   m.date = CreateObject("roDateTime")
   m.chatArray = [] 'legacy: left in for now.
   m.superChatArray = []
@@ -1093,9 +1094,15 @@ Sub resolveVideo(url = invalid)
           ?m.video.videoFormat
           ?m.video
           m.videoButtons.animateToItem = 3
-          m.chatHistory.setFields({channel:curItem.Channel:channelName:curItem.Creator:streamClaim:curItem.guid:constants:m.constants:cookies:m.cookies})
-          m.chatHistory.control = "RUN"
-          m.taskRunning = True
+          m.ws.observeField("on_close", "on_close")
+          m.ws.observeField("on_error", "on_error")
+          m.ws.setFields({"constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id="+m.currentVideoClaimID+"&category="+curitem.creator+":c&sub_category=viewer","streamclaim": m.currentVideoClaimID,"channelid": m.currentVideoChannelID,"protocols": [], "headers": []})
+          ? m.ws.open
+          m.ws.observeField("thumbnailCache", "thumbnailCacheChanged")
+          m.ws.observeField("messageHeights", "messageHeightsChanged")
+          m.ws.observeField("chatChanged", "on_chat")
+          m.ws.observeField("superchat", "on_superchat")
+          m.ws.control = "RUN"
           m.videoGrid.setFocus(false)
         end if
       end if
@@ -1168,23 +1175,7 @@ sub gotChatHistory(msg as Object)
     ? "GOT DATA"
     m.cmData = data.comments
     m.chatBox.content = m.cmData
-    m.ws.observeField("on_close", "on_close")
-    m.ws.observeField("on_error", "on_error")
-    m.ws.setFields({"thumbnailCache": m.thumbnailCache, "messageHeights": m.messageHeights, "constants": m.constants, "on_chat": m.chatHistory.output, "superChat": m.superChatArray})
-    'm.ws.thumbnailCache = m.thumbnailCache
-    'm.ws.messageHeights = m.messageHeights
-    'm.ws.constants = m.global.constants
-    'm.ws.on_chat = m.chatHistory.output 'pass output along
-    m.ws.protocols = []
-    m.ws.headers = []
-    m.SERVER = m.constants["CHAT_API"] + "/commentron?id="+m.chatHistory.streamClaim+"&category="+m.chatHistory.channelName+":c&sub_category=viewer"
-    ? m.SERVER
-    m.ws.open = m.SERVER
-    m.ws.observeField("thumbnailCache", "thumbnailCacheChanged")
-    m.ws.observeField("messageHeights", "messageHeightsChanged")
-    m.ws.observeField("on_chat", "on_chat")
-    m.ws.observeField("superchat", "on_superchat")
-    m.ws.control = "RUN"
+    
   end if
 end sub
 
@@ -1837,18 +1828,17 @@ function on_close(event as object) as void
 end function
 
 function on_chat(event as object) as void
-  if isValid(event.getData().message)
-  ? "GOT CHAT MESG"
-  message = event.getData().message
-  ? message
-  m.cmData = message.comments
-  m.chatBox.content = m.cmData
+  if isValid(event.getData())
+    m.chatBox.content = m.wsChat
+    m.chatBox.rowHeights = m.ws.messageHeights
   end if
 end function
 
 function on_superchat(event as object) as void
   if isValid(event.getData())
     ? "superchat changed"
+    m.superChatBox.visible = true
+    m.superChatBackground.visible = true
     m.superChatArray = event.getData()
     m.superChatBox.text = m.superchatArray.join(" | ")
   end if

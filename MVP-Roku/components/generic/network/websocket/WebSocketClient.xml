@@ -7,18 +7,22 @@
     WebSocket client following RFC 6455
 -->
 <component name="WebSocketClient" extends="Task">
-
+    <children>
+        <contentNode id="chat"></contentNode>
+    </children>
     <interface>
         <!-- Fields -->
         <field id="on_open" type="assocarray" alwaysNotify="true" />
         <field id="on_close" type="string" alwaysNotify="true" />
         <field id="on_message" type="assocarray" alwaysNotify="true" />
-        <field id="on_chat" type="assocArray" alwaysNotify="true" /> <!--Chat AssocArray/Data, contains Superchat and Chat-->
         <field id="thumbnailCache" type="assocArray" alwaysNotify="true"/>  <!--Caches thumbnails for Task Wrapper-->
         <field id="messageHeights" type="roArray" alwaysNotify="true"/>
         <field id="constants" type="assocarray"/>
         <field id="cookies" type="roArray"/>
+        <field id="chatChanged" type="boolean" alwaysNotify="true"/>
         <field id="superChat" type="roArray" alwaysNotify="true"/>
+        <field id="streamclaim" type="string" value="none"/>
+        <field id="channelid" type="string" value="none"/>
         <field id="allowedHeight" type="Int" value="960"/> <!--Set allowed height of chat here.-->
         <field id="currentViewers" type="Int" value="0"/>
         <field id="blocked" type="roArray"/> <!--Blocked users from preferences-->
