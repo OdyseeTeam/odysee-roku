@@ -193,24 +193,76 @@ function runtask() as void
                                     ' ? "GOT DELTA MESSAGE!"
                                     if isValid(message.data)
                                         if isValid(message.data.comment)
-                                            ? "Got a chat message from the websocket."
-                                            parsedComment = parseComment(message.data.comment)
-                                            messageHeights.push(parsedComment.height)
-                                            m.top.messageHeights = messageHeights
-                                            totalHeight+=parsedComment.height
-                                            m.comments.appendChild(parsedComment)
-                                            m.top.chatChanged = true
-                                            while totalHeight > allowedHeight
-                                                totalHeight=reCalcTotalHeight(m.comments.getChildren(-1,0))
-                                                if totalHeight < allowedHeight
-                                                    m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
-                                                    m.top.chatChanged = true
-                                                    exit while
-                                                else
-                                                    m.comments.removeChildIndex(0)
-                                                    m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
+                                            ' ? "Seems to be a comment"
+                                            'THE CURRENT ISSUE:
+                                            'Comments come in too fast to process.
+                                            '
+                                            curComment = message.data.comment
+                                            for each height in m.top.messageHeights
+                                                m.totalMesgHeight += height + 5
+                                            end for
+                                            'We don't need any fancy transformation, this is in SEQUENTIAL ORDER!
+                                            trimmedComment = curcomment.comment.Trim()
+                                            if curcomment["is_pinned"] = false and curcomment["is_hidden"] = false and m.chatRegex.Replace(trimmedComment, "") <> "" and trimmedComment.instr("![") = -1 and trimmedComment.instr("](") = -1 and isValid(m.blocked[curComment["channel_id"]]) = false
+                                                ' ? "passed checks"
+                                                commentHeight = getMessageHeight(curcomment.comment, 30, 420)
+                                                currentComments = m.comments.getChildren(-1,0)
+                                                totalHeight = 0
+                                                needToRemove = 0
+                                                removalHeight = 0
+                                                messageHeights = m.top.messageHeights
+                                                for each comment in currentComments
+                                                    totalHeight += comment.height
+                                                end for
+                                                if totalHeight + commentHeight > m.top.allowedHeight
+                                                    for each comment in currentComments
+                                                        if ((totalHeight + commentHeight) - removalHeight) < m.top.allowedHeight
+                                                            exit for
+                                                        end if
+                                                        needToRemove += 1
+                                                        removalHeight += comment.height
+                                                    end for
                                                 end if
-                                            end while
+                                                ' ? FormatJson(curcomment)
+                                                if isValid(curComment["is_fiat"]) and isValid(curComment["support_amount"])
+                                                    if curcomment["is_fiat"] = true or curcomment["support_amount"] > 0 or isValid(m.top.thumbnailCache[curComment.channel_id]) 'if they have just donated, add them to the cache.
+                                                        isPremium = true
+                                                        ' ? "Is premium"
+                                                        if m.superChatArray.Count() < 5
+                                                            m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
+                                                        else
+                                                            m.superChatArray.Shift()
+                                                            m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
+                                                        end if
+                                                    else
+                                                        if isValid(curcomment["is_moderator"]) = true 'if they are a moderator, add them to the cache.
+                                                            isPremium = true
+                                                        else
+                                                            isPremium = false
+                                                        end if
+                                                        ' ? "NOT premium"
+                                                    end if
+                                                end if
+                                                if needToRemove > 0
+                                                    for i = 1 to needToRemove step 1
+                                                        messageHeights.Shift()
+                                                    end for
+                                                    m.comments.removeChildrenIndex(needToRemove, 0)
+                                                    m.comments.appendChild(legacyParseComment(curcomment, commentHeight, isPremium))
+                                                    messageHeights.push(commentHeight)
+                                                    pastHeights = m.top.messageHeights
+                                                    m.top.messageHeights = messageHeights
+                                                    m.top.chatChanged = true
+                                                else
+                                                    m.comments.appendChild(legacyParseComment(curcomment, commentHeight, isPremium))
+                                                    messageHeights.push(commentHeight)
+                                                    pastHeights = m.top.messageHeights
+                                                    m.top.messageHeights = messageHeights
+                                                    m.top.chatChanged = true
+                                                end if
+                                                m.top.superChat = m.superChatArray
+                                                ? "WSC: Parsing Chat Took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
+                                            end if
                                         end if
                                     end if
                                     ? "WSC: Parsing messages took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
