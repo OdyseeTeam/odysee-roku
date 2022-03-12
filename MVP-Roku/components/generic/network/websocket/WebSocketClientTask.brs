@@ -66,6 +66,7 @@ function runtask() as void
                     exit while
                 end if
             end while
+            m.parseTimer.Mark()
             retries = 0
             superChatLength = 0
             m.superchat = []
@@ -96,7 +97,9 @@ function runtask() as void
             '    ?"WebSocketClient ChatHistory Error (superchat):"
             '    ?formatJson(e)
             'end try
+            ? "WSC: Superchat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             ? m.superchat
+            m.parseTimer.Mark()
             chatResponse.result.items.Reverse()
             for each chatitem in chatResponse.result.items
                 parsedComment = parseComment(chatitem)
@@ -119,7 +122,7 @@ function runtask() as void
                     m.top.chatChanged = true
                 end if
             end while
-
+            ? "WSC: Chat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             m.top.superchat = m.superchat
             m.top.thumbnailCache = m.thumbnailCache
             ? m.top.superchat
@@ -200,20 +203,32 @@ function runtask() as void
                                             while totalHeight > allowedHeight
                                                 totalHeight=reCalcTotalHeight(m.comments.getChildren(-1,0))
                                                 if totalHeight < allowedHeight
-                                                    m.comments.removeChildIndex(0)
                                                     m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
                                                     m.top.chatChanged = true
                                                     exit while
                                                 else
                                                     m.comments.removeChildIndex(0)
                                                     m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
-                                                    m.top.chatChanged = true
                                                 end if
                                             end while
                                         end if
                                     end if
+                                    ? "WSC: Parsing messages took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                 else if message.type = "removed"
-                                    
+                                    m.parseTimer.Mark()
+                                    messageHeights = m.top.messageHeights
+                                    cid = 0
+                                    for each comment in m.comments.getChildren(-1, 0) 'This is a rare case where we need to interact with m.top DIRECTLY.
+                                        if comment.comment_id = message.data.comment.comment_id
+                                            m.comments.removeChild(comment)
+                                            messageHeights.Delete(cid)
+                                            m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
+                                            exit for
+                                        end if
+                                        cid += 1
+                                    end for
+                                    cid = invalid
+                                    ? "WSC: Removing message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                 else if message.type = "viewers"
                                     ' ? "GOT VIEWERS MESSAGE!"
                                     if isValid(message.data)

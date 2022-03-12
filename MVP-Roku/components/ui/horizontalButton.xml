@@ -11,13 +11,19 @@
 <script type="text/brightscript" >
 <![CDATA[ 
   function itemContentChanged()
-    if m.top.itemContent.posterUrl <> ""
-      m.itemImage.uri = m.top.itemContent.posterUrl
-      m.itemImage.visible = true
-    end if
     if m.top.itemContent.labelText <> ""
       m.itemText.text = m.top.itemContent.labelText
       m.itemText.visible = true
+    else
+      m.itemText.text = ""
+      m.itemText.visible = false
+    end if
+    if m.top.itemContent.posterUrl <> ""
+      m.itemImage.uri = m.top.itemContent.posterUrl
+      m.itemImage.visible = true
+    else
+      m.itemImage.uri = ""
+      m.itemImage.visible = false
     end if
     if m.top.itemContent.fontUrl <> ""
       m.itemText.font.uri = m.top.itemContent.fontUrl

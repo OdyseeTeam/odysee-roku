@@ -138,74 +138,93 @@ function ChannelToVideoGrid(channel)
         items = response.result.items
         ?"got " + str(items.Count()) + " items from Odysee"
         for i = 0 to items.Count() - 1 step 1 'Parse response
-            item = {}
-            item.Title = items[i].value.title
-            item.Creator = items[i].signing_channel.name
-            item.Description = ""
-            item.Channel = items[i].signing_channel.claim_id
             try
-                if isValid(items[i].signing_channel.value.thumbnail.url)
-                    item.ChannelIcon = m.top.constants["IMAGE_PROCESSOR"] + items[i].signing_channel.value.thumbnail.url
-                else
+                itemValid = isValid(items[i]["value"]["source"]["hash"])
+            catch e
+                itemValid = false
+            end try
+            try
+                itemValid = isValid(items[i]["value"]["stream_type"])
+                if itemValid
+                    if items[i]["value"]["stream_type"] = "stream" OR items[i]["value"]["stream_type"] = "video"
+                        itemValid = true
+                    else
+                        itemValid = false
+                    end if
+                end if
+            catch e
+                itemValid = false
+            end try
+            if itemValid
+                item = {}
+                item.Title = items[i].value.title
+                item.Creator = items[i].signing_channel.name
+                item.Description = ""
+                item.Channel = items[i].signing_channel.claim_id
+                try
+                    if isValid(items[i].signing_channel.value.thumbnail.url)
+                        item.ChannelIcon = m.top.constants["IMAGE_PROCESSOR"] + items[i].signing_channel.value.thumbnail.url
+                    else
+                        item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                    end if
+                catch e
                     item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-                end if
-            catch e
-                item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-            end try
-            item.lbc = items[i].meta.effective_amount + " LBC"
-            time = CreateObject("roDateTime")
-            try
-                time.FromSeconds(items[i].meta.creation_timestamp)
-            catch e
-                time.FromSeconds(items[i].timestamp)
-            end try
-            timestr = time.AsDateString("short-month-short-weekday") + " "
-            timestr = timestr.Trim()
-            time = invalid
-            item.ReleaseDate = timestr
-            item.guid = items[i].claim_id
-            try
-                thumbnail = m.top.constants["IMAGE_PROCESSOR"] + items[i].value.thumbnail.url
-            catch e
-                thumbnail = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-            end try
-            item.HDPosterURL = thumbnail
-            item.thumbnailDimensions = [360, 240]
-            'all set on watching video due to https://QUERY_API/api/v1/proxy?m=get
-            item.url = items[i].permanent_url.Trim() 'to be used to resolve with m?=get
-            'item.stream = {url : item.url}
-            'item.link = item.url
-            'item.streamFormat = ""
-            item.source = "odysee"
-            item.itemType = "video"
-            'Create content (content -> row -> item)
-            if counter < 4
-                if IsValid(currow) <> true
-                    currow = createObject("RoSGNode", "ContentNode")
-                end if
-                curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" , ChannelIcon: "" })
-                curitem.setFields(item)
-                currow.appendChild(curitem)
-                if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
+                end try
+                item.lbc = items[i].meta.effective_amount + " LBC"
+                time = CreateObject("roDateTime")
+                try
+                    time.FromSeconds(items[i].meta.creation_timestamp)
+                catch e
+                    time.FromSeconds(items[i].timestamp)
+                end try
+                timestr = time.AsDateString("short-month-short-weekday") + " "
+                timestr = timestr.Trim()
+                time = invalid
+                item.ReleaseDate = timestr
+                item.guid = items[i].claim_id
+                try
+                    thumbnail = m.top.constants["IMAGE_PROCESSOR"] + items[i].value.thumbnail.url
+                catch e
+                    thumbnail = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                end try
+                item.HDPosterURL = thumbnail
+                item.thumbnailDimensions = [360, 240]
+                'all set on watching video due to https://QUERY_API/api/v1/proxy?m=get
+                item.url = items[i].permanent_url.Trim() 'to be used to resolve with m?=get
+                'item.stream = {url : item.url}
+                'item.link = item.url
+                'item.streamFormat = ""
+                item.source = "odysee"
+                item.itemType = "video"
+                'Create content (content -> row -> item)
+                if counter < 4
+                    if IsValid(currow) <> true
+                        currow = createObject("RoSGNode", "ContentNode")
+                    end if
+                    curitem = createObject("RoSGNode", "ContentNode")
+                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", ChannelIcon: "" })
+                    curitem.setFields(item)
+                    currow.appendChild(curitem)
+                    if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
+                        content.appendChild(currow)
+                    end if
+                    counter += 1
+                    curitem = invalid
+                else
                     content.appendChild(currow)
+                    currow = invalid
+                    currow = createObject("RoSGNode", "ContentNode")
+                    curitem = createObject("RoSGNode", "ContentNode")
+                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", ChannelIcon: "" })
+                    curitem.setFields(item)
+                    currow.appendChild(curitem)
+                    counter = 1
+                    curitem = invalid
                 end if
-                counter += 1
-                curitem = invalid
-            else
-                content.appendChild(currow)
-                currow = invalid
-                currow = createObject("RoSGNode", "ContentNode")
-                curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", ChannelIcon: "" })
-                curitem.setFields(item)
-                currow.appendChild(curitem)
-                counter = 1
-                curitem = invalid
+                result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
+                mediaindex[item.guid] = item
+                item = invalid
             end if
-            result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
-            mediaindex[item.guid] = item
-            item = invalid
         end for
         '?type(content)
         ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"

@@ -76,7 +76,6 @@ Sub init()
     m.liveVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle"}
     regenerateNormalButtonRefs()
     m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
-
     m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
     m.currentVideoClaimID = "" 'Current claim ID for Video
     m.currentVideoReactions = {}
