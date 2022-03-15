@@ -1413,7 +1413,7 @@ Function returnToUIPage()
     m.superChatBox.visible = false
     m.superChatBackground.visible = false
     m.chatBox.visible = false
-    m.chatBox.content = CreateObject("roSGNode", "ContentNode")
+    m.chatBox.text = ""
     m.superChatArray = []
     m.superChatBox.text = ""
     if m.videoContent.streamFormat = "hls"
@@ -1800,24 +1800,6 @@ sub indexloaded(msg as Object)
   m.LoadTask.control = "STOP"
 end sub
 
-sub messageHeightsChanged(event as object) as void
-  if isValid(event.getData())
-  m.messageHeights = event.getData()
-  m.chatBox.rowHeights = m.messageHeights
-  ? "got message heights"
-  end if
-end sub
-
-sub thumbnailCacheChanged(event as object) as void
-  'TODO: clear thumbnail cache on stream exit.
-  if isValid(event.getData())
-  ? "Thumbnail cache changed."
-  message = event.getData()
-  ? FormatJSON(message)
-  m.thumbnailCache = message
-  end if
-end sub
-
 function on_close(event as object) as void
   print "WebSocket closed"
   if m.reinitialize
@@ -1827,9 +1809,10 @@ function on_close(event as object) as void
 end function
 
 function on_chat(event as object) as void
-  if isValid(event.getData())
-    m.chatBox.content = m.wsChat
-    m.chatBox.rowHeights = m.ws.messageHeights
+  eData = event.getData()
+  if isValid(edata)
+    m.chatBox.visible = true
+    m.chatBox.text = edata.join(Chr(10))
   end if
 end function
 

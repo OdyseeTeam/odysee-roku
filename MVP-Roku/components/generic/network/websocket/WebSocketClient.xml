@@ -15,12 +15,10 @@
         <field id="on_open" type="assocarray" alwaysNotify="true" />
         <field id="on_close" type="string" alwaysNotify="true" />
         <field id="on_message" type="assocarray" alwaysNotify="true" />
-        <field id="thumbnailCache" type="assocArray" alwaysNotify="true"/>  <!--Caches thumbnails for Task Wrapper-->
-        <field id="messageHeights" type="roArray" alwaysNotify="true"/>
         <field id="constants" type="assocarray"/>
         <field id="cookies" type="roArray"/>
-        <field id="chatChanged" type="boolean" alwaysNotify="true"/>
         <field id="superChat" type="roArray" alwaysNotify="true"/>
+        <field id="chat" type="assocArray" alwaysNotify="true"/>
         <field id="streamclaim" type="string" value="none"/>
         <field id="channelid" type="string" value="none"/>
         <field id="allowedHeight" type="Int" value="960"/> <!--Set allowed height of chat here.-->

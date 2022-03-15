@@ -70,58 +70,30 @@ function runtask() as void
             retries = 0
             superChatLength = 0
             m.superchat = []
-            'try
-                for each superchatitem in superchatResponse.result.items
-                    'try
-                        if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1
-                            if superChatLength > 4
-                                exit for
-                            end if
-                            m.superchat.Push("[" + m.chatRegex.Replace(superchatitem["channel_name"] + "]: " + superchatitem["comment"].replace("\n", " ").Trim(), ""))
-                            m.thumbnailCache = getThumbnail(superchatitem.channel_url, m.thumbnailCache, superchatitem.channel_id)
-                            ' ? "pushing to thumbnail cache ID:"
-                            ' ? superchat.channel_id
-                            if isValid(resolvedThumb)
-                                m.thumbnailCache.Append(resolvedThumb)
-                            else
-                                m.thumbnailCache.addReplace(superchatitem.channel_id, "https://player.odycdn.com/speech/spaceman-png:2.png")
-                            end if
-                            superChatLength += 1
+            m.rawChat = []
+            m.parsedChat = []
+            m.chat = {}
+            for each superchatitem in superchatResponse.result.items
+                    if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1
+                        if superChatLength > 4
+                            exit for
                         end if
-                    'catch e
-                    '    ?"WebSocketClient ChatHistory Error (superchat):"
-                    '    ?formatJson(e)
-                    'end try
-                end for
-            'catch e
-            '    ?"WebSocketClient ChatHistory Error (superchat):"
-            '    ?formatJson(e)
-            'end try
+                        m.superchat.Push("[" + m.chatRegex.Replace(superchatitem["channel_name"] + "]: " + superchatitem["comment"].replace("\n", " ").Trim(), ""))
+                        superChatLength += 1
+                    end if
+            end for
             ? "WSC: Superchat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             ? m.superchat
             m.parseTimer.Mark()
             chatResponse.result.items.Reverse()
             for each chatitem in chatResponse.result.items
-                parsedComment = parseComment(chatitem)
-                messageHeights.push(parsedComment.height)
-                m.top.messageHeights = messageHeights
-                totalHeight+=parsedComment.height
-                m.comments.appendChild(parsedComment)
-                m.top.chatChanged = true
-            end for
-            while totalHeight > allowedHeight
-                totalHeight=reCalcTotalHeight(m.comments.getChildren(-1,0))
-                if totalHeight < allowedHeight
-                    m.comments.removeChildIndex(0)
-                    m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
-                    m.top.chatChanged = true
-                    exit while
-                else
-                    m.comments.removeChildIndex(0)
-                    m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
-                    m.top.chatChanged = true
+                if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1
+                    m.parsedChat.push(parseComment(chatitem)) 'so we can add/remove comments quickly later on
                 end if
-            end while
+            end for
+            for each chatitem in m.parsedChat 
+                m.rawChat.push(chatitem["channel_name"] + "]: " + chatitem["comment"].replace("\n", " ").Trim(), ""))
+            end for
             ? "WSC: Chat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             m.top.superchat = m.superchat
             m.top.thumbnailCache = m.thumbnailCache
@@ -205,24 +177,6 @@ function runtask() as void
                                             trimmedComment = curcomment.comment.Trim()
                                             if curcomment["is_pinned"] = false and curcomment["is_hidden"] = false and m.chatRegex.Replace(trimmedComment, "") <> "" and trimmedComment.instr("![") = -1 and trimmedComment.instr("](") = -1 and isValid(m.blocked[curComment["channel_id"]]) = false
                                                 ' ? "passed checks"
-                                                commentHeight = getMessageHeight(curcomment.comment, 30, 420)
-                                                currentComments = m.comments.getChildren(-1,0)
-                                                totalHeight = 0
-                                                needToRemove = 0
-                                                removalHeight = 0
-                                                messageHeights = m.top.messageHeights
-                                                for each comment in currentComments
-                                                    totalHeight += comment.height
-                                                end for
-                                                if totalHeight + commentHeight > m.top.allowedHeight
-                                                    for each comment in currentComments
-                                                        if ((totalHeight + commentHeight) - removalHeight) < m.top.allowedHeight
-                                                            exit for
-                                                        end if
-                                                        needToRemove += 1
-                                                        removalHeight += comment.height
-                                                    end for
-                                                end if
                                                 ' ? FormatJson(curcomment)
                                                 if isValid(curComment["is_fiat"]) and isValid(curComment["support_amount"])
                                                     if curcomment["is_fiat"] = true or curcomment["support_amount"] > 0 or isValid(m.top.thumbnailCache[curComment.channel_id]) 'if they have just donated, add them to the cache.
@@ -234,31 +188,7 @@ function runtask() as void
                                                             m.superChatArray.Shift()
                                                             m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
                                                         end if
-                                                    else
-                                                        if isValid(curcomment["is_moderator"]) = true 'if they are a moderator, add them to the cache.
-                                                            isPremium = true
-                                                        else
-                                                            isPremium = false
-                                                        end if
-                                                        ' ? "NOT premium"
                                                     end if
-                                                end if
-                                                if needToRemove > 0
-                                                    for i = 1 to needToRemove step 1
-                                                        messageHeights.Shift()
-                                                    end for
-                                                    m.comments.removeChildrenIndex(needToRemove, 0)
-                                                    m.comments.appendChild(legacyParseComment(curcomment, commentHeight, isPremium))
-                                                    messageHeights.push(commentHeight)
-                                                    pastHeights = m.top.messageHeights
-                                                    m.top.messageHeights = messageHeights
-                                                    m.top.chatChanged = true
-                                                else
-                                                    m.comments.appendChild(legacyParseComment(curcomment, commentHeight, isPremium))
-                                                    messageHeights.push(commentHeight)
-                                                    pastHeights = m.top.messageHeights
-                                                    m.top.messageHeights = messageHeights
-                                                    m.top.chatChanged = true
                                                 end if
                                                 m.top.superChat = m.superChatArray
                                                 ? "WSC: Parsing Chat Took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
@@ -267,20 +197,7 @@ function runtask() as void
                                     end if
                                     ? "WSC: Parsing messages took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                 else if message.type = "removed"
-                                    m.parseTimer.Mark()
-                                    messageHeights = m.top.messageHeights
-                                    cid = 0
-                                    for each comment in m.comments.getChildren(-1, 0) 'This is a rare case where we need to interact with m.top DIRECTLY.
-                                        if comment.comment_id = message.data.comment.comment_id
-                                            m.comments.removeChild(comment)
-                                            messageHeights.Delete(cid)
-                                            m.top.messageHeights = reCalcHeights(m.comments.getChildren(-1,0))
-                                            exit for
-                                        end if
-                                        cid += 1
-                                    end for
-                                    cid = invalid
-                                    ? "WSC: Removing message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
+                                    ? "Got a remove message"
                                 else if message.type = "viewers"
                                     ' ? "GOT VIEWERS MESSAGE!"
                                     if isValid(message.data)
@@ -318,104 +235,16 @@ function runtask() as void
     end if
 end function
 
-function reCalcTotalHeight(comments)
-    height = 0
-    for each comment in comments
-        height+=comment.height
-    end for
-    return height
-end function
-
-function reCalcHeights(comments)
-    heights = []
-    for each comment in comments
-        heights.push(comment.height)
-    end for
-    return heights
-end function
-
-function commentToSGNode(comment)
-    ' ? "parsing a comment"
-    newComment = CreateObject("roSGNode", "chatdata")
-    newComment.message = comment.message
-    newComment.height = comment.height
-    newComment.username = comment.username
-    newComment.usericon = comment.usericon
-    return newComment 'return it instead, we want to set them all at once around the same time.
-end function
-
 function parseComment(comment)
-    newComment = CreateObject("roSGNode", "chatdata")
+    newComment = {message: "", username:"", comment_id: ""}
     'Note that each comment is actually based on chatdata.xml, this is because we are feeding it directly into m.chatBox
     newComment.message = m.chatRegex.Replace(comment.comment, "")
-    newComment.height = getMessageHeight(comment.comment, 30, 420)
     newComment.username = m.chatRegex.Replace(comment["channel_name"], "")
     newComment.comment_id = comment["comment_id"]
     if newComment.username.split("").Count() < 1
         newComment.username = "Anonymous"
     end if
-    if isValid(m.thumbnailCache[comment.channel_id])
-        newComment.usericon = m.thumbnailCache[comment.channel_id]
-    else if comment.channel_id = m.top.channelID
-        resolvedThumb = getThumbnail(comment.channel_id)
-        m.thumbnailCache.Append(resolvedThumb)
-        newComment.usericon = m.thumbnailCache[comment.channel_id]
-    else
-        newComment.usericon = "none"
-    end if
     return newComment
-end function
-
-function getThumbnail(channelIdentifier, thumbnailCache, channelClaim)
-    'apparently I wrote some of this while braindead, so we'll add a method to resolve channels by URL+ClaimID
-    if isValid(thumbnailCache) = false
-        thumbnailCache = {}
-    end if
-    if channelIdentifier.instr("lbry") > -1
-        cqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=resolve"
-        cqueryJSON = FormatJson({ "method": "resolve", "params": { "urls": [channelurl], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false } })
-        channelQuery = postJSON(cqueryJSON, cqueryURL, invalid)
-        try
-            cKey = channelQuery.result.Keys()[0]
-            thumbnailCache.addReplace(channelsQuery.result[ckey].claim_id, m.top.constants["THUMBNAIL_PROCESSOR"] + channelsQuery.result[ckey].value.thumbnail.url)
-        catch e
-            thumbnailCache.addReplace(channelClaim, "https://player.odycdn.com/speech/spaceman-png:2.png")
-        end try
-    else
-        try
-            cqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            cqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page": 1, "page_size": 1, "channel_ids": [channelIdentifier], "claim_type": ["stream"], "no_totals": true, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false } })
-            channelQuery = postJSON(cqueryJSON, cqueryURL, invalid)
-            currentChannel = channelQuery.result.items[0]["signing_channel"]
-            thumbnailCache.addReplace(channelIdentifier, m.top.constants["THUMBNAIL_PROCESSOR"] + currentChannel.value.thumbnail.url)
-        catch e
-            thumbnailCache.addReplace(channelIdentifier, "https://player.odycdn.com/speech/spaceman-png:2.png")
-        end try
-    end if
-    return thumbnailCache
-end function
-
-function getMessageHeight(inputText, fontSize, maxfontWidth)
-    ' ? "RUNNING"
-    'm.htimer.Mark()
-    fontFamilies = m.fontReg.GetFamilies()
-    font = m.fontReg.GetFont(fontFamilies[0], fontSize + 10, false, false)
-    fontWidthCalculated = font.GetOneLineWidth(inputText, 8192)
-    numLines = 1 '"Scaling factor" technically.
-    calcWidth = fontWidthCalculated
-    if fontWidthCalculated > maxfontWidth
-        while calcWidth > maxfontWidth
-            if calcWidth > maxfontWidth
-                numLines += 1
-            end if
-            calcWidth = fontWidthCalculated / numLines
-        end while
-    end if
-    ' ? inputText
-    ' ? calcWidth
-    ' ? numLines
-    ' ? "getChatHistory: HeightCalc took " + (m.htimer.TotalMilliseconds() / 1000).ToStr() + "s"
-    return (font.GetOneLineHeight() * numLines) + 70
 end function
 
 function isLivestreaming(channel)
