@@ -1099,7 +1099,7 @@ Sub resolveVideo(url = invalid)
           ? m.ws.open
           m.ws.observeField("thumbnailCache", "thumbnailCacheChanged")
           m.ws.observeField("messageHeights", "messageHeightsChanged")
-          m.ws.observeField("chatChanged", "on_chat")
+          m.ws.observeField("chat", "on_chat")
           m.ws.observeField("superchat", "on_superchat")
           m.ws.control = "RUN"
           m.videoGrid.setFocus(false)
@@ -1160,22 +1160,6 @@ sub resolveEvaluatedVideo(curItem)
   m.videoGrid.visible = false
   m.loadingText.visible = true
   m.loadingText.text = "Resolving Video..."
-end sub
-
-sub gotChatHistory(msg as Object)
-  if type(msg) = "roSGNodeEvent"
-    m.thumbnailCache = m.chatHistory.thumbnailCache
-    m.messageHeights = m.chatHistory.messageHeights
-    m.superChatArray = m.chatHistory.superChat
-    m.superChatBox.text = m.superchatArray.join(" | ")
-    m.chatHistory.control = "STOP"
-    m.taskRunning = False
-    data = msg.getData()
-    ? "GOT DATA"
-    m.cmData = data.comments
-    m.chatBox.content = m.cmData
-    
-  end if
 end sub
 
 sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
@@ -1812,7 +1796,7 @@ function on_chat(event as object) as void
   eData = event.getData()
   if isValid(edata)
     m.chatBox.visible = true
-    m.chatBox.text = edata.join(Chr(10))
+    m.chatBox.text = edata.raw.join(Chr(10))
   end if
 end function
 
@@ -1826,76 +1810,6 @@ function on_superchat(event as object) as void
   end if
 end function
 
-' Socket message event (OLD CODE!)
-'function on_message(event as object) as void
-'  message = event.getData().message
-'  message_supported = false
-'  message_valid = true
-'  if type(message) = "roString"
-'    jsonMessage = ParseJson(message)
-'      try
-'        curComment = jsonMessage.data.comment.comment
-'        curChannel = jsonMessage.data.comment.channel_name
-'        curMessage = "["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment, "") 'add newline
-'        if curComment.instr("![") > 0 'TODO: find a proper way to parse Markdown on Roku
-'          if curComment.instr("](") > 0
-'            message_valid = false
-'          end if
-'        end if
-'
-'        try 'validate message not empty
-'          if m.chatRegex.Replace(curComment) = ""
-'            message_valid = false
-'          end if
-'        catch e
-'        end try
-'
-'        try 'check if supported
-'          support_amount = jsonMessage.data.comment.support_amount
-'          if support_amount > 0
-'            message_supported = true
-'          end if
-'        catch e
-'        end try
-'        if curMessage = m.lastMessage and m.reinitChat = False 'Restart webSocket to prevent duplicate connections.
-'          m.reinitialize = false
-'          m.ws.close = [1000, "livestreamStopped"]
-'          m.ws.control = "STOP"
-'          m.ws.open = m.SERVER
-'          m.ws.control = "RUN"
-'          m.reinitChat = True
-'        else
-'          if message_supported = true and message_valid = true
-'            m.superChatBox.visible = true
-'            m.superChatArray.push("["+m.chatRegex.Replace(curChannel.Replace("@","")+"]: "+curComment.replace("\n", " ").Trim()))
-'            m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
-'            m.ChatBox.visible = true
-'            m.superChatBox.visible = true
-'            m.lastMessage = curMessage
-'            m.reinitChat = False
-'            m.superChatBox.text = m.superchatArray.join(" | ")
-'            if m.superChatArray.Count() > 5
-'              m.superChatArray.shift()
-'            end if
-'          else if message_valid = true
-'            m.chatArray.Push(curMessage.replace("\n", chr(10)).Trim()+chr(10))
-'            m.ChatBox.visible = true
-'            m.superChatBox.visible = true
-'            m.lastMessage = curMessage
-'            m.reinitChat = False
-'          end if
-'        end if
-'      catch e
-'      end try
-'  end if
-'  m.ChatBox.text = m.chatArray.join(Chr(10))
-'  if m.chatArray.Count() > 20
-'    m.chatArray.Shift()
-'  end if
-'  message_valid = invalid
-'  message_supported = invalid
-'end function
-'
 ' Socket Error event
 function on_error(event as object) as void
   print "WebSocket error"

@@ -72,7 +72,6 @@ function runtask() as void
             m.superchat = []
             m.rawChat = []
             m.parsedChat = []
-            m.chat = {}
             for each superchatitem in superchatResponse.result.items
                     if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1
                         if superChatLength > 4
@@ -87,15 +86,16 @@ function runtask() as void
             m.parseTimer.Mark()
             chatResponse.result.items.Reverse()
             for each chatitem in chatResponse.result.items
-                if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1
+                if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1
                     m.parsedChat.push(parseComment(chatitem)) 'so we can add/remove comments quickly later on
                 end if
             end for
             for each chatitem in m.parsedChat 
-                m.rawChat.push(chatitem["channel_name"] + "]: " + chatitem["comment"].replace("\n", " ").Trim(), ""))
+                m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
             end for
             ? "WSC: Chat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             m.top.superchat = m.superchat
+            m.top.chat = {raw: m.rawChat, parsed: m.parsedChat}
             m.top.thumbnailCache = m.thumbnailCache
             ? m.top.superchat
 
@@ -162,42 +162,50 @@ function runtask() as void
                             if isValid(message.message)
                                 message = ParseJson(message.message)
                                 if message.type = "delta"
-                                    ' ? "GOT DELTA MESSAGE!"
+                                    ? "GOT DELTA MESSAGE!"
                                     if isValid(message.data)
+                                        ? "data valid"
                                         if isValid(message.data.comment)
-                                            ' ? "Seems to be a comment"
-                                            'THE CURRENT ISSUE:
-                                            'Comments come in too fast to process.
-                                            '
-                                            curComment = message.data.comment
-                                            for each height in m.top.messageHeights
-                                                m.totalMesgHeight += height + 5
-                                            end for
-                                            'We don't need any fancy transformation, this is in SEQUENTIAL ORDER!
-                                            trimmedComment = curcomment.comment.Trim()
-                                            if curcomment["is_pinned"] = false and curcomment["is_hidden"] = false and m.chatRegex.Replace(trimmedComment, "") <> "" and trimmedComment.instr("![") = -1 and trimmedComment.instr("](") = -1 and isValid(m.blocked[curComment["channel_id"]]) = false
-                                                ' ? "passed checks"
-                                                ' ? FormatJson(curcomment)
-                                                if isValid(curComment["is_fiat"]) and isValid(curComment["support_amount"])
-                                                    if curcomment["is_fiat"] = true or curcomment["support_amount"] > 0 or isValid(m.top.thumbnailCache[curComment.channel_id]) 'if they have just donated, add them to the cache.
-                                                        isPremium = true
-                                                        ' ? "Is premium"
-                                                        if m.superChatArray.Count() < 5
-                                                            m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
-                                                        else
-                                                            m.superChatArray.Shift()
-                                                            m.superChatArray.push("[" + m.chatRegex.Replace(curComment["channel_name"] + "]: " + curComment["comment"].replace("\n", " ").Trim(), ""))
-                                                        end if
-                                                    end if
-                                                end if
-                                                m.top.superChat = m.superChatArray
-                                                ? "WSC: Parsing Chat Took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
+                                            ? "got a comment"
+                                            chatitem = message.data.comment
+                                            if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1
+                                                m.parsedChat.push(parseComment(chatitem))
                                             end if
+                                            chatitem = invalid
+                                            if m.parsedChat.Count() > 20
+                                                while m.parsedChat.Count() > 20
+                                                    m.parsedChat.Shift()
+                                                    if m.parsedChat.Count() <= 20
+                                                        exit while
+                                                    end if
+                                                end while
+                                            end if
+                                            for each chatitem in m.parsedChat
+                                                m.rawChat.Shift()
+                                                m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
+                                            end for
+                                            m.top.chat = {raw: m.rawChat, parsed: m.parsedChat}
+                                            ? "WSC: Parsing Chat Message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                         end if
                                     end if
-                                    ? "WSC: Parsing messages took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                 else if message.type = "removed"
-                                    ? "Got a remove message"
+                                    m.parseTimer.Mark()
+                                    messageHeights = m.top.messageHeights
+                                    cid = 0
+                                    for each comment in m.parsedChat
+                                        if comment.comment_id = message.data.comment.comment_id
+                                            m.parsedChat.Delete(cid)
+                                            exit for
+                                        end if
+                                        cid += 1
+                                    end for
+                                    cid = invalid
+                                    m.rawChat = []
+                                    for each chatitem in m.parsedChat
+                                        m.rawChat.push(chatitem["username"] + "]: " + chatitem["message"].replace("\n", " ").Trim())
+                                    end for
+                                    m.top.chat = {raw: m.rawChat, parsed: m.parsedChat}
+                                    ? "WSC: Removing message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                 else if message.type = "viewers"
                                     ' ? "GOT VIEWERS MESSAGE!"
                                     if isValid(message.data)
@@ -238,8 +246,16 @@ end function
 function parseComment(comment)
     newComment = {message: "", username:"", comment_id: ""}
     'Note that each comment is actually based on chatdata.xml, this is because we are feeding it directly into m.chatBox
-    newComment.message = m.chatRegex.Replace(comment.comment, "")
-    newComment.username = m.chatRegex.Replace(comment["channel_name"], "")
+    if isValid(comment.message)
+        newComment.message = m.chatRegex.Replace(comment.message, "")
+    else
+        newComment.message = m.chatRegex.Replace(comment.comment, "")
+    end if
+    if isValid(comment.username)
+        newComment.username = m.chatRegex.Replace(comment["username"], "")
+    else
+        newComment.username = m.chatRegex.Replace(comment["channel_name"], "")
+    end if
     newComment.comment_id = comment["comment_id"]
     if newComment.username.split("").Count() < 1
         newComment.username = "Anonymous"
