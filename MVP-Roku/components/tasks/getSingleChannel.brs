@@ -11,6 +11,7 @@ sub master()
     '?m.top.rawname
     m.top.resolveAttempts = 0
     m.top.output = ChannelToVideoGrid(m.top.channel)
+    m.livestreamChannelIcon = ""
 end sub
 function isLivestreaming(channel)
     'This finds if a user is livestreaming. If it is, it gets the livestream data, and then resolves the chat claimId for that individual livestream.
@@ -45,7 +46,6 @@ function isLivestreaming(channel)
                         exit while
                     end if
                 end while
-
                 if IsValid(livestreamClaimQuery.error)
                     'if we can't resolve the chat, we shouldn't play the livestream.
                     livestreamData = {}
@@ -54,8 +54,17 @@ function isLivestreaming(channel)
                     chatClaim = ""
                     exit while
                 else
-                    livestreamClaimData = livestreamClaimQuery
-                    ?"chat claim appears to be: " + livestreamClaimData.result.items[0].claim_id
+                    try
+                        m.livestreamChannelIcon = livestreamclaimquery["result"]["items"][0]["signing_channel"]["value"]["thumbnail"]["url"]
+                        livestreamClaimData = livestreamClaimQuery
+                        ?"chat claim appears to be: " + livestreamClaimData.result.items[0].claim_id
+                    catch e
+                        livestreamData = {}
+                        livestreamClaimData = {}
+                        success = false
+                        chatClaim = ""
+                        exit while
+                    end try
                 end if
                 exit while
             end if
@@ -89,6 +98,7 @@ function ChannelToVideoGrid(channel)
         item.Title = streamStatus.chatData.result.items[0].value.title
         item.Creator = streamStatus.data["claimData"].name
         item.Channel = channel
+        item.ChannelIcon = m.livestreamChannelIcon
         item.Description = streamStatus.chatData.result.items[0].value.title
         item.Channel = streamStatus.data["claimId"]
         item.lbc = streamStatus.chatData.result.items[0].meta.effective_amount + " LBC"
@@ -105,7 +115,7 @@ function ChannelToVideoGrid(channel)
         item.source = "odysee"
         item.itemType = "livestream"
         curitem = createObject("RoSGNode", "ContentNode")
-        curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", guid: "" }) 'added GUID so we can pass it to chat
+        curitem.addFields({ creator: "", channelicon: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", guid: "" }) 'added GUID so we can pass it to chat
         curitem.setFields(item)
         currow.appendChild(curitem)
     else
@@ -134,6 +144,7 @@ function ChannelToVideoGrid(channel)
             m.top.error = true
         end if
     end while
+
     if m.top.error = false
         items = response.result.items
         ?"got " + str(items.Count()) + " items from Odysee"

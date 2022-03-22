@@ -1,110 +1,98 @@
 Sub init()
 'IF EVERYTHING IS BROKEN:
 'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
-    m.appTimer = CreateObject("roTimeSpan")
-    m.appTimer.Mark()
-    if m.global.constants.enableStatistics
-      m.vStatsTimer = CreateObject("roTimeSpan")
-      m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
-      m.watchman.observeField("output", "watchmanRan")
-      m.rokuInstall = createObject("roSGNode", "rokuInstall") 'analytics (install)
-      m.watchman.observeField("cookies", "gotCookies")
-      m.rokuInstall.observeField("cookies", "gotCookies")
-    end if
-    m.maxThreads = 2
-    m.runningThreads = []
-    m.threads = []
-    'UI Logic/State Variables
-    m.loaded = False 'Has the app finished its first load?
-    m.favoritesLoaded = false 'Were favorites loaded?(init only)
-    m.favoritesUIFlag = true 'Is a post-init favorites transition allowed?
-    m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
-    m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
-    m.searchFailed = False 'Has a search failed?
-    m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
-    m.modelWarning = False 'Are we running on a model of Roku that does not load 1080p video correctly?
-    m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
-    m.videoTransitionState = 0 '0=None, 1=Rewind, 2=FastForward
-    m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
-    m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
-    m.searchType = "channel" 'changed to either video or channel
-    m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
-    m.uiLayer = 0 '0=Base (Channel Grid/Search), 1=First search layer, 2=Second search layer
-    m.uiLayers = [] 'directly correlates with m.uiLayer-1. Layer 0 is managed by the sidebar/categorySelector.
-    m.lastChatMessage = ""
-    m.reinitChat = False
-    m.chatID = ""
-    m.totalVideoPings = 0 'analytics
-    m.videoButtonSelected = "none"
-    'UI Items
-    m.errorText = m.top.findNode("warningtext")
-    m.errorSubtext = m.top.findNode("warningsubtext")
-    m.errorButton = m.top.findNode("warningbutton")
-    m.loadingText = m.top.findNode("loadingtext")
-    m.header = m.top.findNode("headerrectangle")
-    m.chatBox = m.top.findNode("ChatBox")
-    m.superChatBox = m.top.findNode("SuperChatBox")
-    m.sidebarTrim = m.top.findNode("sidebartrim")
-    m.sidebarBackground = m.top.findNode("sidebarbackground")
-    m.superChatBackground = m.top.findNode("SuperChatBackground")
-    m.odyseeLogo = m.top.findNode("odyseelogo")
-    m.video = m.top.findNode("Video")
-    m.videoContent = createObject("roSGNode", "ContentNode")
-    m.videoGrid = m.top.findNode("vgrid")
-    m.categorySelector = m.top.findNode("selector")
-    m.searchKeyboard = m.top.findNode("searchKeyboard")
-    m.vjschars = {"play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730)}
-    m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
-    m.searchKeyboardDialog.itemSize = [280,65]
-    m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
-    m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
-    m.ffrwTimer = m.top.findNode("ffrwTimer")
-    m.videoUITimer = m.top.findNode("videoUITimer")
-    m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
-    m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
-    m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
-    m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
-    m.videoButtons.itemSize = [128,128]
-    'TODO: create spacing for this
-    m.standardButtonsLoggedIn = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}], m.videoButtons.itemSize) 
-    m.standardButtonsLoggedOut = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"}], m.videoButtons.itemSize) 
-    m.liveButtonsLoggedIn = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: Chr(61729), itemID: "toggleChat"}], m.videoButtons.itemSize)
-    m.liveButtonsLoggedOut = createBothItemsIdentified(m.videoButtons, [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"}, {item: Chr(61729), itemID: "toggleChat"}], m.videoButtons.itemSize)
-    m.videoButtons.content = m.standardButtonsLoggedOut
-    m.videoButtons.observeField("itemFocused", "videoButtonFocused")
-    m.standardVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon"}
-    m.liveVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle"}
-    regenerateNormalButtonRefs()
-    m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
-    m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
-    m.currentVideoClaimID = "" 'Current claim ID for Video
-    m.currentVideoReactions = {}
-    m.currentVideoPosition = [0,0]
+  m.appTimer = CreateObject("roTimeSpan")
+  m.appTimer.Mark()
+  if m.global.constants.enableStatistics
+    m.vStatsTimer = CreateObject("roTimeSpan")
+    m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
+    m.watchman.observeField("output", "watchmanRan")
+    m.rokuInstall = createObject("roSGNode", "rokuInstall") 'analytics (install)
+    m.watchman.observeField("cookies", "gotCookies")
+    m.rokuInstall.observeField("cookies", "gotCookies")
+  end if
+  m.maxThreads = 2
+  m.runningThreads = []
+  m.threads = []
+  'UI Logic/State Variables
+  m.loaded = False 'Has the app finished its first load?
+  m.favoritesLoaded = false 'Were favorites loaded?(init only)
+  m.favoritesUIFlag = true 'Is a post-init favorites transition allowed?
+  m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
+  m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
+  m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
+  m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
+  m.videoTransitionState = 0 '0=None, 1=Rewind, 2=FastForward
+  m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
+  m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
+  m.searchType = "channel" 'changed to either video or channel
+  m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
+  m.uiLayer = 0 '0=Base (Channel Grid/Search), 1=First search layer, 2=Second search layer
+  m.uiLayers = [] 'directly correlates with m.uiLayer-1. Layer 0 is managed by the sidebar/categorySelector.
+  m.videoButtonSelected = "none"
+  'UI Items
+  m.errorText = m.top.findNode("warningtext")
+  m.errorSubtext = m.top.findNode("warningsubtext")
+  m.errorButton = m.top.findNode("warningbutton")
+  m.loadingText = m.top.findNode("loadingtext")
+  m.header = m.top.findNode("headerrectangle")
+  m.chatBox = m.top.findNode("ChatBox")
+  m.superChatBox = m.top.findNode("SuperChatBox")
+  m.sidebarTrim = m.top.findNode("sidebartrim")
+  m.sidebarBackground = m.top.findNode("sidebarbackground")
+  m.chatBackground = m.top.findNode("chatBackground")
+  m.superChatBackground = m.top.findNode("SuperChatBackground")
+  m.odyseeLogo = m.top.findNode("odyseelogo")
+  m.video = m.top.findNode("Video")
+  m.videoContent = createObject("roSGNode", "ContentNode")
+  m.videoGrid = m.top.findNode("vgrid")
+  m.categorySelector = m.top.findNode("selector")
+  m.searchKeyboard = m.top.findNode("searchKeyboard")
+  m.vjschars = {"play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730)}
+  m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
+  m.searchKeyboardDialog.itemSize = [280,65]
+  m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
+  m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
+  m.ffrwTimer = m.top.findNode("ffrwTimer")
+  m.videoUITimer = m.top.findNode("videoUITimer")
+  m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
+  m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
+  m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
+  m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
+  m.videoButtons.itemSize = [128,128]
+  m.standardButtonsLoggedIn = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}] 
+  m.standardButtonsLoggedOut = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"}]
+  m.liveButtonsLoggedIn = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: Chr(61729), itemID: "toggleChat"}]
+  m.liveButtonsLoggedOut = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"}, {item: Chr(61729), itemID: "toggleChat"}], m.videoButtons.itemSize)
+  m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
+  m.videoButtons.observeField("itemFocused", "videoButtonFocused")
+  m.standardVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon"}
+  m.liveVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle"}
+  regenerateNormalButtonRefs()
+  m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
+  m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
+  m.currentVideoClaimID = "" 'Current claim ID for Video
+  m.currentVideoReactions = {}
+  m.currentVideoPosition = [0,0]
+  m.searchHistoryBox = m.top.findNode("searchHistory")
+  m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
+  m.searchHistoryItems = []
+  m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
+  m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
+  m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
+  m.oauthHeader = m.top.findNode("oauth-header")
+  m.oauthCode = m.top.findNode("oauth-code")
+  m.oauthFooter = m.top.findNode("oauth-footer")
+  m.oauthLogoutButton = m.top.findNode("logoutButton")
 
-    m.searchHistoryBox = m.top.findNode("searchHistory")
-    m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
-    m.searchHistoryItems = []
-    m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
-    m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
-    m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
-    m.oauthHeader = m.top.findNode("oauth-header")
-    m.oauthCode = m.top.findNode("oauth-code")
-    m.oauthFooter = m.top.findNode("oauth-footer")
-    m.oauthLogoutButton = m.top.findNode("logoutButton")
-    'UI Item observers
-    m.video.observeField("state", "onVideoStateChanged")
-    m.categorySelector.observeField("itemFocused", "categorySelectorFocusChanged")
-    m.videoGrid.observeField("rowItemSelected", "resolveVideo")
-    m.searchHistoryBox.observeField("itemSelected", "historySearch")
-    m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
-    m.searchKeyboardDialog.observeField("itemSelected", "search")
-    m.oauthLogoutButton.observeField("buttonSelected", "Logout")
-
-    '=========Warnings=========
-    m.DeviceInfo=createObject("roDeviceInfo")
-    m.ModelNumber = m.DeviceInfo.GetModel()
-    m.maxThumbHeight=220
-    m.maxThumbWidth=390
+  'UI Item observers
+  m.video.observeField("state", "onVideoStateChanged")
+  m.categorySelector.observeField("itemFocused", "categorySelectorFocusChanged")
+  m.videoGrid.observeField("rowItemSelected", "resolveVideo")
+  m.searchHistoryBox.observeField("itemSelected", "historySearch")
+  m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
+  m.searchKeyboardDialog.observeField("itemSelected", "search")
+  m.oauthLogoutButton.observeField("buttonSelected", "Logout")
   
   'Tasks
   m.ws = createObject("roSGNode", "WebSocketClient")
@@ -405,8 +393,10 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               else if m.videoButtonSelected = "toggleChat"
                 'TODO: change toggleChat video button's image.
                 if m.chatBox.visible
+                  m.chatBackground.visible = false
                   m.chatBox.visible = false
                 else
+                  m.chatBackground.visible = true
                   m.chatBox.visible = true
                 end if
               end if
@@ -544,6 +534,16 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
               m.ffrwTimer.control = "start"
             end if
           end if
+          if m.video.visible AND m.videoContent.Live
+            'TODO: change toggleChat video button's image.
+              if m.chatBox.visible
+                m.chatBackground.visible = false
+                m.chatBox.visible = false
+              else
+                m.chatBackground.visible = true
+                m.chatBox.visible = true
+              end if
+          end if
         end if
         if key = "options"
             if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
@@ -557,13 +557,6 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 m.videoGrid.visible = false
                 m.loadingText.visible = true
                 m.loadingText.text = "Resolving Channel..."
-              end if
-            else if m.video.visible AND m.videoContent.Live
-              'TODO: change toggleChat video button's image.
-              if m.chatBox.visible
-                m.chatBox.visible = false
-              else
-                m.chatBox.visible = true
               end if
             end if
         end if
@@ -1000,7 +993,6 @@ sub backToKeyboard()
   m.searchHistoryDialog.visible = True
   m.videoGrid.visible = False
   m.loadingText.visible = False
-  m.searchFailed = False
   m.loadingText.text = "Loading..."
   m.searchKeyboard.setFocus(true)
   m.focusedItem = 3 '[search keyboard] 
@@ -1036,15 +1028,15 @@ Sub resolveVideo(url = invalid)
         end if
         if curItem.itemType = "livestream"
           ?"Playing a livestream"
-          m.currentVideoChannelIcon = curitem.channelicon
+          m.currentVideoChannelIcon = curItem.channelicon
+          ? curItem.channelicon
           m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
           m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
           isFollowed = false
           if m.wasLoggedIn
-            m.videoButtons.content = m.liveButtonsLoggedIn
+            m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, m.videoButtons.itemSize)
             m.videoButtons.itemSpacing="[20, 20]"
-            m.videoButtons.columnSpacings="[400, 0, 0, 0, 0]"
-            m.videoButtons.numColumns = 5
+            m.videoButtons.columnSpacings="[0,656,0,0,0]"
             m.videoButtons.animateToItem = 2
             getReactions(curItem.guid)
             m.videoButtons.animateToItem = 3
@@ -1064,15 +1056,14 @@ Sub resolveVideo(url = invalid)
               m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
             end if
           else
-            m.videoButtons.content = m.liveButtonsLoggedOut
+            m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedOut, m.videoButtons.itemSize)
             m.videoButtons.itemSpacing="[20, 20]"
-            m.videoButtons.columnSpacings="[400, 0, 0, 0]"
-            m.videoButtons.numColumns = 4
+            m.videoButtons.columnSpacings="[1040]"
             m.videoButtons.animateToItem = 2
           end if
           regenerateLiveButtonRefs()
+          m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
           isFollowed = invalid
-          m.chatID = curItem.guid
           m.videoContent.url = curItem.URL
           m.videoContent.streamFormat = curItem.streamFormat
           m.videoContent.title = curItem.description
@@ -1123,11 +1114,10 @@ sub resolveEvaluatedVideo(curItem)
   m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
   isFollowed = false
   if m.wasLoggedIn
-    m.videoButtons.content = m.standardButtonsLoggedIn
+    m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
     m.videoButtons.itemSpacing="[20, 20]"
     m.videoButtons.columnSpacings="[0, 200, 0, 0, 200, 0]"
     getReactions(curItem.guid)
-    m.videoButtons.numColumns = 6
     m.videoButtons.animateToItem = 3
     if m.preferences.Count() > 0 AND isValid(m.preferences.following)
       if m.preferences.following.Count() > 0
@@ -1145,10 +1135,9 @@ sub resolveEvaluatedVideo(curItem)
       m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
     end if
   else
-    m.videoButtons.content = m.standardButtonsLoggedOut
+    m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
     m.videoButtons.itemSpacing="[20, 20]"
-    m.videoButtons.columnSpacings="[400, 0, 0, 0]"
-    m.videoButtons.numColumns = 4
+    m.videoButtons.columnSpacings="[328, 0, 0]"
     m.videoButtons.animateToItem = 2
   end if
   regenerateNormalButtonRefs()
@@ -1167,6 +1156,7 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
   ?m.video.duration
   if m.refreshes = 0
     m.chatBox.visible = true
+    m.chatBackground.visible = true
     m.superChatBox.visible = true
     m.superChatBackground.visible = true
   end if
@@ -1397,6 +1387,7 @@ Function returnToUIPage()
     m.superChatBox.visible = false
     m.superChatBackground.visible = false
     m.chatBox.visible = false
+    m.chatBackground.visible = false
     m.chatBox.text = ""
     m.superChatArray = []
     m.superChatBox.text = ""
@@ -1795,7 +1786,6 @@ end function
 function on_chat(event as object) as void
   eData = event.getData()
   if isValid(edata)
-    m.chatBox.visible = true
     m.chatBox.text = edata.raw.join(Chr(10))
   end if
 end function

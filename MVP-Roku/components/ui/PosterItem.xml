@@ -27,6 +27,11 @@
             End Sub
             Sub updateLayout()
                 If m.top.height > 0 And m.top.width > 0 Then
+                    if m.top.height > 349
+                        m.Title.wrap = true
+                    else
+                        m.Title.wrap = false
+                    end if
                     m.Poster.width  = m.top.width-20
                     m.Poster.loadwidth  = m.poster.width
                     m.Poster.height = 197

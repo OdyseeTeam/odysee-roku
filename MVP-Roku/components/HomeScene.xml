@@ -210,6 +210,13 @@
         />
     </Group>
 
+    <Rectangle id = "ChatBackground"
+    width = "450"
+    height = "980"
+    visible="false"
+    translation="[1460, 55]"
+    color = "0x000000BB"/>
+
     <ScrollableText id = "ChatBox"
             width = "450"
             height = "980"

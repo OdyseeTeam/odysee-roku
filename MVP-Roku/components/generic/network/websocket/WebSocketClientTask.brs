@@ -28,19 +28,14 @@ function runtask() as void
             m.fontReg = CreateObject("roFontRegistry")
             m.fontReg.Register("pkg://components/generic/fonts/Inter-Emoji.otf")
             m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]", "")
-            m.totalMesgHeight = 0
             m.comments = m.top.findNode("chat")
             'Time to get chat history.
             chat = []
-            messageHeights = []
-            m.thumbnailCache = {}
-            totalHeight = 0
-            allowedHeight = m.top.allowedHeight+1-1
             commentURL = m.top.constants["COMMENT_API"] + "?m=comment.List"
             commentJSON = FormatJson({ "jsonrpc": "2.0", "id": 1, "method": "comment.List", "params": { "page": 1, "claim_id": m.top.streamClaim, "page_size": 20, "top_level": true, "channel_id": m.top.channelid, "sort_by": 0 } })
             chatResponse = postJSON(commentJSON, commentURL, invalid)
             superChatURL = m.top.constants["COMMENT_API"] + "?m=comment.SuperChatList"
-            superChatJSON = FormatJson({ "jsonrpc": "2.0", "id": 1, "method": "comment.List", "params": { "page": 1, "claim_id": m.top.streamClaim, "page_size": 70, "top_level": true, "channel_id": m.top.channelID, "sort_by": 0 } })
+            superChatJSON = FormatJson({ "jsonrpc": "2.0", "id": 1, "method": "comment.SuperChatList", "params": { "claim_id": m.top.streamClaim } })
             superchatResponse = postJSON(superChatJSON, superChatURL, invalid)
             retries = 0
             while true
@@ -73,13 +68,24 @@ function runtask() as void
             m.rawChat = []
             m.parsedChat = []
             for each superchatitem in superchatResponse.result.items
-                    if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1
-                        if superChatLength > 4
-                            exit for
-                        end if
-                        m.superchat.Push("[" + m.chatRegex.Replace(superchatitem["channel_name"] + "]: " + superchatitem["comment"].replace("\n", " ").Trim(), ""))
-                        superChatLength += 1
+                message_supported=false
+                try 'check if supported
+                    support_amount = superchatitem.support_amount
+                    if support_amount > 0
+                      message_supported = true
                     end if
+                catch e
+                    message_supported = false
+                end try
+                'TODO: fix message support/superchat endpoint
+                'stop
+                if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1 AND message_supported
+                    if superChatLength > 4
+                        exit for
+                    end if
+                    m.superchat.Push("[" + m.chatRegex.Replace(superchatitem["channel_name"] + "]: " + superchatitem["comment"].replace("\n", " ").Trim(), ""))
+                    superChatLength += 1
+                end if
             end for
             ? "WSC: Superchat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             ? m.superchat
@@ -96,7 +102,6 @@ function runtask() as void
             ? "WSC: Chat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             m.top.superchat = m.superchat
             m.top.chat = {raw: m.rawChat, parsed: m.parsedChat}
-            m.top.thumbnailCache = m.thumbnailCache
             ? m.top.superchat
 
             m.ws = WebSocketClient()
@@ -140,10 +145,6 @@ function runtask() as void
                         m.ws.set_protocols(msg.getData())
                     else if msg.getField() = "headers"
                         m.ws.set_headers(msg.getData())
-                    else if msg.getField() = "thumbnailCache"
-                        m.top.thumbnailCache = msg.getData()
-                    else if msg.getField() = "m.messageHeights"
-                        m.top.messageHeights = msg.getData()
                     end if
                     ' WebSocket event
                 else if type(msg) = "roAssociativeArray"
@@ -190,7 +191,6 @@ function runtask() as void
                                     end if
                                 else if message.type = "removed"
                                     m.parseTimer.Mark()
-                                    messageHeights = m.top.messageHeights
                                     cid = 0
                                     for each comment in m.parsedChat
                                         if comment.comment_id = message.data.comment.comment_id
