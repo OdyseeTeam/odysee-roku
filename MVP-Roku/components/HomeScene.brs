@@ -1086,7 +1086,13 @@ Sub resolveVideo(url = invalid)
           m.videoButtons.animateToItem = 3
           m.ws.observeField("on_close", "on_close")
           m.ws.observeField("on_error", "on_error")
-          m.ws.setFields({"constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id="+m.currentVideoClaimID+"&category="+curitem.creator+":c&sub_category=viewer","streamclaim": m.currentVideoClaimID,"channelid": m.currentVideoChannelID,"protocols": [], "headers": []})
+          if isValid(m.preferences)
+            if isValid(m.preferences.blocked)
+              m.ws.setFields({"blocked": m.preferences.blocked,"constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id="+m.currentVideoClaimID+"&category="+curitem.creator+":c&sub_category=viewer","streamclaim": m.currentVideoClaimID,"channelid": m.currentVideoChannelID,"protocols": [], "headers": []})
+            else
+              m.ws.setFields({"constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id="+m.currentVideoClaimID+"&category="+curitem.creator+":c&sub_category=viewer","streamclaim": m.currentVideoClaimID,"channelid": m.currentVideoChannelID,"protocols": [], "headers": []})
+            end if
+          end if
           ? m.ws.open
           m.ws.observeField("thumbnailCache", "thumbnailCacheChanged")
           m.ws.observeField("messageHeights", "messageHeightsChanged")

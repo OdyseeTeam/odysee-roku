@@ -23,6 +23,11 @@ end function
 function runtask() as void
     if isValid(m.top.streamClaim)
         if m.top.streamClaim <> "" and m.top.streamClaim <> "none"
+            'TODO: hide blocked users in chat/superchat
+            'if isValid(m.top.blocked)
+            '    if m.top.blocked.Count() > 0
+            '    end if
+            'end if
             m.parseTimer = CreateObject("roTimespan")
             m.parseTimer.Mark()
             m.fontReg = CreateObject("roFontRegistry")
