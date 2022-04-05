@@ -114,7 +114,6 @@ Sub init()
   m.channelResolver = createObject("roSGNode", "getSingleChannel")
   m.videoSearch = createObject("roSGNode", "getVideoSearch")
   m.channelSearch = createObject("roSGNode", "getChannelSearch")
-  m.chatHistory = createObject("roSGNode", "getChatHistory")
   m.InputTask=createObject("roSgNode","inputTask")
   m.InputTask.observefield("inputData","handleInputEvent")
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
@@ -123,11 +122,6 @@ Sub init()
   m.channelResolver.observeField("cookies", "gotCookies")
   m.videoSearch.observeField("cookies", "gotCookies")
   m.channelSearch.observeField("cookies", "gotCookies")
-  m.chatHistory.observeField("cookies", "gotCookies")
-  m.chatHistory.observeField("superChat", "on_superchat")
-  m.chatHistory.observeField("output", "gotChatHistory")
-  m.chatHistory.observeField("messageHeights", "messageHeightsChanged")
-  m.chatHistory.observeField("thumbnailCache", "thumbnailCacheChanged")
   m.constantsTask = createObject("roSGNode", "getConstants")
   m.constantsTask.observeField("constants", "gotConstants")
   m.authTask = createObject("roSGNode", "authTask")
@@ -373,10 +367,10 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 ? "like"
                 ? m.wasLoggedIn
                 if m.wasLoggedIn
-                  if m.currentVideoReactions.mine.dislikes > 0
+                  if m.currentVideoReactions.mine.likes > 0
                     setReaction(m.currentVideoClaimID, "negate")
                   else
-                    setReaction(m.currentVideoClaimID, "dislike")
+                    setReaction(m.currentVideoClaimID, "like")
                   end if
                 end if
               else if m.videoButtonSelected = "dislike"
@@ -384,10 +378,10 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 ? m.wasLoggedIn
                 if m.wasLoggedIn
                 ' Dislike
-                  if m.currentVideoReactions.mine.likes > 0
+                  if m.currentVideoReactions.mine.dislikes > 0
                     setReaction(m.currentVideoClaimID, "negate")
                   else
-                    setReaction(m.currentVideoClaimID, "like")
+                    setReaction(m.currentVideoClaimID, "dislike")
                   end if
                 end if
               else if m.videoButtonSelected = "toggleChat"
@@ -836,6 +830,8 @@ sub categorySelectorFocusChanged(msg)
 end sub
 
 sub showVideoOverlay()
+  m.chatBackground.height = "780"
+  m.chatBox.height = "780"
   m.videoUITimer.control = "stop"
   m.videoUITimer.unobserveField("fire")
   m.videoUITimer.duration = 5
@@ -845,6 +841,8 @@ sub showVideoOverlay()
 end sub
 
 sub hideVideoOverlay()
+  m.chatBackground.height = "980"
+  m.chatBox.height = "980"
   m.videoUITimer.control = "stop"
   m.videoUITimer.unobserveField("fire")
   m.videoOverlayGroup.visible = false
@@ -963,7 +961,6 @@ sub cleanupToUIPage() 'more aggressive returnToUIPage, until I recreate the UI l
   m.urlResolver.control = "STOP"
   m.channelResolver.control = "STOP"
   m.constantsTask.control = "STOP"
-  m.chatHistory.control = "STOP"
   m.ws.control = "STOP"
   m.videoSearch.control = "STOP"
   m.channelSearch.control = "STOP"
@@ -1050,6 +1047,7 @@ Sub resolveVideo(url = invalid)
                 end for
               end if
             end if
+            regenerateLiveButtonRefs()
             if isFollowed
               m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
             else
@@ -1060,8 +1058,8 @@ Sub resolveVideo(url = invalid)
             m.videoButtons.itemSpacing="[20, 20]"
             m.videoButtons.columnSpacings="[1040]"
             m.videoButtons.animateToItem = 2
+            regenerateLiveButtonRefs()
           end if
-          regenerateLiveButtonRefs()
           m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
           isFollowed = invalid
           m.videoContent.url = curItem.URL
@@ -1135,6 +1133,7 @@ sub resolveEvaluatedVideo(curItem)
         end for
       end if
     end if
+    regenerateNormalButtonRefs()
     if isFollowed
       m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
     else
@@ -1145,8 +1144,8 @@ sub resolveEvaluatedVideo(curItem)
     m.videoButtons.itemSpacing="[20, 20]"
     m.videoButtons.columnSpacings="[328, 0, 0]"
     m.videoButtons.animateToItem = 2
+    regenerateNormalButtonRefs()
   end if
-  regenerateNormalButtonRefs()
   m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
   m.urlResolver.observeField("output", "playResolvedVideo")
   m.urlResolver.control = "RUN"
@@ -1792,7 +1791,7 @@ end function
 function on_chat(event as object) as void
   eData = event.getData()
   if isValid(edata)
-    m.chatBox.text = edata.raw.join(Chr(10))
+    m.chatBox.text = edata.raw.join(Chr(10)+Chr(10))
   end if
 end function
 
@@ -2298,14 +2297,23 @@ end sub
 sub gotReactions(msg as object)
   data = msg.getData()
   m.currentVideoReactions = data
+  ? data.mine
+  ? data.total
+  ? m.videoButtonsDislikeIcon
+  'TODO: fix setting videoButtonsDislikeIcon's Poster URL/Dislike Detection Logic
   '{"mine":{"dislikes":0,"likes":0},"total":{"dislikes":3,"likes":6}}
   if isValid(data.mine) AND isValid(data.total)
     if isValid(data.mine.dislikes) AND isValid(data.mine.likes) AND isValid(data.total.dislikes) AND isValid(data.total.likes)
+      ? "likes:"
+      ? data.mine.likes+data.total.likes
+      ? "dislikes"
+      ? data.mine.dislikes+data.total.dislikes
       if data.mine.likes > 0
         m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64-selected.png"
-      else if data.mine.likes = 0
+      else
         m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64.png"
-      else if data.mine.dislikes > 0
+      end if
+      if data.mine.dislikes > 0
         if data.total.dislikes >= 99
           m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64-selected.png"
         else
@@ -2313,9 +2321,12 @@ sub gotReactions(msg as object)
         end if
       else if data.mine.dislikes = 0 AND data.total.dislikes >= 100
         m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64.png"
+      else if data.mine.dislikes = 0 AND data.total.dislikes < 100
+        m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64.png"
       end if
     end if
   end if
+  ? m.videoButtonsDislikeIcon
   m.getreactionTask.control = "STOP"
 end sub
 sub setReaction(videoID, reaction)

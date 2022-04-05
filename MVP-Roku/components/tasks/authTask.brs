@@ -169,7 +169,7 @@ sub checkRefresh()
         ?"`" + m.top.refreshToken + "`"
         ?"getting user info (TEST)"
         accountRoot = m.top.constants["ROOT_SSO"]+""
-        authreq = getJSON(accountRoot + "/auth/realms/Users/protocol/openid-connect/userinfo", { "Authorization": "Bearer " + m.top.accessToken })
+        authreq = getJSONAuthenticated(accountRoot + "/auth/realms/Users/protocol/openid-connect/userinfo", { "Authorization": "Bearer " + m.top.accessToken })
         ?FormatJson(authreq)
         if isValid(authreq.error)
             if authreq.error = "invalid_request"

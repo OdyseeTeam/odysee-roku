@@ -18,7 +18,7 @@ sub master()
                 prodWalletData = ""
                 inSync = false
 
-                userData = getJSON(m.top.constants["ROOT_API"]+"/user/me", { "Authorization": "Bearer " + m.top.accessToken })
+                userData = getJSONAuthenticated(m.top.constants["ROOT_API"]+"/user/me", { "Authorization": "Bearer " + m.top.accessToken })
                 if isValid(userData.data)
                     m.top.uid = userData.data.id
                 end if
@@ -35,7 +35,7 @@ sub master()
                     end if
                 end if
 
-                prodWallet = getJSON(m.top.constants["ROOT_API"]+"/sync/get?hash=" + sdkHash, { "Authorization": "Bearer " + m.top.accessToken })
+                prodWallet = getJSONAuthenticated(m.top.constants["ROOT_API"]+"/sync/get?hash=" + sdkHash, { "Authorization": "Bearer " + m.top.accessToken })
                 if prodWallet.success = true
                     if isValid(prodWallet.data)
                         if isValid(prodWallet.data.hash) and isValid(prodWallet.data.data)

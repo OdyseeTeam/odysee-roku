@@ -196,6 +196,52 @@ function urlencode(data)
   return encoded
 end function
 
+function getJSONAuthenticated(url, headers = invalid) as Object
+  http = httpPreSetup(url)
+  if IsValid(headers)
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+  end if
+  if http.AsyncGetToString() then
+    event = Wait(5000, http.GetPort())
+      if Type(event) = "roUrlEvent" Then
+        responseCode = event.GetResponseCode()
+        if responseCode <= 299 AND responseCode >= 200
+          m.top.cookies = http.getCookies("", "/")
+          response = parsejson(event.getString().replace("\n","|||||"))
+        end if
+        if responseCode <= 399 AND responseCode >= 300
+          headers = event.GetResponseHeaders()
+          redirect = headers.location
+          http.asynccancel()
+          return getJSON(redirect)
+        end if
+        if responseCode <= 499 AND responseCode >= 400
+          try
+            m.top.cookies = http.getCookies("", "/")
+            response = parsejson(event.getString().replace("\n","|||||"))
+          catch e
+            return {success: False}
+          end try
+        end if
+        if responseCode <= 599 AND responseCode >= 500
+          http.asynccancel()
+          return getJSON(url)
+        end if
+        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+          http.asynccancel()
+          return getJSON(url)
+        end if
+      else if event = invalid then
+        http.asynccancel()
+        return getJSON(url)
+      Else
+        ? "[LBRY_HTTP] AsyncGetToString unknown event"
+    end if
+  end if
+cleanup()
+return response
+end function
+
 function getJSON(url) as Object
     http = httpPreSetup(url)
     if http.AsyncGetToString() then
