@@ -138,7 +138,7 @@ Sub init()
   m.syncLoopChildren = m.syncLoop.getChildren(-1, 0)
   m.authTaskTimer = m.authTaskChildren[0]
   m.syncLoopTimer = m.syncLoopChildren[0]
-  m.syncLoopState = 0 'Sync loop state variable.
+  m.syncLoopState = 0 'Sync loop state variable
   m.accessToken = ""
   m.accessTokenExpiration = 0
   m.refreshToken = ""
