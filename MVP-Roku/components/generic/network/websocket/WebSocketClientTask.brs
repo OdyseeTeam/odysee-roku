@@ -73,18 +73,18 @@ function runtask() as void
             m.rawChat = []
             m.parsedChat = []
             for each superchatitem in superchatResponse.result.items
-                message_supported=false
+                message_supported = false
                 try 'check if supported
                     support_amount = superchatitem.support_amount
                     if support_amount > 0
-                      message_supported = true
+                        message_supported = true
                     end if
                 catch e
                     message_supported = false
                 end try
                 'TODO: fix message support/superchat endpoint
                 'stop
-                if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1 AND message_supported
+                if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1 and message_supported  and isValid(m.blocked[superchatitem["channel_id"]]) = false
                     if superChatLength > 4
                         exit for
                     end if
@@ -97,16 +97,16 @@ function runtask() as void
             m.parseTimer.Mark()
             chatResponse.result.items.Reverse()
             for each chatitem in chatResponse.result.items
-                if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1
+                if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 and isValid(m.blocked[chatitem["channel_id"]]) = false
                     m.parsedChat.push(parseComment(chatitem)) 'so we can add/remove comments quickly later on
                 end if
             end for
-            for each chatitem in m.parsedChat 
+            for each chatitem in m.parsedChat
                 m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
             end for
             ? "WSC: Chat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             m.top.superchat = m.superchat
-            m.top.chat = {raw: m.rawChat, parsed: m.parsedChat}
+            m.top.chat = { raw: m.rawChat, parsed: m.parsedChat }
             ? m.top.superchat
 
             m.ws = WebSocketClient()
@@ -172,26 +172,28 @@ function runtask() as void
                                     if isValid(message.data)
                                         ? "data valid"
                                         if isValid(message.data.comment)
-                                            ? "got a comment"
-                                            chatitem = message.data.comment
-                                            if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1
-                                                m.parsedChat.push(parseComment(chatitem))
+                                            if isValid(message.data.comment.channel_id)
+                                                ? "got a comment"
+                                                chatitem = message.data.comment
+                                                if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 AND isValid(m.blocked[chatitem.channel_id]) = false
+                                                    m.parsedChat.push(parseComment(chatitem))
+                                                end if
+                                                chatitem = invalid
+                                                if m.parsedChat.Count() > 20
+                                                    while m.parsedChat.Count() > 20
+                                                        m.parsedChat.Shift()
+                                                        if m.parsedChat.Count() <= 20
+                                                            exit while
+                                                        end if
+                                                    end while
+                                                end if
+                                                for each chatitem in m.parsedChat
+                                                    m.rawChat.Shift()
+                                                    m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
+                                                end for
+                                                m.top.chat = { raw: m.rawChat, parsed: m.parsedChat }
+                                                ? "WSC: Parsing Chat Message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                             end if
-                                            chatitem = invalid
-                                            if m.parsedChat.Count() > 20
-                                                while m.parsedChat.Count() > 20
-                                                    m.parsedChat.Shift()
-                                                    if m.parsedChat.Count() <= 20
-                                                        exit while
-                                                    end if
-                                                end while
-                                            end if
-                                            for each chatitem in m.parsedChat
-                                                m.rawChat.Shift()
-                                                m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
-                                            end for
-                                            m.top.chat = {raw: m.rawChat, parsed: m.parsedChat}
-                                            ? "WSC: Parsing Chat Message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                         end if
                                     end if
                                 else if message.type = "removed"
@@ -209,7 +211,7 @@ function runtask() as void
                                     for each chatitem in m.parsedChat
                                         m.rawChat.push(chatitem["username"] + "]: " + chatitem["message"].replace("\n", " ").Trim())
                                     end for
-                                    m.top.chat = {raw: m.rawChat, parsed: m.parsedChat}
+                                    m.top.chat = { raw: m.rawChat, parsed: m.parsedChat }
                                     ? "WSC: Removing message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
                                 else if message.type = "viewers"
                                     ' ? "GOT VIEWERS MESSAGE!"
@@ -249,7 +251,7 @@ function runtask() as void
 end function
 
 function parseComment(comment)
-    newComment = {message: "", username:"", comment_id: ""}
+    newComment = { message: "", username: "", comment_id: "" }
     'Note that each comment is actually based on chatdata.xml, this is because we are feeding it directly into m.chatBox
     if isValid(comment.message)
         newComment.message = m.chatRegex.Replace(comment.message, "")

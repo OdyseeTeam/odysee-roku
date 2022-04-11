@@ -21,7 +21,6 @@
         <field id="chat" type="assocArray" alwaysNotify="true"/>
         <field id="streamclaim" type="string" value="none"/>
         <field id="channelid" type="string" value="none"/>
-        <field id="allowedHeight" type="Int" value="960"/> <!--Set allowed height of chat here.-->
         <field id="currentViewers" type="Int" value="0"/>
         <field id="blocked" type="roArray"/> <!--Blocked users from preferences-->
         <field id="on_error" type="assocarray" alwaysNotify="true" />

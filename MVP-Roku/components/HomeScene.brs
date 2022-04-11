@@ -3,14 +3,6 @@ sub init()
   'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
   m.appTimer = CreateObject("roTimeSpan")
   m.appTimer.Mark()
-  if m.global.constants.enableStatistics
-    m.vStatsTimer = CreateObject("roTimeSpan")
-    m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
-    m.watchman.observeField("output", "watchmanRan")
-    m.rokuInstall = createObject("roSGNode", "rokuInstall") 'analytics (install)
-    m.watchman.observeField("cookies", "gotCookies")
-    m.rokuInstall.observeField("cookies", "gotCookies")
-  end if
   m.maxThreads = 2
   m.runningThreads = []
   m.threads = []
@@ -95,6 +87,19 @@ sub init()
   m.oauthLogoutButton.observeField("buttonSelected", "Logout")
 
   'Tasks
+  if m.global.constants.enableStatistics
+    m.vStatsTimer = CreateObject("roTimeSpan")
+    m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
+
+    observeFields("watchman", {"output": "watchmanRan",
+                               "cookies": "gotCookies"})
+
+    m.rokuInstall = createObject("roSGNode", "rokuInstall") 'analytics (install)
+
+    observeFields("rokuInstall", {"output": "didInstall",
+                                  "cookies": "gotCookies"})
+
+  end if
   m.ws = createObject("roSGNode", "WebSocketClient")
   m.wsChat = m.ws.findNode("chat")
   m.date = CreateObject("roDateTime")
@@ -338,19 +343,22 @@ sub authDone()
     m.cookies = m.authTask.cookies
     ?"AUTH IS DONE!"
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+
     if m.global.constants.enableStatistics
       m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
-      m.rokuInstall.observeField("output", "didInstall")
       m.rokuInstall.control = "RUN"
     end if
+
     m.video.EnableCookies()
-    m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
-    m.video.AddHeader("origin", "https://bitwave.tv")
-    m.video.AddHeader("referer", "https://bitwave.tv/")
-    m.video.AddHeader(":authority", "https://cdn.odysee.live")
-    m.video.AddHeader("Access-Control-Allow-Origin", "https://odysee.com/")
-    m.video.AddHeader(":method", "GET")
-    m.video.AddHeader(":path", "")
+
+    'Video Headers.
+    veaders = {"User-Agent": m.global.constants["userAgent"],
+               "origin": "https://odysee.com",
+               "referer": "https://roku.odysee.com/",
+               "Access-Control-Allow-Origin": "https://odysee.com/"}
+
+    m.video.SetHeaders(veaders)
+    veaders = invalid
     m.video.AddCookies(m.cookies)
     m.cidsTask.control = "RUN"
   end if
@@ -1365,8 +1373,10 @@ sub resolveVideo(url = invalid)
           ?m.video.videoFormat
           ?m.video
           m.videoButtons.animateToItem = 3
-          m.ws.observeField("on_close", "on_close")
-          m.ws.observeField("on_error", "on_error")
+          observeFields("ws", { "on_close": "on_close",
+                                "on_error": "on_error",
+                                "chat": "on_chat",
+                                "superchat": "on_superchat"})
           if isValid(m.preferences)
             if isValid(m.preferences.blocked)
               m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.creator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
@@ -1375,11 +1385,9 @@ sub resolveVideo(url = invalid)
             end if
           end if
           ? m.ws.open
-          m.ws.observeField("thumbnailCache", "thumbnailCacheChanged")
-          m.ws.observeField("messageHeights", "messageHeightsChanged")
-          m.ws.observeField("chat", "on_chat")
-          m.ws.observeField("superchat", "on_superchat")
           m.ws.control = "RUN"
+          m.chatBox.visible = true
+          m.chatBackground.visible = true
           m.videoGrid.setFocus(false)
         end if
       end if
