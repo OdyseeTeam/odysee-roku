@@ -1064,13 +1064,8 @@ Sub authDone()
     end if
     m.authenticated = True
     m.video.EnableCookies()
-    m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
-    m.video.AddHeader("origin","https://bitwave.tv")
-    m.video.AddHeader("referer","https://bitwave.tv/")
-    m.video.AddHeader(":authority","https://cdn.odysee.live")
-    m.video.AddHeader("Access-Control-Allow-Origin","https://odysee.com/")
-    m.video.AddHeader(":method", "GET")
-    m.video.AddHeader(":path", "")
+    headers = {"User-Agent": m.global.constants["userAgent"], origin: "https://odysee.com",referer: "https://roku.odysee.com/", "Access-Control-Allow-Origin": "https://odysee.com/"}
+    m.video.SetHeaders(headers)
     m.video.AddCookies(m.cookies)
     'm.getSinglePageTask = createObject("roSGNode", "getSinglePage")
     'm.getSinglePageTask.setFields({uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, constants: m.constants, channels: ["ae12172e991e675ed842a0a4412245d8ee1eb398"], rawname: "@SaltyCracker"})

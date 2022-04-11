@@ -277,6 +277,22 @@ function getRawText(url) as Object
   return response
 end function
 
+function getRawVideoResponse(url) as Object
+  http = httpPreSetup(url)
+  http.AddHeader("origin","https://odysee.com")
+  http.AddHeader("referer","https://roku.odysee.com/")
+  http.AddHeader(":authority","https://cdn.odysee.live")
+  http.AddHeader("Access-Control-Allow-Origin","https://odysee.com/")
+  http.AddHeader(":method", "GET")
+  http.AddHeader(":path", "")
+  if http.AsyncGetToString() then
+    event = Wait(5000, http.GetPort())
+      if Type(event) = "roUrlEvent" Then
+       return {resp: event.GetString(), headers: event.GetResponseHeaders(), code: event.getResponseCode()}
+    end if
+  end if
+end function
+
 function urlExists(url) as Object
   http = httpPreSetup(url)
   if http.AsyncGetToString() then
