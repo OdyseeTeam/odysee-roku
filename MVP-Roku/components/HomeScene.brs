@@ -126,7 +126,7 @@ Sub init()
   m.constantsTask.observeField("constants", "gotConstants")
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
-  observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID" })
+  observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID": "authtoken": "gotAuth": "cookies": "gotCookies" })
   observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
@@ -149,7 +149,6 @@ Sub init()
   m.cidsTask = createObject("roSGNode", "getChannelIDs")
   m.cidsTask.observeField("channelids", "gotCIDS")
 
-  m.legacyRegistry = CreateObject("roRegistrySection", "Authentication")
   m.authRegistry = CreateObject("roRegistrySection", "authData") 'Authentication Data (UID/authToken/etc.)
   m.deviceFlowRegistry = CreateObject("roRegistrySection", "deviceFlowData") 'Device Flow Data (Wallet, Sync Hashes (old/new), Auth Token+Refresh Token)
   m.preferencesRegistry = CreateObject("roRegistrySection", "preferences") 'User preferences (odysee.com/app local)
@@ -217,38 +216,322 @@ Sub init()
     end for
     ?m.searchHistoryItems
   end if
-  'LEGACY => CURRENT auth migration.
-  'This will be removed in the version after this one, we want to seperate USER and AUTHENTICATION data.
-  'Migrate Authentication
-  if IsValid(GetRegistry("legacyRegistry", "uid"))
-    if GetRegistry("legacyRegistry", "uid") <> "legacy" AND IsValid(GetRegistry("legacyRegistry", "authtoken")) AND IsValid(GetRegistry("legacyRegistry", "cookies"))
-      ?"found legacy account with UID"+GetRegistry("legacyRegistry", "uid")
-      m.uid = StrToI(GetRegistry("legacyRegistry", "uid"))
-      m.authToken = GetRegistry("legacyRegistry", "authtoken")
-      m.cookies = ParseJSON(GetRegistry("legacyRegistry", "cookies"))
-      ?"migrating legacy account"
-      SetRegistry("authRegistry", "uid", GetRegistry("legacyRegistry", "uid"))
-      SetRegistry("authRegistry", "authtoken", GetRegistry("legacyRegistry", "authtoken"))
-      SetRegistry("authRegistry", "cookies", GetRegistry("legacyRegistry", "cookies"))
-      SetRegistry("legacyRegistry", "uid", "legacy")
-      SetRegistry("legacyRegistry", "authtoken", "")
-      SetRegistry("legacyRegistry", "cookies", "")
-      m.authTask.setFields({uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})  
-    end if
-  end if
-  'Migrate Search History
-  if IsValid(GetRegistry("legacyRegistry", "searchHistory"))
-    if GetRegistry("legacyRegistry", "searchHistory") <> "legacy"
-      ?"found legacy search history"
-      m.searchHistoryItems = GetRegistry("legacyRegistry", "searchHistory")
-      ?"migrating legacy search history"
-      SetRegistry("searchHistoryRegistry", "searchHistory", GetRegistry("legacyRegistry", "searchHistory"))
-      SetRegistry("legacyRegistry", "searchHistory", "legacy")
-    end if
-  end if
   ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
   m.constantsTask.control = "RUN"
 End Sub
+
+'TODO: order app according to startup/seperate brightscript into seperate scripts for UI/startup/etc.
+
+'STARTUP TASKS
+Sub gotConstants()
+  ?m.constantsTask.constants
+  m.constantsTask.unobserveField("constants")
+  m.constantsTask.control = "STOP"
+  if m.constantsTask.error
+    retryError("Error getting constants from Github", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
+  else
+    m.constants = m.constantsTask.constants
+    m.authTask.setField("constants", m.constants)
+    m.getpreferencesTask.setField("constants", m.constants)
+    m.setpreferencesTask.setField("constants", m.constants)
+    m.setreactionTask.setField("constants", m.constants)
+    m.syncLoop.setField("constants", m.constants)
+    ?"Constants are done, running auth"
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    m.authTask.control = "RUN" 'authPhaseChanged is the next sub that will be triggered by the authTask.
+  end if
+End Sub
+
+Sub retryConstants()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.constantsTask.observeField("constants", "gotConstants")
+  m.constantsTask.control = "RUN"
+End Sub
+
+sub authPhaseChanged(msg as object)
+  if type(msg) = "roSGNodeEvent"
+    m.authTask.control = "STOP"
+    data = msg.getData()
+    if data = 10
+      ?"Phase 10 (Logging Out)"
+      ? m.authTask
+    end if
+    if data = 4
+      'Forced logout occurs either:
+      ' 1. When a user forcefully pulls their permission given to the odysee-roku app
+      ' 2. When the token expires due to Odysee reinitializing their servers
+      ?"Phase 4 (Forced Logout)"
+      Logout()
+    end if
+    if data = 3
+      ?"Phase 3 (Fully authenticated)"
+      m.wasLoggedIn = true
+      setRegistry("preferencesRegistry", "loggedIn", "true")
+      if m.syncTimerObserved = false
+        m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
+        m.syncLoop.control = "RUN"
+        m.syncLoopTimer.observeField("fire", "getSync")
+        m.syncTimerObserved = true
+      end if
+      if m.authTimerObserved = false
+        m.authTaskTimer.observeField("fire", "refreshAuth")
+        m.authTimerObserved = true
+      end if
+    end if
+    if data = 2
+      ?"Phase 2"
+      if m.legacyAuthenticated = false
+        m.wasLoggedIn = false
+        authDone()
+      end if
+      ? m.wasLoggedin
+      if m.authTimerObserved = false
+        m.authTaskTimer.observeField("fire", "refreshAuth")
+        m.authTimerObserved = true
+      end if
+    end if
+    if data = 1
+      ?"Phase 1 (Legacy Authenticated)"
+      if m.syncTimerObserved = true
+        m.syncLoop.control = "STOP"
+        m.syncLoopTimer.unobserveField("fire")
+        m.syncTimerObserved = false
+      end if
+      ?m.wasLoggedIn
+      if isValid(m.authTask.output)
+        if m.wasLoggedIn AND m.authTask.output.authenticated = false
+          authDone()
+        end if
+      end if
+      if m.wasLoggedIn = false
+        authDone()
+      end if
+      m.authTask.authPhase = 1
+      m.authTask.control = "RUN"
+      ?"Task Restarted"
+    end if
+    if data = 0
+      ?"Phase 0"
+      m.authTask.control = "RUN"
+    end if
+  end if
+end sub
+
+Sub authDone()
+  'This wraps up the authentication phase so we have authentication to query Odysee for our videos.
+  'We will run authPhaseChanged again if the user logs into Odysee/triggers the device flow phase with Following.
+  ?"Running authDone"
+  if m.authTask.authPhase = 1
+    m.authTask.control = "STOP"
+  end if
+  m.authTask.unobserveField("output")
+  if m.authTask.error
+    retryError("Error authenticating with Odysee", "Please e-mail rokusupport@halitesoftware.com.", "retryAuth")
+  else
+    m.legacyAuthenticated = True
+    ?m.authTask.output
+    m.uid = m.authTask.uid
+    m.authtoken = m.authTask.authtoken
+    m.cookies = m.authTask.cookies
+    ?"AUTH IS DONE!"
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    if m.global.constants.enableStatistics
+      m.rokuInstall.setFields({constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
+      m.rokuInstall.observeField("output", "didInstall")
+      m.rokuInstall.control = "RUN"
+    end if
+    m.video.EnableCookies()
+    m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
+    m.video.AddHeader("origin","https://bitwave.tv")
+    m.video.AddHeader("referer","https://bitwave.tv/")
+    m.video.AddHeader(":authority","https://cdn.odysee.live")
+    m.video.AddHeader("Access-Control-Allow-Origin","https://odysee.com/")
+    m.video.AddHeader(":method", "GET")
+    m.video.AddHeader(":path", "")
+    m.video.AddCookies(m.cookies)
+    m.cidsTask.control = "RUN"
+  end if
+End Sub
+
+Sub retryAuth()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.authTask.control = "RUN"
+End Sub
+
+Sub gotCIDS()
+  ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+  m.cidsTask.control = "STOP"
+  m.cidsTask.unobserveField("channelids")
+  if m.cidsTask.error
+    retryError("Error getting frontpage channel IDs", "Please e-mail rokusupport@halitesoftware.com.", "retryCIDS")
+  else
+    m.channelIDs = m.cidsTask.channelids
+    m.categorySelectordata = m.cidsTask.categoryselectordata
+    ?m.channelIDs
+    ?"Got channelIDs+category selector data"
+    ?"Creating threads"
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    blocked = []
+    if m.wasLoggedIn AND m.preferences.Count() > 0
+      if isValid(m.preferences.blocked)
+        ?"found blocked users"
+        if m.preferences.blocked.Count() > 0
+          blocked = m.preferences.blocked
+          ?formatJson(blocked)
+        end if
+      end if
+    end if
+    if m.wasLoggedIn AND m.preferences.Count() > 0
+      if isValid(m.preferences.following)
+        if m.preferences.following.Count() > 0
+          ?"found following"
+          ?formatJson(m.preferences["following"])
+          thread = CreateObject("roSGNode", "getSinglePage")
+          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+          thread.observeField("output", "threadDone")
+          m.threads.push(thread)
+          m.favoritesLoaded = true 'favorites were loaded because user is logged in
+        end if
+      end if
+    end if
+    for each category in m.channelIDs 'create categories for selector
+      catData = m.channelIDs[category]
+      thread = CreateObject("roSGNode", "getSinglePage")
+      if m.wasLoggedIn AND m.preferences.Count() > 0
+        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked})
+      else
+        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+      end if
+      thread.observeField("output", "threadDone")
+      m.threads.push(thread)
+      catData = invalid 'save memory
+    end for
+    ?"Done, starting threader."
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    m.categorySelector.content = m.categorySelectordata
+    ?m.categorySelectordata
+    ?m.categorySelector.content
+    for runvar = 0 to m.maxThreads-1
+      m.runningthreads.Push(m.threads[runvar])
+      m.threads.delete(runvar)
+    end for
+    for each thread in m.runningthreads
+      thread.control = "RUN" 'start threading
+    end for
+    ?"Threader started."
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+  end if
+End Sub
+
+Sub retryCIDS()
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+  m.errorButton.unobserveField("buttonSelected")
+  m.cidsTask.observeField("channelids", "gotCIDS")
+  m.cidsTask.control = "RUN"
+End Sub
+
+Sub threadDone(msg as Object)
+'This stops the thread that is running and then checks if they are all done, if they are, we wrap up and start the code to present the user interface.
+'This had to be done as Odysee queries sometimes take a long time if they are not cached, so having two threads makes things much faster, but returns deminish after that.
+if type(msg) = "roSGNodeEvent"
+  thread = msg.getRoSGNode()
+  if thread.error
+    if thread.errorcount = 2
+      'tried twice (w/likely hundreds of queries), kill it
+      thread.control = "STOP"
+      thread.unObserveField("output")
+      for threadindex = 0 to m.runningthreads.Count()
+        if IsValid(m.runningthreads[threadindex])
+          if m.runningthreads[threadindex].control = "stop"
+            if m.runningthreads[threadindex] = thread
+              todelete.push(threadindex)
+            end if
+          end if
+        end if
+      end for
+    else
+      'retry: thread is not past limit
+      thread.control = "STOP"
+      thread.control = "RUN"
+    end if
+  else
+    m.baseMediaIndex.append(thread.output.index)
+    m.mediaIndex = m.baseMediaIndex
+    ?thread.rawname
+    m.categories.addReplace(thread.rawname, thread.output.content)
+    thread.unObserveField("output")
+    thread.control = "STOP"
+    todelete = []
+    for threadindex = 0 to m.runningthreads.Count()
+      if IsValid(m.runningthreads[threadindex])
+        if m.runningthreads[threadindex].control = "stop"
+          todelete.push(threadindex)
+        end if
+      end if
+    end for
+    for each delthread in todelete
+      m.runningthreads.delete(delthread)
+    end for
+    if m.threads.count() > 0
+      thread = m.threads.Pop()
+      thread.control = "RUN"
+      m.runningthreads.Push(thread)
+    else
+      ?m.mediaIndex
+      ?m.mediaIndex.Count()
+      ?m.categories
+      ?m.categories[m.categories.Keys()[0]]
+      ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+      m.videoGrid.content = m.categories[m.categories.Keys()[0]]
+      m.loadingText.visible = false
+      m.loadingText.translation="[800,0]"
+      m.loadingText.vertAlign="center" 
+      m.loadingText.horizAlign="left"
+      if m.mediaIndex.Count() > 0
+        if m.authTask.authPhase > 0
+          finishInit()
+        end if
+      else
+        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
+      end if
+    end if
+  end if
+end if
+End Sub
+
+sub finishInit()
+  m.InputTask.control="RUN" 'run input task, since user input is now needed (UI) 
+  ?"init finished."
+  m.header.visible = true
+  m.sidebarTrim.visible = true
+  m.sidebarBackground.visible = true
+  m.odyseeLogo.visible = true
+  m.videoGrid.visible = true
+  m.categorySelector.jumpToItem = 2
+  m.categorySelector.visible = true
+  m.loaded = True
+  m.taskRunning = false
+  m.categorySelector.setFocus(true)
+  m.focusedItem = 1
+  m.global.scene.signalBeacon("AppLaunchComplete")
+  if isValid(m.global.deeplink)
+    if isValid(m.global.deeplink.contentId)
+      'TODO: create reverse livestream resolver so that livestreams can be deeplinked
+      'for now, if you try to play a livestream, this will break.
+      if m.global.deeplink.contentId.instr("http") < 1
+        resolveVideo(m.global.deeplink.contentId)
+      end if
+    end if
+  end if
+end sub
 
 Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
 ?"task running state is:"
@@ -1680,85 +1963,6 @@ sub clearHistory()
       end for
   end if
 end sub
-'========================Task Flow===============================
-
-Sub gotConstants()
-  ?m.constantsTask.constants
-  m.constantsTask.unobserveField("constants")
-  m.constantsTask.control = "STOP"
-  if m.constantsTask.error
-    retryError("Error getting constants from Github", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
-  else
-    m.constants = m.constantsTask.constants
-    m.authTask.setField("constants", m.constants)
-    m.getpreferencesTask.setField("constants", m.constants)
-    m.setpreferencesTask.setField("constants", m.constants)
-    m.setreactionTask.setField("constants", m.constants)
-    m.syncLoop.setField("constants", m.constants)
-    'uid, authtoken, cookies
-    m.authTask.observeField("uid", "gotUID")
-    m.authTask.observeField("authtoken", "gotAuth")
-    m.authTask.observeField("cookies", "gotCookies")
-    ?"Constants are done, running auth"
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
-    m.authTask.control = "RUN"
-  end if
-End Sub
-
-Sub retryConstants()
-  m.errorText.visible = false
-  m.errorSubtext.visible = false
-  m.errorButton.visible = false
-  m.errorButton.unobserveField("buttonSelected")
-  m.constantsTask.observeField("constants", "gotConstants")
-  m.constantsTask.control = "RUN"
-End Sub
-
-Sub authDone()
-  ?"Running authDone"
-  if m.authTask.authPhase = 1
-    m.authTask.control = "STOP"
-  end if
-  m.authTask.unobserveField("output")
-  if m.authTask.error
-    retryError("Error authenticating with Odysee", "Please e-mail rokusupport@halitesoftware.com.", "retryAuth")
-  else
-    m.legacyAuthenticated = True
-    ?m.authTask.output
-    m.uid = m.authTask.uid
-    m.authtoken = m.authTask.authtoken
-    m.cookies = m.authTask.cookies
-    ?"AUTH IS DONE!"
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-    if m.global.constants.enableStatistics
-      m.rokuInstall.setFields({constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
-      m.rokuInstall.observeField("output", "didInstall")
-      m.rokuInstall.control = "RUN"
-    end if
-    m.video.EnableCookies()
-    m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
-    m.video.AddHeader("origin","https://bitwave.tv")
-    m.video.AddHeader("referer","https://bitwave.tv/")
-    m.video.AddHeader(":authority","https://cdn.odysee.live")
-    m.video.AddHeader("Access-Control-Allow-Origin","https://odysee.com/")
-    m.video.AddHeader(":method", "GET")
-    m.video.AddHeader(":path", "")
-    m.video.AddCookies(m.cookies)
-    'm.getSinglePageTask = createObject("roSGNode", "getSinglePage")
-    'm.getSinglePageTask.setFields({uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, constants: m.constants, channels: ["ae12172e991e675ed842a0a4412245d8ee1eb398"], rawname: "@SaltyCracker"})
-    'm.getSinglePageTask.observeField("output", "gotPage")
-    'm.getSinglePageTask.control = "RUN"
-    m.cidsTask.control = "RUN"
-  end if
-End Sub
-
-Sub retryAuth()
-  m.errorText.visible = false
-  m.errorSubtext.visible = false
-  m.errorButton.visible = false
-  m.errorButton.unobserveField("buttonSelected")
-  m.authTask.control = "RUN"
-End Sub
 
 sub didInstall(msg as Object)
   if type(msg) = "roSGNodeEvent" 
@@ -1810,174 +2014,8 @@ function on_error(event as object) as void
   print "WebSocket error"
   print event.getData()
 end function
+
 'Registry+Utility Functions
-
-Sub gotCIDS()
-  ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-  m.cidsTask.control = "STOP"
-  m.cidsTask.unobserveField("channelids")
-  if m.cidsTask.error
-    retryError("Error getting frontpage channel IDs", "Please e-mail rokusupport@halitesoftware.com.", "retryCIDS")
-  else
-    m.channelIDs = m.cidsTask.channelids
-    m.categorySelectordata = m.cidsTask.categoryselectordata
-    ?m.channelIDs
-    ?"Got channelIDs+category selector data"
-    ?"Creating threads"
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-    blocked = []
-    if m.wasLoggedIn AND m.preferences.Count() > 0
-      if isValid(m.preferences.blocked)
-        ?"found blocked users"
-        if m.preferences.blocked.Count() > 0
-          blocked = m.preferences.blocked
-          ?formatJson(blocked)
-        end if
-      end if
-    end if
-    if m.wasLoggedIn AND m.preferences.Count() > 0
-      if isValid(m.preferences.following)
-        if m.preferences.following.Count() > 0
-          ?"found following"
-          ?formatJson(m.preferences["following"])
-          thread = CreateObject("roSGNode", "getSinglePage")
-          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
-          thread.observeField("output", "threadDone")
-          m.threads.push(thread)
-          m.favoritesLoaded = true 'favorites were loaded because user is logged in
-        end if
-      end if
-    end if
-    for each category in m.channelIDs 'create categories for selector
-      catData = m.channelIDs[category]
-      thread = CreateObject("roSGNode", "getSinglePage")
-      if m.wasLoggedIn AND m.preferences.Count() > 0
-        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked})
-      else
-        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
-      end if
-      thread.observeField("output", "threadDone")
-      m.threads.push(thread)
-      catData = invalid 'save memory
-    end for
-    ?"Done, starting threader."
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
-    m.categorySelector.content = m.categorySelectordata
-    ?m.categorySelectordata
-    ?m.categorySelector.content
-    for runvar = 0 to m.maxThreads-1
-      m.runningthreads.Push(m.threads[runvar])
-      m.threads.delete(runvar)
-    end for
-    for each thread in m.runningthreads
-      thread.control = "RUN" 'start threading
-    end for
-    ?"Threader started."
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-  end if
-End Sub
-
-Sub retryCIDS()
-  m.errorText.visible = false
-  m.errorSubtext.visible = false
-  m.errorButton.visible = false
-  m.errorButton.unobserveField("buttonSelected")
-  m.cidsTask.observeField("channelids", "gotCIDS")
-  m.cidsTask.control = "RUN"
-End Sub
-
-Sub threadDone(msg as Object)
-if type(msg) = "roSGNodeEvent"
-  thread = msg.getRoSGNode()
-  if thread.error
-    if thread.errorcount = 2
-      'tried twice (w/likely hundreds of queries), kill it
-      thread.control = "STOP"
-      thread.unObserveField("output")
-      for threadindex = 0 to m.runningthreads.Count()
-        if IsValid(m.runningthreads[threadindex])
-          if m.runningthreads[threadindex].control = "stop"
-            if m.runningthreads[threadindex] = thread
-              todelete.push(threadindex)
-            end if
-          end if
-        end if
-      end for
-    else
-      'retry: thread is not past limit
-      thread.control = "STOP"
-      thread.control = "RUN"
-    end if
-  else
-    m.baseMediaIndex.append(thread.output.index)
-    m.mediaIndex = m.baseMediaIndex
-    ?thread.rawname
-    m.categories.addReplace(thread.rawname, thread.output.content)
-    thread.unObserveField("output")
-    thread.control = "STOP"
-    todelete = []
-    for threadindex = 0 to m.runningthreads.Count()
-      if IsValid(m.runningthreads[threadindex])
-        if m.runningthreads[threadindex].control = "stop"
-          todelete.push(threadindex)
-        end if
-      end if
-    end for
-    for each delthread in todelete
-      m.runningthreads.delete(delthread)
-    end for
-    if m.threads.count() > 0
-      thread = m.threads.Pop()
-      thread.control = "RUN"
-      m.runningthreads.Push(thread)
-    else
-      ?m.mediaIndex
-      ?m.mediaIndex.Count()
-      ?m.categories
-      ?m.categories[m.categories.Keys()[0]]
-      ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-      m.videoGrid.content = m.categories[m.categories.Keys()[0]]
-      m.loadingText.visible = false
-      m.loadingText.translation="[800,0]"
-      m.loadingText.vertAlign="center" 
-      m.loadingText.horizAlign="left"
-      if m.mediaIndex.Count() > 0
-        if m.authTask.authPhase > 0
-          finishInit()
-        end if
-      else
-        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
-      end if
-    end if
-  end if
-end if
-End Sub
-
-sub finishInit()
-  m.InputTask.control="RUN" 'run input task, since user input is now needed (UI) 
-  ?"init finished."
-  m.header.visible = true
-  m.sidebarTrim.visible = true
-  m.sidebarBackground.visible = true
-  m.odyseeLogo.visible = true
-  m.videoGrid.visible = true
-  m.categorySelector.jumpToItem = 2
-  m.categorySelector.visible = true
-  m.loaded = True
-  m.taskRunning = false
-  m.categorySelector.setFocus(true)
-  m.focusedItem = 1
-  m.global.scene.signalBeacon("AppLaunchComplete")
-  if isValid(m.global.deeplink)
-    if isValid(m.global.deeplink.contentId)
-      'TODO: create reverse livestream resolver so that livestreams can be deeplinked
-      'for now, if you try to play a livestream, this will break.
-      if m.global.deeplink.contentId.instr("http") < 1
-        resolveVideo(m.global.deeplink.contentId)
-      end if
-    end if
-  end if
-end sub
 
 'AuthTask (deviceflow/reg)-related functions
 sub gotUID(msg as object)
@@ -2023,75 +2061,6 @@ end sub
 sub gotRefreshToken(msg as object)
   m.refreshToken = msg.getData()
   SetRegistry("deviceFlowRegistry", "refreshToken", m.refreshToken)
-end sub
-
-sub authPhaseChanged(msg as object)
-  if type(msg) = "roSGNodeEvent"
-    m.authTask.control = "STOP"
-    data = msg.getData()
-    if data = 10
-      ?"Phase 10 (Logging Out)"
-      ? m.authTask
-    end if
-    if data = 4
-      'Forced logout occurs either:
-      ' 1. When a user forcefully pulls their permission given to the odysee-roku app
-      ' 2. When the token expires due to Odysee reinitializing their servers
-      ?"Phase 4 (Forced Logout)"
-      Logout()
-    end if
-    if data = 3
-      ?"Phase 3 (Fully authenticated)"
-      m.wasLoggedIn = true
-      setRegistry("preferencesRegistry", "loggedIn", "true")
-      if m.syncTimerObserved = false
-        m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
-        m.syncLoop.control = "RUN"
-        m.syncLoopTimer.observeField("fire", "getSync")
-        m.syncTimerObserved = true
-      end if
-      if m.authTimerObserved = false
-        m.authTaskTimer.observeField("fire", "refreshAuth")
-        m.authTimerObserved = true
-      end if
-    end if
-    if data = 2
-      ?"Phase 2"
-      if m.legacyAuthenticated = false
-        m.wasLoggedIn = false
-        authDone()
-      end if
-      ? m.wasLoggedin
-      if m.authTimerObserved = false
-        m.authTaskTimer.observeField("fire", "refreshAuth")
-        m.authTimerObserved = true
-      end if
-    end if
-    if data = 1
-      ?"Phase 1 (Legacy Authenticated)"
-      if m.syncTimerObserved = true
-        m.syncLoop.control = "STOP"
-        m.syncLoopTimer.unobserveField("fire")
-        m.syncTimerObserved = false
-      end if
-      ?m.wasLoggedIn
-      if isValid(m.authTask.output)
-        if m.wasLoggedIn AND m.authTask.output.authenticated = false
-          authDone()
-        end if
-      end if
-      if m.wasLoggedIn = false
-        authDone()
-      end if
-      m.authTask.authPhase = 1
-      m.authTask.control = "RUN"
-      ?"Task Restarted"
-    end if
-    if data = 0
-      ?"Phase 0"
-      m.authTask.control = "RUN"
-    end if
-  end if
 end sub
 
 sub Logout()
