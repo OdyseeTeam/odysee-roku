@@ -1,6 +1,6 @@
-Sub init()
-'IF EVERYTHING IS BROKEN:
-'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
+sub init()
+  'IF EVERYTHING IS BROKEN:
+  'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
   m.appTimer = CreateObject("roTimeSpan")
   m.appTimer.Mark()
   if m.global.constants.enableStatistics
@@ -26,7 +26,7 @@ Sub init()
   m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
   m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
   m.searchType = "channel" 'changed to either video or channel
-  m.searchKeyboardItemArray = [5,11,17,23,29,35,38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
+  m.searchKeyboardItemArray = [5, 11, 17, 23, 29, 35, 38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
   m.uiLayer = 0 '0=Base (Channel Grid/Search), 1=First search layer, 2=Second search layer
   m.uiLayers = [] 'directly correlates with m.uiLayer-1. Layer 0 is managed by the sidebar/categorySelector.
   m.videoButtonSelected = "none"
@@ -48,9 +48,9 @@ Sub init()
   m.videoGrid = m.top.findNode("vgrid")
   m.categorySelector = m.top.findNode("selector")
   m.searchKeyboard = m.top.findNode("searchKeyboard")
-  m.vjschars = {"play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730)}
+  m.vjschars = { "play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730) }
   m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
-  m.searchKeyboardDialog.itemSize = [280,65]
+  m.searchKeyboardDialog.itemSize = [280, 65]
   m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
   m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
   m.ffrwTimer = m.top.findNode("ffrwTimer")
@@ -59,21 +59,21 @@ Sub init()
   m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
   m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
   m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
-  m.videoButtons.itemSize = [128,128]
-  m.standardButtonsLoggedIn = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}] 
-  m.standardButtonsLoggedOut = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: m.vjschars["previous-item"], itemID: "previousItem"}, {item: m.vjschars["pause"], itemID: "playPause"},{item: m.vjschars["next-item"], itemID: "nextItem"}]
-  m.liveButtonsLoggedIn = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"},{item: "pkg://images/png/Heart.png", itemID: "following"},{item: "pkg:/images/generic/tu64.png", itemID: "like"}, {item: "pkg:/images/generic/td64.png", itemID: "dislike"}, {item: Chr(61729), itemID: "toggleChat"}]
-  m.liveButtonsLoggedOut = [{item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton"}, {item: Chr(61729), itemID: "toggleChat"}]
+  m.videoButtons.itemSize = [128, 128]
+  m.standardButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }]
+  m.standardButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }]
+  m.liveButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }, { item: Chr(61729), itemID: "toggleChat" }]
+  m.liveButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: Chr(61729), itemID: "toggleChat" }]
   m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
   m.videoButtons.observeField("itemFocused", "videoButtonFocused")
-  m.standardVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon"}
-  m.liveVideoButtonNameTable = {"channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle"}
+  m.standardVideoButtonNameTable = { "channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon" }
+  m.liveVideoButtonNameTable = { "channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle" }
   regenerateNormalButtonRefs()
   m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
   m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
   m.currentVideoClaimID = "" 'Current claim ID for Video
   m.currentVideoReactions = {}
-  m.currentVideoPosition = [0,0]
+  m.currentVideoPosition = [0, 0]
   m.searchHistoryBox = m.top.findNode("searchHistory")
   m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
   m.searchHistoryItems = []
@@ -93,7 +93,7 @@ Sub init()
   m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
   m.searchKeyboardDialog.observeField("itemSelected", "search")
   m.oauthLogoutButton.observeField("buttonSelected", "Logout")
-  
+
   'Tasks
   m.ws = createObject("roSGNode", "WebSocketClient")
   m.wsChat = m.ws.findNode("chat")
@@ -102,8 +102,8 @@ Sub init()
   m.superChatArray = []
   m.thumbnailCache = []
   m.messageHeights = []
-  m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]","")
-  m.chatImageRegex = CreateObject("roRegex", "(?:!\[(.*?)\]\((.*?)\))","") 'incredibly scuffed
+  m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]", "")
+  m.chatImageRegex = CreateObject("roRegex", "(?:!\[(.*?)\]\((.*?)\))", "") 'incredibly scuffed
   m.channelIDs = {}
   m.mediaIndex = {}
   m.baseMediaIndex = {}
@@ -114,8 +114,8 @@ Sub init()
   m.channelResolver = createObject("roSGNode", "getSingleChannel")
   m.videoSearch = createObject("roSGNode", "getVideoSearch")
   m.channelSearch = createObject("roSGNode", "getChannelSearch")
-  m.InputTask=createObject("roSgNode","inputTask")
-  m.InputTask.observefield("inputData","handleInputEvent")
+  m.InputTask = createObject("roSgNode", "inputTask")
+  m.InputTask.observefield("inputData", "handleInputEvent")
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
   'forgot that cookies should be universal throughout application
   m.urlResolver.observeField("cookies", "gotCookies")
@@ -131,7 +131,7 @@ Sub init()
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
   m.preferences = {} ' user preferences (blocked, following, collections)
-  m.oldpreferences = {blocked: []: following: []: collections: []} ' user preferences (blocked, following, collections)
+  m.oldpreferences = { blocked: []: following: []: collections: [] } ' user preferences (blocked, following, collections)
   m.getreactionTask = createObject("roSGNode", "getreactionTask")
   m.setreactionTask = createObject("roSGNode", "setreactionTask")
   m.authTaskChildren = m.authTask.getChildren(-1, 0)
@@ -216,14 +216,14 @@ Sub init()
     end for
     ?m.searchHistoryItems
   end if
-  ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+  ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
   m.constantsTask.control = "RUN"
-End Sub
+end sub
 
 'TODO: order app according to startup/seperate brightscript into seperate scripts for UI/startup/etc.
 
 'STARTUP TASKS
-Sub gotConstants()
+sub gotConstants()
   ?m.constantsTask.constants
   m.constantsTask.unobserveField("constants")
   m.constantsTask.control = "STOP"
@@ -237,19 +237,19 @@ Sub gotConstants()
     m.setreactionTask.setField("constants", m.constants)
     m.syncLoop.setField("constants", m.constants)
     ?"Constants are done, running auth"
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     m.authTask.control = "RUN" 'authPhaseChanged is the next sub that will be triggered by the authTask.
   end if
-End Sub
+end sub
 
-Sub retryConstants()
+sub retryConstants()
   m.errorText.visible = false
   m.errorSubtext.visible = false
   m.errorButton.visible = false
   m.errorButton.unobserveField("buttonSelected")
   m.constantsTask.observeField("constants", "gotConstants")
   m.constantsTask.control = "RUN"
-End Sub
+end sub
 
 sub authPhaseChanged(msg as object)
   if type(msg) = "roSGNodeEvent"
@@ -302,7 +302,7 @@ sub authPhaseChanged(msg as object)
       end if
       ?m.wasLoggedIn
       if isValid(m.authTask.output)
-        if m.wasLoggedIn AND m.authTask.output.authenticated = false
+        if m.wasLoggedIn and m.authTask.output.authenticated = false
           authDone()
         end if
       end if
@@ -320,7 +320,7 @@ sub authPhaseChanged(msg as object)
   end if
 end sub
 
-Sub authDone()
+sub authDone()
   'This wraps up the authentication phase so we have authentication to query Odysee for our videos.
   'We will run authPhaseChanged again if the user logs into Odysee/triggers the device flow phase with Following.
   ?"Running authDone"
@@ -337,35 +337,35 @@ Sub authDone()
     m.authtoken = m.authTask.authtoken
     m.cookies = m.authTask.cookies
     ?"AUTH IS DONE!"
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     if m.global.constants.enableStatistics
-      m.rokuInstall.setFields({constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies})
+      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
       m.rokuInstall.observeField("output", "didInstall")
       m.rokuInstall.control = "RUN"
     end if
     m.video.EnableCookies()
     m.video.AddHeader("User-Agent", m.global.constants["userAgent"])
-    m.video.AddHeader("origin","https://bitwave.tv")
-    m.video.AddHeader("referer","https://bitwave.tv/")
-    m.video.AddHeader(":authority","https://cdn.odysee.live")
-    m.video.AddHeader("Access-Control-Allow-Origin","https://odysee.com/")
+    m.video.AddHeader("origin", "https://bitwave.tv")
+    m.video.AddHeader("referer", "https://bitwave.tv/")
+    m.video.AddHeader(":authority", "https://cdn.odysee.live")
+    m.video.AddHeader("Access-Control-Allow-Origin", "https://odysee.com/")
     m.video.AddHeader(":method", "GET")
     m.video.AddHeader(":path", "")
     m.video.AddCookies(m.cookies)
     m.cidsTask.control = "RUN"
   end if
-End Sub
+end sub
 
-Sub retryAuth()
+sub retryAuth()
   m.errorText.visible = false
   m.errorSubtext.visible = false
   m.errorButton.visible = false
   m.errorButton.unobserveField("buttonSelected")
   m.authTask.control = "RUN"
-End Sub
+end sub
 
-Sub gotCIDS()
-  ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+sub gotCIDS()
+  ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
   m.cidsTask.control = "STOP"
   m.cidsTask.unobserveField("channelids")
   if m.cidsTask.error
@@ -376,9 +376,9 @@ Sub gotCIDS()
     ?m.channelIDs
     ?"Got channelIDs+category selector data"
     ?"Creating threads"
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     blocked = []
-    if m.wasLoggedIn AND m.preferences.Count() > 0
+    if m.wasLoggedIn and m.preferences.Count() > 0
       if isValid(m.preferences.blocked)
         ?"found blocked users"
         if m.preferences.blocked.Count() > 0
@@ -387,7 +387,7 @@ Sub gotCIDS()
         end if
       end if
     end if
-    if m.wasLoggedIn AND m.preferences.Count() > 0
+    if m.wasLoggedIn and m.preferences.Count() > 0
       if isValid(m.preferences.following)
         if m.preferences.following.Count() > 0
           ?"found following"
@@ -403,21 +403,21 @@ Sub gotCIDS()
     for each category in m.channelIDs 'create categories for selector
       catData = m.channelIDs[category]
       thread = CreateObject("roSGNode", "getSinglePage")
-      if m.wasLoggedIn AND m.preferences.Count() > 0
-        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked})
+      if m.wasLoggedIn and m.preferences.Count() > 0
+        thread.setFields({ constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked })
       else
-        thread.setFields({constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+        thread.setFields({ constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
       end if
       thread.observeField("output", "threadDone")
       m.threads.push(thread)
       catData = invalid 'save memory
     end for
     ?"Done, starting threader."
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s" 
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     m.categorySelector.content = m.categorySelectordata
     ?m.categorySelectordata
     ?m.categorySelector.content
-    for runvar = 0 to m.maxThreads-1
+    for runvar = 0 to m.maxThreads - 1
       m.runningthreads.Push(m.threads[runvar])
       m.threads.delete(runvar)
     end for
@@ -425,90 +425,90 @@ Sub gotCIDS()
       thread.control = "RUN" 'start threading
     end for
     ?"Threader started."
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
   end if
-End Sub
+end sub
 
-Sub retryCIDS()
+sub retryCIDS()
   m.errorText.visible = false
   m.errorSubtext.visible = false
   m.errorButton.visible = false
   m.errorButton.unobserveField("buttonSelected")
   m.cidsTask.observeField("channelids", "gotCIDS")
   m.cidsTask.control = "RUN"
-End Sub
+end sub
 
-Sub threadDone(msg as Object)
-'This stops the thread that is running and then checks if they are all done, if they are, we wrap up and start the code to present the user interface.
-'This had to be done as Odysee queries sometimes take a long time if they are not cached, so having two threads makes things much faster, but returns deminish after that.
-if type(msg) = "roSGNodeEvent"
-  thread = msg.getRoSGNode()
-  if thread.error
-    if thread.errorcount = 2
-      'tried twice (w/likely hundreds of queries), kill it
-      thread.control = "STOP"
+sub threadDone(msg as object)
+  'This stops the thread that is running and then checks if they are all done, if they are, we wrap up and start the code to present the user interface.
+  'This had to be done as Odysee queries sometimes take a long time if they are not cached, so having two threads makes things much faster, but returns deminish after that.
+  if type(msg) = "roSGNodeEvent"
+    thread = msg.getRoSGNode()
+    if thread.error
+      if thread.errorcount = 2
+        'tried twice (w/likely hundreds of queries), kill it
+        thread.control = "STOP"
+        thread.unObserveField("output")
+        for threadindex = 0 to m.runningthreads.Count()
+          if IsValid(m.runningthreads[threadindex])
+            if m.runningthreads[threadindex].control = "stop"
+              if m.runningthreads[threadindex] = thread
+                todelete.push(threadindex)
+              end if
+            end if
+          end if
+        end for
+      else
+        'retry: thread is not past limit
+        thread.control = "STOP"
+        thread.control = "RUN"
+      end if
+    else
+      m.baseMediaIndex.append(thread.output.index)
+      m.mediaIndex = m.baseMediaIndex
+      ?thread.rawname
+      m.categories.addReplace(thread.rawname, thread.output.content)
       thread.unObserveField("output")
+      thread.control = "STOP"
+      todelete = []
       for threadindex = 0 to m.runningthreads.Count()
         if IsValid(m.runningthreads[threadindex])
           if m.runningthreads[threadindex].control = "stop"
-            if m.runningthreads[threadindex] = thread
-              todelete.push(threadindex)
-            end if
+            todelete.push(threadindex)
           end if
         end if
       end for
-    else
-      'retry: thread is not past limit
-      thread.control = "STOP"
-      thread.control = "RUN"
-    end if
-  else
-    m.baseMediaIndex.append(thread.output.index)
-    m.mediaIndex = m.baseMediaIndex
-    ?thread.rawname
-    m.categories.addReplace(thread.rawname, thread.output.content)
-    thread.unObserveField("output")
-    thread.control = "STOP"
-    todelete = []
-    for threadindex = 0 to m.runningthreads.Count()
-      if IsValid(m.runningthreads[threadindex])
-        if m.runningthreads[threadindex].control = "stop"
-          todelete.push(threadindex)
-        end if
-      end if
-    end for
-    for each delthread in todelete
-      m.runningthreads.delete(delthread)
-    end for
-    if m.threads.count() > 0
-      thread = m.threads.Pop()
-      thread.control = "RUN"
-      m.runningthreads.Push(thread)
-    else
-      ?m.mediaIndex
-      ?m.mediaIndex.Count()
-      ?m.categories
-      ?m.categories[m.categories.Keys()[0]]
-      ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds()/1000)+"s"
-      m.videoGrid.content = m.categories[m.categories.Keys()[0]]
-      m.loadingText.visible = false
-      m.loadingText.translation="[800,0]"
-      m.loadingText.vertAlign="center" 
-      m.loadingText.horizAlign="left"
-      if m.mediaIndex.Count() > 0
-        if m.authTask.authPhase > 0
-          finishInit()
-        end if
+      for each delthread in todelete
+        m.runningthreads.delete(delthread)
+      end for
+      if m.threads.count() > 0
+        thread = m.threads.Pop()
+        thread.control = "RUN"
+        m.runningthreads.Push(thread)
       else
-        retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
+        ?m.mediaIndex
+        ?m.mediaIndex.Count()
+        ?m.categories
+        ?m.categories[m.categories.Keys()[0]]
+        ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+        m.videoGrid.content = m.categories[m.categories.Keys()[0]]
+        m.loadingText.visible = false
+        m.loadingText.translation = "[800,0]"
+        m.loadingText.vertAlign = "center"
+        m.loadingText.horizAlign = "left"
+        if m.mediaIndex.Count() > 0
+          if m.authTask.authPhase > 0
+            finishInit()
+          end if
+        else
+          retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
+        end if
       end if
     end if
   end if
-end if
-End Sub
+end sub
 
 sub finishInit()
-  m.InputTask.control="RUN" 'run input task, since user input is now needed (UI) 
+  m.InputTask.control = "RUN" 'run input task, since user input is now needed (UI)
   ?"init finished."
   m.header.visible = true
   m.sidebarTrim.visible = true
@@ -533,286 +533,142 @@ sub finishInit()
   end if
 end sub
 
-Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back button to leave video
-?"task running state is:"
-?m.taskRunning
-    if m.taskRunning = False
-      ?"key", key, "pressed with focus", m.focusedItem, "with press", press
-      ?"current ui layer:", m.uiLayer
-      ?"current ui array:"
-      ?m.uiLayers
-      if press = true
-        if key = "OK"
-          if m.video.visible = true AND m.videoOverlayGroup.visible = true
-            'TODO: redo videoButtonSelected for these text strings
-            '"channelButton": "videoButtonsChannelIcon", 0
-            '"following": "videoButtonsFollowingIcon", 1
-            '"like": "videoButtonsLikeIcon", 
-            '"dislike": "videoButtonsDislikeIcon",
-            '"toggleChat": "videoButtonsChatToggle",
-            '"playPause": "videoButtonsPlayIcon", 3
-            '"previousItem", 2
-            '"nextItem"
-            if m.videoButtonSelected <> "none"
-              ? "Current Button:"
-              ? m.videoButtonSelected
-              if m.videoButtonSelected = "channelButton"
-                ? "Go to channel"
-                returnToUIPage()
-                curChannel = m.currentVideoChannelID
-                m.channelResolver.setFields({constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
-                m.channelResolver.observeField("output", "gotResolvedChannel")
-                m.channelResolver.control = "RUN"
-                m.taskRunning = True
-                m.videoGrid.setFocus(false)
-                m.videoGrid.visible = false
-                m.loadingText.visible = true
-                m.loadingText.text = "Resolving Channel..."
-              else if m.videoButtonSelected = "following"
-                ? "Subscribe/Follow"
-                ? m.wasLoggedIn
-                if m.wasLoggedIn
-                  if m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
-                    unFollow(m.currentVideoChannelID)
-                  else
-                    follow(m.currentVideoChannelID)
-                  end if
-                end if
-              else if m.videoButtonSelected = "previousItem"
-                'Back Button/Previous Video
-                ? m.currentVideoPosition
-                if m.currentVideoPosition[1] = 0 'First video in row, attempt to go back
-                  if m.currentVideoPosition[0] > 0
-                    if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]-1).getChild(3))
-                      curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]-1).getChild(3)
-                      returnToUIPage()
-                      m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0]-1,3]
-                      m.currentVideoPosition = [m.currentVideoPosition[0]-1,3]
-                      resolveEvaluatedVideo(curItem)
-                    end if
-                  end if
-                else 'Go back by one, not the first video.
-                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]-1))
-                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]-1)
-                    returnToUIPage()
-                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0],m.currentVideoPosition[1]-1]
-                    m.currentVideoPosition = [m.currentVideoPosition[0],m.currentVideoPosition[1]-1]
-                    resolveEvaluatedVideo(curItem)
-                  end if
-                end if
-              else if m.videoButtonSelected = "playPause"
-                'Play Button
-                if m.video.visible
-                  showVideoOverlay()
-                  if m.videoTransitionState = 0
-                    deleteSpinner()
-                    if m.video.state = "playing"
-                      m.video.control = "pause"
-                    else if m.video.state = "paused"
-                      m.video.control = "resume"
-                    end if
-                  else
-                    m.ffrwTimer.control = "stop"
-                    m.ffrwTimer.unobserveField("fire")
-                    m.videoTransitionState = 0
-                    deleteSpinner()
-                    if m.video.control = "stop"
-                      m.video.control = "prebuffer"
-                      m.video.control = "play"
-                    else
-                      m.video.control = "pause"
-                      m.video.control = "resume"
-                    end if
-                  end if
-                end if
-              else if m.videoButtonSelected = "nextItem"
-                'Forward Button/Next Video
-                ? m.currentVideoPosition
-                if m.currentVideoPosition[1] = 3 'Last video in row, move down.
-                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]+1).getChild(0))
-                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]+1).getChild(0)
-                    returnToUIPage()
-                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0]+1,0]
-                    m.currentVideoPosition = [m.currentVideoPosition[0],m.currentVideoPosition[1]+1]
-                    resolveEvaluatedVideo(curItem)
-                  end if
-                else 'Not the last, move forward
-                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]+1))
-                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1]+1)
-                    returnToUIPage()
-                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0],m.currentVideoPosition[1]+1]
-                    m.currentVideoPosition = [m.currentVideoPosition[0],m.currentVideoPosition[1]+1]
-                    resolveEvaluatedVideo(curItem)
-                  end if
-                end if
-              else if m.videoButtonSelected = "like"
-                ' Like
-                ? "like"
-                ? m.wasLoggedIn
-                if m.wasLoggedIn
-                  if m.currentVideoReactions.mine.likes > 0
-                    setReaction(m.currentVideoClaimID, "negate")
-                  else
-                    setReaction(m.currentVideoClaimID, "like")
-                  end if
-                end if
-              else if m.videoButtonSelected = "dislike"
-                ? "dislike"
-                ? m.wasLoggedIn
-                if m.wasLoggedIn
-                ' Dislike
-                  if m.currentVideoReactions.mine.dislikes > 0
-                    setReaction(m.currentVideoClaimID, "negate")
-                  else
-                    setReaction(m.currentVideoClaimID, "dislike")
-                  end if
-                end if
-              else if m.videoButtonSelected = "toggleChat"
-                'TODO: change toggleChat video button's image.
-                if m.chatBox.visible
-                  m.chatBackground.visible = false
-                  m.chatBox.visible = false
-                else
-                  m.chatBackground.visible = true
-                  m.chatBox.visible = true
-                end if
-              end if
-            end if
-          end if
-        end if
-        if key = "back"  'If the back button is pressed
-          if m.video.visible
+function onKeyEvent(key as string, press as boolean) as boolean 'Maps back button to leave video
+  ?"task running state is:"
+  ?m.taskRunning
+  if m.taskRunning = False
+    ?"key", key, "pressed with focus", m.focusedItem, "with press", press
+    ?"current ui layer:", m.uiLayer
+    ?"current ui array:"
+    ?m.uiLayers
+    if press = true
+      if key = "OK"
+        if m.video.visible = true and m.videoOverlayGroup.visible = true
+          'TODO: redo videoButtonSelected for these text strings
+          '"channelButton": "videoButtonsChannelIcon", 0
+          '"following": "videoButtonsFollowingIcon", 1
+          '"like": "videoButtonsLikeIcon",
+          '"dislike": "videoButtonsDislikeIcon",
+          '"toggleChat": "videoButtonsChatToggle",
+          '"playPause": "videoButtonsPlayIcon", 3
+          '"previousItem", 2
+          '"nextItem"
+          if m.videoButtonSelected <> "none"
+            ? "Current Button:"
+            ? m.videoButtonSelected
+            if m.videoButtonSelected = "channelButton"
+              ? "Go to channel"
               returnToUIPage()
-              return true
-          else if (m.uiLayer = 0 AND m.focusedItem = 1) OR (m.uiLayer=0 AND m.focusedItem = 2)
-              'TODO: add "are you sure you want to exit Odysee" screen
-              'for now, re-add old behavior
-              return false
-          else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
-            'set focus to selector
-            ErrorDismissed()
-            m.videoButtons.setFocus(false)
-            m.searchKeyboard.setFocus(false)
-            m.searchKeyboardDialog.setFocus(false)
-            m.searchHistoryBox.setFocus(false)
-            m.searchHistoryDialog.setFocus(false)
-            m.categorySelector.setFocus(true)
-            m.focusedItem = 1 '[selector] 
-            return true
-          else if m.uiLayer > 0
-            'go back a UI layer
-            ?"popping layer"
-            if m.uiLayers.Count() > 0
-              if m.categorySelector.itemFocused = 1
-                m.uiLayer = 0
-                m.uiLayers = []
-                m.videoGrid.content = m.categories["FAVORITES"]
-              else
-                m.uiLayers.pop()
-                m.videoGrid.content = m.uiLayers[m.uiLayers.Count()-1]
-                if isValid(m.uiLayers[m.uiLayers.Count()-1])
-                  if m.videoGrid.content.getChildren(1,0)[0].getChildren(1,0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
-                    downsizeVideoGrid()
+              curChannel = m.currentVideoChannelID
+              m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+              m.channelResolver.observeField("output", "gotResolvedChannel")
+              m.channelResolver.control = "RUN"
+              m.taskRunning = True
+              m.videoGrid.setFocus(false)
+              m.videoGrid.visible = false
+              m.loadingText.visible = true
+              m.loadingText.text = "Resolving Channel..."
+            else if m.videoButtonSelected = "following"
+              ? "Subscribe/Follow"
+              ? m.wasLoggedIn
+              if m.wasLoggedIn
+                if m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+                  unFollow(m.currentVideoChannelID)
+                else
+                  follow(m.currentVideoChannelID)
+                end if
+              end if
+            else if m.videoButtonSelected = "previousItem"
+              'Back Button/Previous Video
+              ? m.currentVideoPosition
+              if m.currentVideoPosition[1] = 0 'First video in row, attempt to go back
+                if m.currentVideoPosition[0] > 0
+                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0] - 1).getChild(3))
+                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0] - 1).getChild(3)
+                    returnToUIPage()
+                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0] - 1, 3]
+                    m.currentVideoPosition = [m.currentVideoPosition[0] - 1, 3]
+                    resolveEvaluatedVideo(curItem)
                   end if
                 end if
-                m.uiLayer=m.uiLayer-1
-                ?"went back to", m.uiLayer
+              else 'Go back by one, not the first video.
+                if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] - 1))
+                  curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] - 1)
+                  returnToUIPage()
+                  m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0], m.currentVideoPosition[1] - 1]
+                  m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] - 1]
+                  resolveEvaluatedVideo(curItem)
+                end if
               end if
-            end if
-            if m.categorySelector.itemFocused = 0 AND m.uiLayers.Count() = 0
-              m.uiLayer=0
-              ?"(search) went back to", m.uiLayer
-              backToKeyboard()
-            end if
-            if m.categorySelector.itemFocused > 1 AND m.uiLayers.Count() = 0 'not search, on category.
-              'set focus to selector
-              m.uiLayer=0
-              ?"(catsel) went back to", m.uiLayer
-              ErrorDismissed()
-              m.searchKeyboard.setFocus(false)
-              m.searchKeyboardDialog.setFocus(false)
-              m.searchHistoryBox.setFocus(false)
-              m.searchHistoryDialog.setFocus(false)
-              m.categorySelector.setFocus(true)
-              m.focusedItem = 1 '[selector] 
-            end if
-            return true
-          else if m.uiLayer = 0
-            'set focus to selector
-            ErrorDismissed()
-            m.searchKeyboard.setFocus(false)
-            m.searchKeyboardDialog.setFocus(false)
-            m.searchHistoryBox.setFocus(false)
-            m.searchHistoryDialog.setFocus(false)
-            m.categorySelector.setFocus(true)
-            m.focusedItem = 1 '[selector] 
-            return true
-          end if
-        end if
-        if key = "play"
-          if m.video.visible AND m.videoContent.Live = false
-            showVideoOverlay()
-            if m.videoTransitionState = 0
-              deleteSpinner()
-              if m.video.state = "playing"
-                m.video.control = "pause"
-              else if m.video.state = "paused"
-                m.video.control = "resume"
+            else if m.videoButtonSelected = "playPause"
+              'Play Button
+              if m.video.visible
+                showVideoOverlay()
+                if m.videoTransitionState = 0
+                  deleteSpinner()
+                  if m.video.state = "playing"
+                    m.video.control = "pause"
+                  else if m.video.state = "paused"
+                    m.video.control = "resume"
+                  end if
+                else
+                  m.ffrwTimer.control = "stop"
+                  m.ffrwTimer.unobserveField("fire")
+                  m.videoTransitionState = 0
+                  deleteSpinner()
+                  if m.video.control = "stop"
+                    m.video.control = "prebuffer"
+                    m.video.control = "play"
+                  else
+                    m.video.control = "pause"
+                    m.video.control = "resume"
+                  end if
+                end if
               end if
-            else
-              m.ffrwTimer.control = "stop"
-              m.ffrwTimer.unobserveField("fire")
-              m.videoTransitionState = 0
-              deleteSpinner()
-              if m.video.control = "stop"
-                m.video.control = "prebuffer"
-                m.video.control = "play"
-              else
-                m.video.control = "pause"
-                m.video.control = "resume"
+            else if m.videoButtonSelected = "nextItem"
+              'Forward Button/Next Video
+              ? m.currentVideoPosition
+              if m.currentVideoPosition[1] = 3 'Last video in row, move down.
+                if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0))
+                  curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0)
+                  returnToUIPage()
+                  m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0] + 1, 0]
+                  m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
+                  resolveEvaluatedVideo(curItem)
+                end if
+              else 'Not the last, move forward
+                if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1))
+                  curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1)
+                  returnToUIPage()
+                  m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
+                  m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
+                  resolveEvaluatedVideo(curItem)
+                end if
               end if
-            end if
-          end if
-        end if
-        if key = "rewind"
-          ?m.video.visible
-          ?m.ffrwTimer.control
-          ?m.ffrwTimer.duration
-          ?m.videoVP
-          if m.video.visible AND m.videoContent.Live = false
-            showVideoOverlay()
-            if m.videoTransitionState <> 1
-              m.ffrwTimer.duration = .5
-            end if
-            m.videoTransitionState = 1
-            m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
-            ?m.ffrwTimer.control
-            if m.ffrwTimer.control = "start"
-              m.ffrwTimer.duration = m.ffrwTimer.duration / 2
-              m.ffrwTimer.observeField("fire", "changeVideoPosition")
-            else
-              m.ffrwTimer.observeField("fire", "changeVideoPosition")
-              m.ffrwTimer.control = "start"
-            end if
-          end if
-        end if
-        if key = "fastforward"
-          if m.video.visible AND m.videoContent.Live = false
-            showVideoOverlay()
-            if m.videoTransitionState <> 2
-              m.ffrwTimer.duration = .3
-            end if
-            m.videoTransitionState = 2
-            m.video.control = "prebuffer" 'it's better to prebuffer immediately as we are moving forwards in the video
-            if m.ffrwTimer.control = "start"
-              m.ffrwTimer.duration = m.ffrwTimer.duration / 2
-            else
-              m.ffrwTimer.observeField("fire", "changeVideoPosition")
-              m.ffrwTimer.control = "start"
-            end if
-          end if
-          if m.video.visible AND m.videoContent.Live
-            'TODO: change toggleChat video button's image.
+            else if m.videoButtonSelected = "like"
+              ' Like
+              ? "like"
+              ? m.wasLoggedIn
+              if m.wasLoggedIn
+                if m.currentVideoReactions.mine.likes > 0
+                  setReaction(m.currentVideoClaimID, "negate")
+                else
+                  setReaction(m.currentVideoClaimID, "like")
+                end if
+              end if
+            else if m.videoButtonSelected = "dislike"
+              ? "dislike"
+              ? m.wasLoggedIn
+              if m.wasLoggedIn
+                ' Dislike
+                if m.currentVideoReactions.mine.dislikes > 0
+                  setReaction(m.currentVideoClaimID, "negate")
+                else
+                  setReaction(m.currentVideoClaimID, "dislike")
+                end if
+              end if
+            else if m.videoButtonSelected = "toggleChat"
+              'TODO: change toggleChat video button's image.
               if m.chatBox.visible
                 m.chatBackground.visible = false
                 m.chatBox.visible = false
@@ -820,195 +676,339 @@ Function onKeyEvent(key as String, press as Boolean) as Boolean  'Maps back butt
                 m.chatBackground.visible = true
                 m.chatBox.visible = true
               end if
+            end if
           end if
         end if
-        if key = "options"
-            if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
-              if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) AND m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
-                curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
-                m.channelResolver.setFields({constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
-                m.channelResolver.observeField("output", "gotResolvedChannel")
-                m.channelResolver.control = "RUN"
-                m.taskRunning = True
-                m.videoGrid.setFocus(false)
-                m.videoGrid.visible = false
-                m.loadingText.visible = true
-                m.loadingText.text = "Resolving Channel..."
-              end if
-            end if
-        end if
-        if key = "up"
-            if m.video.visible
-              showVideoOverlay()
-            end if
-            if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
-                m.searchKeyboardDialog.setFocus(false)
-                m.searchKeyboard.setFocus(true)
-                m.searchKeyboardGrid.jumpToItem = 37
-                m.focusedItem = 3 '[search keyboard] 
-            end if
-            if m.focusedItem = 6 '[clear history]  'Clear History -> History
-                if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
-                    m.searchHistoryDialog.setFocus(false)
-                    m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                    m.searchHistoryBox.setFocus(true)
-                    m.focusedItem = 5 '[search history list] 
+      end if
+      if key = "back" 'If the back button is pressed
+        if m.video.visible
+          returnToUIPage()
+          return true
+        else if (m.uiLayer = 0 and m.focusedItem = 1) or (m.uiLayer = 0 and m.focusedItem = 2)
+          'TODO: add "are you sure you want to exit Odysee" screen
+          'for now, re-add old behavior
+          return false
+        else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
+          'set focus to selector
+          ErrorDismissed()
+          m.videoButtons.setFocus(false)
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(false)
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+          return true
+        else if m.uiLayer > 0
+          'go back a UI layer
+          ?"popping layer"
+          if m.uiLayers.Count() > 0
+            if m.categorySelector.itemFocused = 1
+              m.uiLayer = 0
+              m.uiLayers = []
+              m.videoGrid.content = m.categories["FAVORITES"]
+            else
+              m.uiLayers.pop()
+              m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
+              if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+                if m.videoGrid.content.getChildren(1, 0)[0].getChildren(1, 0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
+                  downsizeVideoGrid()
                 end if
-            end if
-            if m.focusedItem = 2
-              ? m.categorySelector.itemFocused
-              ? m.favoritesLoaded
-              ? m.videoGrid.rowItemFocused[0]
-              ? m.videoGrid.rowItemFocused[1]
-              if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded AND m.videoGrid.rowItemFocused[0] = 0 AND m.videoGrid.rowItemFocused[1] = 3
-                m.videoGrid.setFocus(false)
-                m.oauthLogoutButton.setFocus(true)
-                m.focusedItem = 8 '[oauth logout button]
               end if
+              m.uiLayer = m.uiLayer - 1
+              ?"went back to", m.uiLayer
             end if
-        end if
-        if key = "down"
-          if m.video.visible
-            hideVideoOverlay()
           end if
-            if m.focusedItem = 3 '[search keyboard] 
-                m.searchKeyboard.setFocus(false)
-                m.searchKeyboardDialog.setFocus(true)
-                m.focusedItem = 4 '[confirm search] 
+          if m.categorySelector.itemFocused = 0 and m.uiLayers.Count() = 0
+            m.uiLayer = 0
+            ?"(search) went back to", m.uiLayer
+            backToKeyboard()
+          end if
+          if m.categorySelector.itemFocused > 1 and m.uiLayers.Count() = 0 'not search, on category.
+            'set focus to selector
+            m.uiLayer = 0
+            ?"(catsel) went back to", m.uiLayer
+            ErrorDismissed()
+            m.searchKeyboard.setFocus(false)
+            m.searchKeyboardDialog.setFocus(false)
+            m.searchHistoryBox.setFocus(false)
+            m.searchHistoryDialog.setFocus(false)
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1 '[selector]
+          end if
+          return true
+        else if m.uiLayer = 0
+          'set focus to selector
+          ErrorDismissed()
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(false)
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+          return true
+        end if
+      end if
+      if key = "play"
+        if m.video.visible and m.videoContent.Live = false
+          showVideoOverlay()
+          if m.videoTransitionState = 0
+            deleteSpinner()
+            if m.video.state = "playing"
+              m.video.control = "pause"
+            else if m.video.state = "paused"
+              m.video.control = "resume"
             end if
-    
-            if m.focusedItem = 5 '[search history list]  'History -> Clear
-                m.searchHistoryBox.setFocus(false)
-                m.searchHistoryDialog.setFocus(true)
-                m.focusedItem = 6 '[clear history] 
+          else
+            m.ffrwTimer.control = "stop"
+            m.ffrwTimer.unobserveField("fire")
+            m.videoTransitionState = 0
+            deleteSpinner()
+            if m.video.control = "stop"
+              m.video.control = "prebuffer"
+              m.video.control = "play"
+            else
+              m.video.control = "pause"
+              m.video.control = "resume"
             end if
+          end if
+        end if
+      end if
+      if key = "rewind"
+        ?m.video.visible
+        ?m.ffrwTimer.control
+        ?m.ffrwTimer.duration
+        ?m.videoVP
+        if m.video.visible and m.videoContent.Live = false
+          showVideoOverlay()
+          if m.videoTransitionState <> 1
+            m.ffrwTimer.duration = .5
+          end if
+          m.videoTransitionState = 1
+          m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
+          ?m.ffrwTimer.control
+          if m.ffrwTimer.control = "start"
+            m.ffrwTimer.duration = m.ffrwTimer.duration / 2
+            m.ffrwTimer.observeField("fire", "changeVideoPosition")
+          else
+            m.ffrwTimer.observeField("fire", "changeVideoPosition")
+            m.ffrwTimer.control = "start"
+          end if
+        end if
+      end if
+      if key = "fastforward"
+        if m.video.visible and m.videoContent.Live = false
+          showVideoOverlay()
+          if m.videoTransitionState <> 2
+            m.ffrwTimer.duration = .3
+          end if
+          m.videoTransitionState = 2
+          m.video.control = "prebuffer" 'it's better to prebuffer immediately as we are moving forwards in the video
+          if m.ffrwTimer.control = "start"
+            m.ffrwTimer.duration = m.ffrwTimer.duration / 2
+          else
+            m.ffrwTimer.observeField("fire", "changeVideoPosition")
+            m.ffrwTimer.control = "start"
+          end if
+        end if
+        if m.video.visible and m.videoContent.Live
+          'TODO: change toggleChat video button's image.
+          if m.chatBox.visible
+            m.chatBackground.visible = false
+            m.chatBox.visible = false
+          else
+            m.chatBackground.visible = true
+            m.chatBox.visible = true
+          end if
+        end if
+      end if
+      if key = "options"
+        if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
+          if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) and m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
+            curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
+            m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+            m.channelResolver.observeField("output", "gotResolvedChannel")
+            m.channelResolver.control = "RUN"
+            m.taskRunning = True
+            m.videoGrid.setFocus(false)
+            m.videoGrid.visible = false
+            m.loadingText.visible = true
+            m.loadingText.text = "Resolving Channel..."
+          end if
+        end if
+      end if
+      if key = "up"
+        if m.video.visible
+          showVideoOverlay()
+        end if
+        if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchKeyboard.setFocus(true)
+          m.searchKeyboardGrid.jumpToItem = 37
+          m.focusedItem = 3 '[search keyboard]
+        end if
+        if m.focusedItem = 6 '[clear history]  'Clear History -> History
+          if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
+            m.searchHistoryDialog.setFocus(false)
+            m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+            m.searchHistoryBox.setFocus(true)
+            m.focusedItem = 5 '[search history list]
+          end if
+        end if
+        if m.focusedItem = 2
+          ? m.categorySelector.itemFocused
+          ? m.favoritesLoaded
+          ? m.videoGrid.rowItemFocused[0]
+          ? m.videoGrid.rowItemFocused[1]
+          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.videoGrid.rowItemFocused[0] = 0 and m.videoGrid.rowItemFocused[1] = 3
+            m.videoGrid.setFocus(false)
+            m.oauthLogoutButton.setFocus(true)
+            m.focusedItem = 8 '[oauth logout button]
+          end if
+        end if
+      end if
+      if key = "down"
+        if m.video.visible
+          hideVideoOverlay()
+        end if
+        if m.focusedItem = 3 '[search keyboard]
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(true)
+          m.focusedItem = 4 '[confirm search]
+        end if
 
-            if m.focusedItem = 8
-              if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded
-                m.oauthLogoutButton.setFocus(false)
-                m.videoGrid.setFocus(true)
-                m.focusedItem = 2 '[video grid]
-              end if
-            end if
+        if m.focusedItem = 5 '[search history list]  'History -> Clear
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(true)
+          m.focusedItem = 6 '[clear history]
         end if
-        if key = "left"
-          if m.video.visible
-            showVideoOverlay()
-          end if
-            if m.focusedItem = 2 '[video grid] 
-              if m.categorySelector.itemFocused = 0
-                m.videoGrid.setFocus(false)
-                m.videoGrid.visible = false
-                m.uiLayer = 0
-                m.uiLayers = []
-                m.searchHistoryBox.visible = true
-                m.searchHistoryLabel.visible = true
-                m.searchHistoryDialog.visible = true
-                m.searchKeyboard.visible = true
-                m.searchKeyboardDialog.visible = true
-                m.categorySelector.setFocus(true)
-                m.focusedItem = 1 '[selector] 
-              else if m.uiLayer = 0 'check to make sure we are in UI Layer 0, otherwise, don't bother going back.
-                m.videoGrid.setFocus(false)
-                m.categorySelector.setFocus(true)
-                m.focusedItem = 1 '[selector] 
-              end if
-            end if
-            
-            if m.focusedItem = 3 '[search keyboard]  OR m.focusedItem = 4 '[confirm search]  'Exit (Keyboard/Search Button -> Bar)
-              ErrorDismissed() 'quick fix
-              m.searchKeyboard.setFocus(false)
-              m.searchKeyboardDialog.setFocus(false)
-              m.searchHistoryBox.setFocus(false)
-              m.searchHistoryDialog.setFocus(false)
-              m.categorySelector.jumpToItem = 0
-              m.categorySelector.setFocus(true)
-              m.focusedItem = 1 '[selector] 
-            end if
-            if m.focusedItem = 5 AND m.errorText.visible = false 'History - Keyboard '[search history list]
-                switchRow = m.searchHistoryBox.itemFocused
-                if m.searchHistoryBox.itemFocused > 6
-                    switchRow = 6
-                end if
-                m.searchHistoryBox.setFocus(false)
-                ?"itemArray:", m.searchKeyboardItemArray[switchRow-1]
-                m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
-                switchRow = invalid
-                m.focusedItem = 3 '[search keyboard]
-                m.searchKeyboard.setFocus(true)
-            else if m.focusedItem = 5 AND m.errorText.visible = true '[search history list]  
-              ErrorDismissed()
-              m.searchKeyboard.setFocus(false)
-              m.searchKeyboardDialog.setFocus(false)
-              m.searchHistoryBox.setFocus(false)
-              m.searchHistoryDialog.setFocus(false)
-              m.categorySelector.jumpToItem = 1
-              m.categorySelector.setFocus(true)
-              m.focusedItem = 1 '[selector] 
-            end if
-            if m.focusedItem = 6 '[clear history]  'Clear History -> Search
-                m.searchHistoryDialog.setFocus(false)
-                m.searchKeyboardDialog.setFocus(true)
-                m.focusedItem = 4 '[confirm search] 
-            end if
-        end if
-        if key = "right"
-          if m.video.visible
-            showVideoOverlay()
-          end if
-          if m.focusedItem = 1 and m.categorySelector.itemFocused = 0 '[selector]
-            m.focusedItem = 3 '[search keyboard]
-            m.categorySelector.setFocus(false)
-            m.searchKeyboard.setFocus(true)
-            m.focusedItem = 3 '[search keyboard]
-          else if m.categorySelector.itemFocused = 1 AND m.favoritesLoaded AND m.favoritesUIFlag AND m.focusedItem <> 7
-            m.categorySelector.setFocus(false)
-            m.videoGrid.setFocus(true)
-            m.focusedItem = 2 '[video grid]
-          else if m.categorySelector.itemFocused > 1 AND m.focusedItem <> 7
-            m.categorySelector.setFocus(false)
+
+        if m.focusedItem = 8
+          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded
+            m.oauthLogoutButton.setFocus(false)
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
           end if
-    
-          if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
-              m.searchKeyboardDialog.setFocus(false)
-              m.searchHistoryDialog.setFocus(true)
-              m.focusedItem = 6 '[clear history] 
-          end if
-  
-          if m.focusedItem = 3 '[search keyboard]  'Keyboard -> Search History
-              column = Int(m.searchKeyboardGrid.currFocusColumn)
-              row = Int(m.searchKeyboardGrid.currFocusRow)
-              itemFocused = m.searchKeyboardGrid.itemFocused
-              ?row, column
-              if column = 4 AND row = 6 OR column = 5
-                  if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
-                      if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
-                          m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                      else if row = 6
-                          m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
-                      else
-                          m.searchHistoryBox.jumpToItem = row
-                      end if
-                      m.searchKeyboard.setFocus(false)
-                      m.searchHistoryBox.setFocus(true)
-                      m.focusedItem = 5 '[search history list] 
-                  end if
-              end if
-              column = Invalid 'free memory
-              row = Invalid
-              itemFocused = Invalid
+        end if
+      end if
+      if key = "left"
+        if m.video.visible
+          showVideoOverlay()
+        end if
+        if m.focusedItem = 2 '[video grid]
+          if m.categorySelector.itemFocused = 0
+            m.videoGrid.setFocus(false)
+            m.videoGrid.visible = false
+            m.uiLayer = 0
+            m.uiLayers = []
+            m.searchHistoryBox.visible = true
+            m.searchHistoryLabel.visible = true
+            m.searchHistoryDialog.visible = true
+            m.searchKeyboard.visible = true
+            m.searchKeyboardDialog.visible = true
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1 '[selector]
+          else if m.uiLayer = 0 'check to make sure we are in UI Layer 0, otherwise, don't bother going back.
+            m.videoGrid.setFocus(false)
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1 '[selector]
           end if
         end if
-      else
-        return true
+
+        if m.focusedItem = 3 '[search keyboard]  OR m.focusedItem = 4 '[confirm search]  'Exit (Keyboard/Search Button -> Bar)
+          ErrorDismissed() 'quick fix
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(false)
+          m.categorySelector.jumpToItem = 0
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+        end if
+        if m.focusedItem = 5 and m.errorText.visible = false 'History - Keyboard '[search history list]
+          switchRow = m.searchHistoryBox.itemFocused
+          if m.searchHistoryBox.itemFocused > 6
+            switchRow = 6
+          end if
+          m.searchHistoryBox.setFocus(false)
+          ?"itemArray:", m.searchKeyboardItemArray[switchRow - 1]
+          m.searchKeyboardGrid.jumpToItem = m.searchKeyboardItemArray[switchRow]
+          switchRow = invalid
+          m.focusedItem = 3 '[search keyboard]
+          m.searchKeyboard.setFocus(true)
+        else if m.focusedItem = 5 and m.errorText.visible = true '[search history list]
+          ErrorDismissed()
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(false)
+          m.categorySelector.jumpToItem = 1
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+        end if
+        if m.focusedItem = 6 '[clear history]  'Clear History -> Search
+          m.searchHistoryDialog.setFocus(false)
+          m.searchKeyboardDialog.setFocus(true)
+          m.focusedItem = 4 '[confirm search]
+        end if
+      end if
+      if key = "right"
+        if m.video.visible
+          showVideoOverlay()
+        end if
+        if m.focusedItem = 1 and m.categorySelector.itemFocused = 0 '[selector]
+          m.focusedItem = 3 '[search keyboard]
+          m.categorySelector.setFocus(false)
+          m.searchKeyboard.setFocus(true)
+          m.focusedItem = 3 '[search keyboard]
+        else if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.favoritesUIFlag and m.focusedItem <> 7
+          m.categorySelector.setFocus(false)
+          m.videoGrid.setFocus(true)
+          m.focusedItem = 2 '[video grid]
+        else if m.categorySelector.itemFocused > 1 and m.focusedItem <> 7
+          m.categorySelector.setFocus(false)
+          m.videoGrid.setFocus(true)
+          m.focusedItem = 2 '[video grid]
+        end if
+
+        if m.focusedItem = 4 '[confirm search]  'Search -> Clear History
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryDialog.setFocus(true)
+          m.focusedItem = 6 '[clear history]
+        end if
+
+        if m.focusedItem = 3 '[search keyboard]  'Keyboard -> Search History
+          column = Int(m.searchKeyboardGrid.currFocusColumn)
+          row = Int(m.searchKeyboardGrid.currFocusRow)
+          itemFocused = m.searchKeyboardGrid.itemFocused
+          ?row, column
+          if column = 4 and row = 6 or column = 5
+            if m.searchHistoryContent.getChildCount() > 0 'check to make sure we have search history
+              if row > m.searchHistoryContent.getChildCount() - 1 'if we are switching to a row above the history count, substitute to the lower value
+                m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+              else if row = 6
+                m.searchHistoryBox.jumpToItem = m.searchHistoryContent.getChildCount() - 1
+              else
+                m.searchHistoryBox.jumpToItem = row
+              end if
+              m.searchKeyboard.setFocus(false)
+              m.searchHistoryBox.setFocus(true)
+              m.focusedItem = 5 '[search history list]
+            end if
+          end if
+          column = invalid 'free memory
+          row = invalid
+          itemFocused = invalid
+        end if
       end if
     else
-      ?"task running, denying user input"
       return true
     end if
-end Function
+  else
+    ?"task running, denying user input"
+    return true
+  end if
+end function
 
 sub videoButtonFocused(msg)
   mData = msg.getData()
@@ -1118,7 +1118,7 @@ sub showVideoOverlay()
   m.videoUITimer.control = "stop"
   m.videoUITimer.unobserveField("fire")
   m.videoUITimer.duration = 5
-  m.videoUITimer.observeField("fire","hideVideoOverlay")
+  m.videoUITimer.observeField("fire", "hideVideoOverlay")
   m.videoUITimer.control = "start"
   m.videoOverlayGroup.visible = true
 end sub
@@ -1141,15 +1141,15 @@ sub warningdismissed()
   finishInit()
 end sub
 
-Sub resetVideoGrid()
-  m.videoGrid.itemSize= [1920,365]
-  m.videoGrid.rowitemSize=[[380,350]]
-End Sub
+sub resetVideoGrid()
+  m.videoGrid.itemSize = [1920, 365]
+  m.videoGrid.rowitemSize = [[380, 350]]
+end sub
 
-Sub downsizeVideoGrid()
-  m.videoGrid.itemSize= [1920,305]
-  m.videoGrid.rowitemSize=[[380,250]]
-End Sub
+sub downsizeVideoGrid()
+  m.videoGrid.itemSize = [1920, 305]
+  m.videoGrid.rowitemSize = [[380, 250]]
+end sub
 
 sub failedSearch()
   ?"search failed"
@@ -1162,15 +1162,15 @@ sub failedSearch()
 end sub
 
 sub handleInputEvent(msg)
-    '?"in handleInputEvent()"
-    if type(msg) = "roSGNodeEvent" and msg.getField() = "inputData"
-        deeplink = msg.getData()
-        if deeplink <> invalid
-            ?"Got deeplink"
-            ?deeplink
-            m.global.deeplink = deeplink
-          end if
-     end if
+  '?"in handleInputEvent()"
+  if type(msg) = "roSGNodeEvent" and msg.getField() = "inputData"
+    deeplink = msg.getData()
+    if deeplink <> invalid
+      ?"Got deeplink"
+      ?deeplink
+      m.global.deeplink = deeplink
+    end if
+  end if
 end sub
 
 sub Error(title, error)
@@ -1275,16 +1275,16 @@ sub backToKeyboard()
   m.loadingText.visible = False
   m.loadingText.text = "Loading..."
   m.searchKeyboard.setFocus(true)
-  m.focusedItem = 3 '[search keyboard] 
+  m.focusedItem = 3 '[search keyboard]
 end sub
 
-Sub vgridContentChanged(msg as Object)
-    if type(msg) = "roSGNodeEvent" and msg.getField() = "content"
-        m.videoGrid.content = msg.getData()
-    end if
-end Sub
+sub vgridContentChanged(msg as object)
+  if type(msg) = "roSGNodeEvent" and msg.getField() = "content"
+    m.videoGrid.content = msg.getData()
+  end if
+end sub
 
-Sub resolveVideo(url = invalid) 
+sub resolveVideo(url = invalid)
   ?type(url)
   if type(url) = "roSGNodeEvent" 'we might actually pass a URL (string) through to this as well.
     incomingData = url.getData()
@@ -1297,7 +1297,7 @@ Sub resolveVideo(url = invalid)
         end if
         if curItem.itemType = "channel"
           ?"Resolving a Channel"
-          m.channelResolver.setFields({constants: m.constants, channel: curitem.channel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+          m.channelResolver.setFields({ constants: m.constants, channel: curitem.channel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
           m.channelResolver.observeField("output", "gotResolvedChannel")
           m.channelResolver.control = "RUN"
           m.taskRunning = True
@@ -1315,12 +1315,12 @@ Sub resolveVideo(url = invalid)
           isFollowed = false
           if m.wasLoggedIn
             m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, m.videoButtons.itemSize)
-            m.videoButtons.itemSpacing="[20, 20]"
-            m.videoButtons.columnSpacings="[0,656,0,0,0]"
+            m.videoButtons.itemSpacing = "[20, 20]"
+            m.videoButtons.columnSpacings = "[0,656,0,0,0]"
             m.videoButtons.animateToItem = 2
             getReactions(curItem.guid)
             m.videoButtons.animateToItem = 3
-            if m.preferences.Count() > 0 AND isValid(m.preferences.following)
+            if m.preferences.Count() > 0 and isValid(m.preferences.following)
               if m.preferences.following.Count() > 0
                 for each claimID in m.preferences.following
                   if claimID = m.currentVideoChannelID
@@ -1338,8 +1338,8 @@ Sub resolveVideo(url = invalid)
             end if
           else
             m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedOut, m.videoButtons.itemSize)
-            m.videoButtons.itemSpacing="[20, 20]"
-            m.videoButtons.columnSpacings="[1040]"
+            m.videoButtons.itemSpacing = "[20, 20]"
+            m.videoButtons.columnSpacings = "[1040]"
             m.videoButtons.animateToItem = 2
             regenerateLiveButtonRefs()
           end if
@@ -1369,9 +1369,9 @@ Sub resolveVideo(url = invalid)
           m.ws.observeField("on_error", "on_error")
           if isValid(m.preferences)
             if isValid(m.preferences.blocked)
-              m.ws.setFields({"blocked": m.preferences.blocked,"constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id="+m.currentVideoClaimID+"&category="+curitem.creator+":c&sub_category=viewer","streamclaim": m.currentVideoClaimID,"channelid": m.currentVideoChannelID,"protocols": [], "headers": []})
+              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.creator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
             else
-              m.ws.setFields({"constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id="+m.currentVideoClaimID+"&category="+curitem.creator+":c&sub_category=viewer","streamclaim": m.currentVideoClaimID,"channelid": m.currentVideoChannelID,"protocols": [], "headers": []})
+              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.creator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
             end if
           end if
           ? m.ws.open
@@ -1386,13 +1386,13 @@ Sub resolveVideo(url = invalid)
     end if
   else if type(url) = "roString"
     ?"Resolving a Video (deeplink direct)"
-    m.urlResolver.setFields({constants: m.constants, url: url, title: "deeplink video", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+    m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.urlResolver.observeField("output", "playResolvedVideo")
     m.urlResolver.control = "RUN"
     m.taskRunning = True
     m.videoGrid.setFocus(false)
   end if
-End Sub
+end sub
 
 sub resolveEvaluatedVideo(curItem)
   ?"Resolving a Video"
@@ -1402,11 +1402,11 @@ sub resolveEvaluatedVideo(curItem)
   isFollowed = false
   if m.wasLoggedIn
     m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
-    m.videoButtons.itemSpacing="[20, 20]"
-    m.videoButtons.columnSpacings="[0, 200, 0, 0, 200, 0]"
+    m.videoButtons.itemSpacing = "[20, 20]"
+    m.videoButtons.columnSpacings = "[0, 200, 0, 0, 200, 0]"
     getReactions(curItem.guid)
     m.videoButtons.animateToItem = 3
-    if m.preferences.Count() > 0 AND isValid(m.preferences.following)
+    if m.preferences.Count() > 0 and isValid(m.preferences.following)
       if m.preferences.following.Count() > 0
         for each claimID in m.preferences.following
           if claimID = m.currentVideoChannelID
@@ -1424,12 +1424,12 @@ sub resolveEvaluatedVideo(curItem)
     end if
   else
     m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
-    m.videoButtons.itemSpacing="[20, 20]"
-    m.videoButtons.columnSpacings="[328, 0, 0]"
+    m.videoButtons.itemSpacing = "[20, 20]"
+    m.videoButtons.columnSpacings = "[328, 0, 0]"
     m.videoButtons.animateToItem = 2
     regenerateNormalButtonRefs()
   end if
-  m.urlResolver.setFields({constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+  m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
   m.urlResolver.observeField("output", "playResolvedVideo")
   m.urlResolver.control = "RUN"
   m.taskRunning = True
@@ -1450,7 +1450,7 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
   end if
   m.refreshes += 1
   if m.video.duration > 0 and m.videoContent.Live and m.video.position < m.video.duration and m.refreshes < 4
-    m.video.seek = m.video.duration+80
+    m.video.seek = m.video.duration + 80
   end if
   if m.refreshes > 4
     m.video.unobserveField("duration")
@@ -1458,7 +1458,7 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
   end if
 end sub
 
-sub videoPositionChanged() 
+sub videoPositionChanged()
   if m.global.constants.enableStatistics 'if position/duration changes, report if vStats are turned on.
     if m.vStatsTimer.TotalSeconds() > 5
       m.vStatsTimer.Mark()
@@ -1468,19 +1468,19 @@ sub videoPositionChanged()
         else
           cache = "player"
         end if
-        watchmanFields = {constants:m.constants,uid:m.uid,authtoken:m.authtoken,cookies:m.cookies,bandwidth:m.video.streamInfo.measuredBitrate,cache:cache,duration:m.urlResolver.output.length,player:m.urlResolver.output.player,position:m.video.position,protocol:m.urlResolver.output.videotype.replace("mp4", "stb"),rebuf_count:0,rebuf_duration:0,url:m.urlResolver.url,uid:m.uid}
+        watchmanFields = { constants: m.constants, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, bandwidth: m.video.streamInfo.measuredBitrate, cache: cache, duration: m.urlResolver.output.length, player: m.urlResolver.output.player, position: m.video.position, protocol: m.urlResolver.output.videotype.replace("mp4", "stb"), rebuf_count: 0, rebuf_duration: 0, url: m.urlResolver.url, uid: m.uid }
         m.watchman.setFields(watchmanFields)
         m.watchman.control = "RUN"
       end if
     end if
   end if
   'change video UI
-  if m.videoProgressBar.visible = true AND m.videoProgressBarp1.visible = true AND m.videoProgressBarp2.visible = true
+  if m.videoProgressBar.visible = true and m.videoProgressBarp1.visible = true and m.videoProgressBarp2.visible = true
     m.videoProgressBarp1.text = getvideoLength(m.video.position)
     if m.video.position > 0
-      m.videoProgressBar.width = 1290*(m.video.position / m.urlResolver.output.length)
+      m.videoProgressBar.width = 1290 * (m.video.position / m.urlResolver.output.length)
     end if
-    m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.video.position)
+    m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.video.position)
   end if
 end sub
 
@@ -1489,37 +1489,37 @@ sub changeVideoPosition()
     m.videoVP = m.video.position
   end if
   if m.videoTransitionState = 2
-    if m.videoVP+1 <= m.urlResolver.output.length
-      m.video.seek = m.videoVP+1
-      m.videoVP+=1
+    if m.videoVP + 1 <= m.urlResolver.output.length
+      m.video.seek = m.videoVP + 1
+      m.videoVP += 1
       if m.videoVP > 0
-        m.videoProgressBar.width = 1290*(m.videoVP / m.urlResolver.output.length)
+        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
       end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
-      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.videoVP)
     end if
   else if m.videoTransitionState = 1
-    if m.videoVP-1 >= 0 
-      m.video.seek = m.videoVP-1
-      m.videoVP=m.videoVP-1
+    if m.videoVP - 1 >= 0
+      m.video.seek = m.videoVP - 1
+      m.videoVP = m.videoVP - 1
       if m.videoVP > 0
-        m.videoProgressBar.width = 1290*(m.videoVP / m.urlResolver.output.length)
+        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
       end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
-      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length+1-m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.videoVP)
     end if
   end if
 end sub
 
-Sub watchmanRan(msg as Object)
+sub watchmanRan(msg as object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
     ?formatJson(data)
     m.watchman.control = "STOP"
   end if
-End Sub
+end sub
 
-Sub playResolvedVideo(msg as Object)
+sub playResolvedVideo(msg as object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
     if isValid(data.error)
@@ -1553,7 +1553,7 @@ Sub playResolvedVideo(msg as Object)
       m.videoProgressBarp2.visible = true
       m.video.setFocus(false)
       m.videoButtons.setFocus(true)
-      m.focusedItem = 7 '[video player/overlay] 
+      m.focusedItem = 7 '[video player/overlay]
       m.video.control = "play"
       m.video.observeField("position", "videoPositionChanged")
       ?m.video.errorStr
@@ -1564,9 +1564,9 @@ Sub playResolvedVideo(msg as Object)
       m.taskRunning = False
     end if
   end if
-End Sub
+end sub
 
-Function getvideoLength(length)
+function getvideoLength(length)
   timeConverter = CreateObject("roDateTime")
   timeConverter.FromSeconds(length)
   days = timeConverter.GetDayOfMonth().ToStr()
@@ -1575,26 +1575,26 @@ Function getvideoLength(length)
   seconds = timeConverter.GetSeconds().ToStr()
   result = ""
   if timeConverter.GetDayOfMonth() < 10
-    days = "0"+timeConverter.GetDayOfMonth().ToStr()
+    days = "0" + timeConverter.GetDayOfMonth().ToStr()
   end if
   if timeConverter.GetHours() < 10
-    hours = "0"+timeConverter.GetHours().ToStr()
+    hours = "0" + timeConverter.GetHours().ToStr()
   end if
   if timeConverter.GetMinutes() < 10
-    minutes = "0"+timeConverter.GetMinutes().ToStr()
+    minutes = "0" + timeConverter.GetMinutes().ToStr()
   end if
   if timeConverter.GetSeconds() < 10
-    seconds = "0"+timeConverter.GetSeconds().ToStr()
+    seconds = "0" + timeConverter.GetSeconds().ToStr()
   end if
   if length < 3600
     'use minute format
-      result = minutes+":"+seconds
+    result = minutes + ":" + seconds
   end if
-  if length >= 3600 AND length < 86400
-    result = hours+":"+minutes+":"+seconds
+  if length >= 3600 and length < 86400
+    result = hours + ":" + minutes + ":" + seconds
   end if
   if length >= 86400 'TODO: make videos above month length display proper length
-    result = days+":"+hours+":"+minutes+":"+seconds
+    result = days + ":" + hours + ":" + minutes + ":" + seconds
   end if
   timeConverter = invalid
   days = invalid
@@ -1602,54 +1602,54 @@ Function getvideoLength(length)
   minutes = invalid
   seconds = invalid
   return result
-End Function
+end function
 
-Function onVideoStateChanged(msg as Object)
+function onVideoStateChanged(msg as object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "state"
-      state = msg.getData()
-      ?"==========VIDEO STATE==========="
-      ?state
-      if state = "finished"
-          deleteSpinner()
-          if m.global.constants.enableStatistics
-            m.video.unobserveField("position")
-          end if
-          m.video.unobserveField("duration")
-          m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-          m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-          m.videoProgressBar.width = 0
-          returnToUIPage()
+    state = msg.getData()
+    ?"==========VIDEO STATE==========="
+    ?state
+    if state = "finished"
+      deleteSpinner()
+      if m.global.constants.enableStatistics
+        m.video.unobserveField("position")
       end if
-      if state = "playing" OR state = "buffering"
-        if m.videoContent.Live = false
-          m.videoButtonsPlayIcon.labelText = m.vjschars["pause"]
-          m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-          m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
-          ?m.currentVideoChannelIcon
-          ?m.videoButtonsChannelIcon
-          if m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" AND m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-            m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
-          end if
-        end if
-        if state = "playing"
-          deleteSpinner()
-        else if state = "buffering"
-          addSpinner()
-        end if
-      else if state = "paused"
-        if m.videoContent.Live = false
-          m.videoButtonsPlayIcon.labelText = m.vjschars["play"]
-          m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-          m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+      m.video.unobserveField("duration")
+      m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+      m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+      m.videoProgressBar.width = 0
+      returnToUIPage()
+    end if
+    if state = "playing" or state = "buffering"
+      if m.videoContent.Live = false
+        m.videoButtonsPlayIcon.labelText = m.vjschars["pause"]
+        m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+        ?m.currentVideoChannelIcon
+        ?m.videoButtonsChannelIcon
+        if m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png" and m.currentVideoChannelIcon <> "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+          m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
         end if
       end if
+      if state = "playing"
+        deleteSpinner()
+      else if state = "buffering"
+        addSpinner()
+      end if
+    else if state = "paused"
+      if m.videoContent.Live = false
+        m.videoButtonsPlayIcon.labelText = m.vjschars["play"]
+        m.videoButtonsPlayIcon.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
+      end if
+    end if
   end if
-end Function
+end function
 
 sub addSpinner()
   m.busySpinner = m.top.createChild("BusySpinner")
   m.busySpinner.poster.uri = "pkg:/images/generic/spaceman.png"
-  m.busySpinner.translation = [ 870, 450 ]
+  m.busySpinner.translation = [870, 450]
   m.busySpinner.visible = true
   centerx = invalid
   centery = invalid
@@ -1661,60 +1661,60 @@ sub deleteSpinner()
   end if
 end sub
 
-Function returnToUIPage()
-    m.videoButtons.setFocus(false)
-    m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-    m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-    m.videoProgressBar.width = 0
-    m.ws.unobserveField("on_close")
-    m.ws.unobserveField("on_chat")
-    m.ws.unobserveField("on_error")
-    m.ws.unobserveField("thumbnailCache")
-    m.ws.unobserveField("messageHeights")
-    m.ws.unobserveField("superchat")
-    m.superChatBox.visible = false
-    m.superChatBackground.visible = false
-    m.chatBox.visible = false
-    m.chatBackground.visible = false
-    m.chatBox.text = ""
-    m.superChatArray = []
-    m.superChatBox.text = ""
-    if m.videoContent.streamFormat = "hls"
-      m.reinitialize = false
-      m.ws.close = [1000, "livestreamStopped"]
-      m.ws.control = "STOP"
-    end if
-    m.videoOverlayGroup.visible = false
-    m.videoUITimer.control = "stop"
-    m.videoUITimer.unobserveField("fire")
-    m.video.visible = false 'Hide video
-    m.video.control = "stop"  'Stop video from playing
-    deleteSpinner()
-    m.videoEndingTimeSet = false
-    m.video.unObserveField("position")
-    m.videoGrid.setFocus(true)
-    m.focusedItem = 2 '[video grid]
-end Function
+function returnToUIPage()
+  m.videoButtons.setFocus(false)
+  m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+  m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+  m.videoProgressBar.width = 0
+  m.ws.unobserveField("on_close")
+  m.ws.unobserveField("on_chat")
+  m.ws.unobserveField("on_error")
+  m.ws.unobserveField("thumbnailCache")
+  m.ws.unobserveField("messageHeights")
+  m.ws.unobserveField("superchat")
+  m.superChatBox.visible = false
+  m.superChatBackground.visible = false
+  m.chatBox.visible = false
+  m.chatBackground.visible = false
+  m.chatBox.text = ""
+  m.superChatArray = []
+  m.superChatBox.text = ""
+  if m.videoContent.streamFormat = "hls"
+    m.reinitialize = false
+    m.ws.close = [1000, "livestreamStopped"]
+    m.ws.control = "STOP"
+  end if
+  m.videoOverlayGroup.visible = false
+  m.videoUITimer.control = "stop"
+  m.videoUITimer.unobserveField("fire")
+  m.video.visible = false 'Hide video
+  m.video.control = "stop" 'Stop video from playing
+  deleteSpinner()
+  m.videoEndingTimeSet = false
+  m.video.unObserveField("position")
+  m.videoGrid.setFocus(true)
+  m.focusedItem = 2 '[video grid]
+end function
 
 sub search()
-  if m.searchKeyboard.text = "" OR Len(m.searchKeyboard.text) < 3
+  if m.searchKeyboard.text = "" or Len(m.searchKeyboard.text) < 3
     m.searchFailed = true
     Error("Search too short", "Needs to be more than 2 characters long.")
   else
     ?"======SEARCH======"
-    if m.searchHistoryContent.getChildCount() = 0 OR m.searchHistoryContent.getChild(0).title <> m.searchKeyboard.text 'don't re-add items that already exist
+    if m.searchHistoryContent.getChildCount() = 0 or m.searchHistoryContent.getChild(0).title <> m.searchKeyboard.text 'don't re-add items that already exist
       if m.searchHistoryContent.getChildCount() >= 8
-          m.searchHistoryContent.removeChildIndex(8) 'removeChildIndex is basically pop
-          m.searchHistoryItems.pop()
-          item = createObject("roSGNode", "ContentNode")
-          item.title = m.searchKeyboard.text
-          m.searchHistoryContent.insertChild(item, 0) 'basically unshift
-          m.searchHistoryItems.unshift(m.searchKeyboard.text)
+        m.searchHistoryContent.removeChildIndex(8) 'removeChildIndex is basically pop
+        m.searchHistoryItems.pop()
+        item = createObject("roSGNode", "ContentNode")
+        item.title = m.searchKeyboard.text
+        m.searchHistoryContent.insertChild(item, 0) 'basically unshift
+        m.searchHistoryItems.unshift(m.searchKeyboard.text)
       else
-          item = createObject("roSGNode", "ContentNode")
-          item.title = m.searchKeyboard.text
-          m.searchHistoryContent.insertChild(item, 0) 'basically unshift
-          m.searchHistoryItems.unshift(m.searchKeyboard.text)
+        item = createObject("roSGNode", "ContentNode")
+        item.title = m.searchKeyboard.text
+        m.searchHistoryContent.insertChild(item, 0) 'basically unshift
+        m.searchHistoryItems.unshift(m.searchKeyboard.text)
       end if
     end if
     ?"======SEARCH======"
@@ -1722,7 +1722,7 @@ sub search()
     if m.searchKeyboardDialog.itemSelected = 1
       ?"video search"
       m.searchType = "video"
-    else if m.searchKeyboardDialog.itemSelected = 0 OR m.searchKeyboardDialog.itemSelected = -1
+    else if m.searchKeyboardDialog.itemSelected = 0 or m.searchKeyboardDialog.itemSelected = -1
       ?"channel search"
       m.searchType = "channel"
     end if
@@ -1736,7 +1736,7 @@ sub execSearch(search, searchType)
   ?search, searchType
   if searchType = "video"
     ?"will run video search."
-    m.videoSearch.setFields({constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+    m.videoSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.videoSearch.observeField("output", "gotVideoSearch")
     m.videoSearch.control = "RUN"
     m.taskRunning = True
@@ -1750,7 +1750,7 @@ sub execSearch(search, searchType)
   end if
   if searchType = "channel"
     ?"will run channel search."
-    m.channelSearch.setFields({constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies})
+    m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.channelSearch.observeField("output", "gotChannelSearch")
     m.channelSearch.control = "RUN"
     m.taskRunning = True
@@ -1764,8 +1764,8 @@ sub execSearch(search, searchType)
   end if
 end sub
 
-sub gotVideoSearch(msg as Object)
-  if type(msg) = "roSGNodeEvent" 
+sub gotVideoSearch(msg as object)
+  if type(msg) = "roSGNodeEvent"
     data = msg.getData()
     if data.success = true
       m.videoSearch.unobserveField("output")
@@ -1776,18 +1776,18 @@ sub gotVideoSearch(msg as Object)
       m.videoGrid.visible = true
       m.loadingText.visible = false
       m.focusedItem = 2 '[video grid]
-      if isValid(m.uiLayers[m.uiLayers.Count()-1])
-        previousData = m.uiLayers[m.uiLayers.Count()-1]
+      if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+        previousData = m.uiLayers[m.uiLayers.Count() - 1]
         currentData = data.result.content
-        previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
-        currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
+        currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer = m.uiLayer+1
+          m.uiLayer = m.uiLayer + 1
         end if
       else
         m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer = m.uiLayer+1
+        m.uiLayer = m.uiLayer + 1
       end if
       m.videoGrid.setFocus(true)
     else
@@ -1797,8 +1797,8 @@ sub gotVideoSearch(msg as Object)
   end if
 end sub
 
-sub gotChannelSearch(msg as Object)
-  if type(msg) = "roSGNodeEvent" 
+sub gotChannelSearch(msg as object)
+  if type(msg) = "roSGNodeEvent"
     data = msg.getData()
     ?data
     if data.success = true
@@ -1811,18 +1811,18 @@ sub gotChannelSearch(msg as Object)
       m.videoGrid.visible = true
       m.loadingText.visible = false
       m.focusedItem = 2 '[video grid]
-      if isValid(m.uiLayers[m.uiLayers.Count()-1])
-        previousData = m.uiLayers[m.uiLayers.Count()-1]
+      if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+        previousData = m.uiLayers[m.uiLayers.Count() - 1]
         currentData = data.content
-        previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
-        currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
+        currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer = m.uiLayer+1
+          m.uiLayer = m.uiLayer + 1
         end if
       else
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer = m.uiLayer+1
+        m.uiLayer = m.uiLayer + 1
       end if
       m.videoGrid.setFocus(true)
     else
@@ -1832,7 +1832,7 @@ sub gotChannelSearch(msg as Object)
   end if
 end sub
 
-sub gotResolvedChannel(msg as Object)
+sub gotResolvedChannel(msg as object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
     if isValid(data.error)
@@ -1853,18 +1853,18 @@ sub gotResolvedChannel(msg as Object)
       m.channelResolver.control = "STOP"
       m.taskRunning = False
       m.focusedItem = 2 '[video grid]
-      if isValid(m.uiLayers[m.uiLayers.Count()-1])
-        previousData = m.uiLayers[m.uiLayers.Count()-1]
+      if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+        previousData = m.uiLayers[m.uiLayers.Count() - 1]
         currentData = data.content
-        previousDataChildTitle = currentData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
-        currentDataChildTitle = previousData.getChildren(1,0)[0].getChildren(1,0)[0].TITLE
+        previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
+        currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer = m.uiLayer+1
+          m.uiLayer = m.uiLayer + 1
         end if
       else
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer = m.uiLayer+1
+        m.uiLayer = m.uiLayer + 1
       end if
       m.videoGrid.setFocus(true)
     end if
@@ -1875,31 +1875,31 @@ function createBothItems(buttons, items, itemSize) as object
   data = CreateObject("roSGNode", "ContentNode")
   buttons.numColumns = items.Count()
   for each item in items
-      if item.split(":")[0] = "http" or item.split(":")[0] = "https" or item.split(":")[0] = "pkg"
-          dataItem = data.CreateChild("horizontalButtonItemData")
-          dataItem.fontUrl = ""
-          dataItem.posterUrl = item
-          dataItem.width = itemSize[0]
-          dataItem.height = itemSize[1]
-          dataItem.backgroundColor = "0x00000000"
-          dataItem.outlineColor = "0xFFFFFFFF"
-          dataItem.labelText = ""
+    if item.split(":")[0] = "http" or item.split(":")[0] = "https" or item.split(":")[0] = "pkg"
+      dataItem = data.CreateChild("horizontalButtonItemData")
+      dataItem.fontUrl = ""
+      dataItem.posterUrl = item
+      dataItem.width = itemSize[0]
+      dataItem.height = itemSize[1]
+      dataItem.backgroundColor = "0x00000000"
+      dataItem.outlineColor = "0xFFFFFFFF"
+      dataItem.labelText = ""
+    else
+      dataItem = data.CreateChild("horizontalButtonItemData")
+      if item.split("").Count() < 2
+        dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        dataItem.fontSize = (itemSize[1] / 64) * 60
       else
-          dataItem = data.CreateChild("horizontalButtonItemData")
-          if item.split("").Count() < 2
-            dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-            dataItem.fontSize = (itemSize[1]/64)*60
-          else
-            dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
-            dataItem.fontSize = (itemSize[1]/64)*35
-          end if
-          dataItem.posterUrl = ""
-          dataItem.width = itemSize[0]
-          dataItem.height = itemSize[1]
-          dataItem.backgroundColor = "0x00000000"
-          dataItem.outlineColor = "0xFFFFFFFF"
-          dataItem.labelText = item
+        dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
+        dataItem.fontSize = (itemSize[1] / 64) * 35
       end if
+      dataItem.posterUrl = ""
+      dataItem.width = itemSize[0]
+      dataItem.height = itemSize[1]
+      dataItem.backgroundColor = "0x00000000"
+      dataItem.outlineColor = "0xFFFFFFFF"
+      dataItem.labelText = item
+    end if
   end for
   return data
 end function
@@ -1910,30 +1910,30 @@ function createBothItemsIdentified(buttons, items, itemSize) as object
   buttons.numColumns = items.Count()
   for each item in items
     if item.item.split(":")[0] = "http" or item.item.split(":")[0] = "https" or item.item.split(":")[0] = "pkg"
-        dataItem = data.CreateChild("horizontalButtonItemData")
-        dataItem.posterUrl = item.item
-        dataItem.width = itemSize[0]
-        dataItem.height = itemSize[1]
-        dataItem.backgroundColor = "0x00000000"
-        dataItem.outlineColor = "0xFFFFFFFF"
-        dataItem.labelText = ""
-        dataItem["itemID"] = item.itemid
+      dataItem = data.CreateChild("horizontalButtonItemData")
+      dataItem.posterUrl = item.item
+      dataItem.width = itemSize[0]
+      dataItem.height = itemSize[1]
+      dataItem.backgroundColor = "0x00000000"
+      dataItem.outlineColor = "0xFFFFFFFF"
+      dataItem.labelText = ""
+      dataItem["itemID"] = item.itemid
     else
-        dataItem = data.CreateChild("horizontalButtonItemData")
-        if item.item.split("").Count() < 2
-            dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-            dataItem.fontSize = (itemSize[1]/64)*60
-        else
-            dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
-            dataItem.fontSize = (itemSize[1]/64)*35
-        end if
-        dataItem.posterUrl = ""
-        dataItem.width = itemSize[0]
-        dataItem.height = itemSize[1]
-        dataItem.backgroundColor = "0x00000000"
-        dataItem.outlineColor = "0xFFFFFFFF"
-        dataItem.labelText = item.item
-        dataItem["itemID"] = item.itemid
+      dataItem = data.CreateChild("horizontalButtonItemData")
+      if item.item.split("").Count() < 2
+        dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
+        dataItem.fontSize = (itemSize[1] / 64) * 60
+      else
+        dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
+        dataItem.fontSize = (itemSize[1] / 64) * 35
+      end if
+      dataItem.posterUrl = ""
+      dataItem.width = itemSize[0]
+      dataItem.height = itemSize[1]
+      dataItem.backgroundColor = "0x00000000"
+      dataItem.outlineColor = "0xFFFFFFFF"
+      dataItem.labelText = item.item
+      dataItem["itemID"] = item.itemid
     end if
   end for
   return data
@@ -1945,7 +1945,7 @@ sub historySearch()
   if m.searchKeyboardDialog.itemFocused = 1
     ?"video search"
     m.searchType = "video"
-  else if m.searchKeyboardDialog.itemFocused = 0 OR m.searchKeyboardDialog.itemFocused = -1
+  else if m.searchKeyboardDialog.itemFocused = 0 or m.searchKeyboardDialog.itemFocused = -1
     ?"channel search"
     m.searchType = "channel"
   end if
@@ -1957,15 +1957,15 @@ sub clearHistory()
   m.searchHistoryItems.Clear()
   SetRegistry("searchHistoryRegistry", "searchHistory", FormatJSON(m.searchHistoryItems))
   if m.searchHistoryContent.removeChildrenIndex(-1, 0) <> true
-      cCount = m.searchHistoryContent.getChildCount()
-      for item = 0 to cCount
-          m.searchHistoryContent.removeChildIndex(0)
-      end for
+    cCount = m.searchHistoryContent.getChildCount()
+    for item = 0 to cCount
+      m.searchHistoryContent.removeChildIndex(0)
+    end for
   end if
 end sub
 
-sub didInstall(msg as Object)
-  if type(msg) = "roSGNodeEvent" 
+sub didInstall(msg as object)
+  if type(msg) = "roSGNodeEvent"
     ?"============================GOT ACCT DATA:======================================="
     ?formatJSON(msg.getData())
     m.rokuInstall.control = "STOP"
@@ -1974,10 +1974,10 @@ sub didInstall(msg as Object)
   end if
 end sub
 
-sub indexloaded(msg as Object)
+sub indexloaded(msg as object)
   if type(msg) = "roSGNodeEvent" and msg.getField() = "mediaIndex"
-      m.mediaIndex = msg.getData()
-      '?"m.mediaIndex= "; m.mediaIndex
+    m.mediaIndex = msg.getData()
+    '?"m.mediaIndex= "; m.mediaIndex
   end if
   'get run time deeplink updates'
   'm.global.observeField("deeplink", handleDeepLink)
@@ -1987,15 +1987,15 @@ end sub
 function on_close(event as object) as void
   print "WebSocket closed"
   if m.reinitialize
-      m.ws.open = m.SERVER
-      m.reinitialize = false
+    m.ws.open = m.SERVER
+    m.reinitialize = false
   end if
 end function
 
 function on_chat(event as object) as void
   eData = event.getData()
   if isValid(edata)
-    m.chatBox.text = edata.raw.join(Chr(10)+Chr(10))
+    m.chatBox.text = edata.raw.join(Chr(10) + Chr(10))
   end if
 end function
 
@@ -2047,7 +2047,7 @@ end sub
 
 sub gotRokuCode(msg as object)
   m.oauthCode.text = msg.getData()
-  if m.videoGrid.visible = false AND m.loadingText.visible = false AND m.searchKeyboard.visible = false
+  if m.videoGrid.visible = false and m.loadingText.visible = false and m.searchKeyboard.visible = false
     m.oauthCode.visible = true
   end if
 end sub
@@ -2130,7 +2130,7 @@ sub getSync()
   ?m.wasLoggedIn
   ?m.favoritesLoaded
   ?"GETSYNC DEBUG"
-  if m.preferences.Count() = 0 AND m.syncLoop.inSync = true AND m.wasLoggedIn AND m.syncLoop.accessToken <> "" 'update
+  if m.preferences.Count() = 0 and m.syncLoop.inSync = true and m.wasLoggedIn and m.syncLoop.accessToken <> "" 'update
     getUserPrefs()
   else if m.syncLoop.accessToken = "" 'logged out, stop loop. (fixes wasLoggedIn race condition)
     m.syncLoop.control = "STOP"
@@ -2163,7 +2163,7 @@ sub gotSync(msg as object)
   data = msg.getData()
   m.syncLoop.control = "STOP"
   ?"GOTSyncDebug"
-  if m.preferences.Count() = 0 OR m.favoritesLoaded = false
+  if m.preferences.Count() = 0 or m.favoritesLoaded = false
     getUserPrefs()
   end if
 end sub
@@ -2181,7 +2181,7 @@ sub gotUserPrefs()
   favoritesChanged = false
   oldpreferences = m.preferences
   newpreferences = m.getpreferencesTask.preferences
-  if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 AND m.wasLoggedIn
+  if m.focusedItem = 1 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 and m.wasLoggedIn or m.focusedItem = 2 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 and m.wasLoggedIn
     m.videoGrid.setFocus(false)
     m.categorySelector.setFocus(true)
     m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
@@ -2192,8 +2192,8 @@ sub gotUserPrefs()
   if m.legacyAuthenticated = false
     authDone()
   end if
-  if isValid(oldpreferences) = false OR oldpreferences.Count() = 0
-    if isValid(newpreferences) AND newpreferences.Count() > 0
+  if isValid(oldpreferences) = false or oldpreferences.Count() = 0
+    if isValid(newpreferences) and newpreferences.Count() > 0
       oldpreferences = newpreferences
       favoritesChanged = true
     end if
@@ -2208,7 +2208,7 @@ sub gotUserPrefs()
       end if
     end for
   end if
-  if m.favoritesThread.state = "init" AND favoritesChanged OR m.favoritesThread.state = "stop" AND favoritesChanged
+  if m.favoritesThread.state = "init" and favoritesChanged or m.favoritesThread.state = "stop" and favoritesChanged
     m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
@@ -2223,7 +2223,7 @@ sub gotFavorites(msg as object)
   if type(msg) = "roSGNodeEvent"
     thread = msg.getRoSGNode()
     if thread.error
-        thread.control = "STOP"
+      thread.control = "STOP"
     else
       m.favoritesMediaIndex.append(thread.output.index)
       m.mediaIndex = m.baseMediaIndex
@@ -2235,7 +2235,7 @@ sub gotFavorites(msg as object)
       m.favoritesLoaded = true
       ?m.focusedItem
       ?m.categorySelector.itemFocused
-      if m.focusedItem = 1 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 OR m.focusedItem = 2 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0
+      if m.focusedItem = 1 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 or m.focusedItem = 2 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0
         m.oauthHeader.visible = false
         m.oauthCode.visible = false
         m.oauthFooter.visible = false
@@ -2245,7 +2245,7 @@ sub gotFavorites(msg as object)
         m.videoGrid.setFocus(true)
         m.focusedItem = 2
         m.oauthLogoutButton.visible = true
-      else if m.focusedItem = 7 AND m.categorySelector.itemFocused = 1 AND m.uiLayer = 0 'update under video
+      else if m.focusedItem = 7 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 'update under video
         m.videoGrid.content = m.categories["FAVORITES"]
       end if
     end if
@@ -2254,10 +2254,10 @@ end sub
 
 sub getReactions(videoID)
   'accesstoken, uid, cookies, claimid, constants
-  if isValid(m.accessToken) AND m.accessToken <> ""
-    m.getreactionTask.setfields({accessToken:m.accessToken:uid:m.uid:cookies:m.cookies:claimid:videoID:constants:m.constants})
-  else if isValid(m.authToken) AND m.authToken <> ""
-    m.getreactionTask.setfields({authToken:m.authToken:uid:m.uid:cookies:m.cookies:claimid:videoID:constants:m.constants})
+  if isValid(m.accessToken) and m.accessToken <> ""
+    m.getreactionTask.setfields({ accessToken: m.accessToken: uid: m.uid: cookies: m.cookies: claimid: videoID: constants: m.constants })
+  else if isValid(m.authToken) and m.authToken <> ""
+    m.getreactionTask.setfields({ authToken: m.authToken: uid: m.uid: cookies: m.cookies: claimid: videoID: constants: m.constants })
   end if
   m.getreactionTask.observeField("reactions", "gotReactions")
   m.getreactionTask.control = "RUN"
@@ -2271,12 +2271,12 @@ sub gotReactions(msg as object)
   ? m.videoButtonsDislikeIcon
   'TODO: fix setting videoButtonsDislikeIcon's Poster URL/Dislike Detection Logic
   '{"mine":{"dislikes":0,"likes":0},"total":{"dislikes":3,"likes":6}}
-  if isValid(data.mine) AND isValid(data.total)
-    if isValid(data.mine.dislikes) AND isValid(data.mine.likes) AND isValid(data.total.dislikes) AND isValid(data.total.likes)
+  if isValid(data.mine) and isValid(data.total)
+    if isValid(data.mine.dislikes) and isValid(data.mine.likes) and isValid(data.total.dislikes) and isValid(data.total.likes)
       ? "likes:"
-      ? data.mine.likes+data.total.likes
+      ? data.mine.likes + data.total.likes
       ? "dislikes"
-      ? data.mine.dislikes+data.total.dislikes
+      ? data.mine.dislikes + data.total.dislikes
       if data.mine.likes > 0
         m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64-selected.png"
       else
@@ -2288,9 +2288,9 @@ sub gotReactions(msg as object)
         else
           m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64-selected.png"
         end if
-      else if data.mine.dislikes = 0 AND data.total.dislikes >= 100
+      else if data.mine.dislikes = 0 and data.total.dislikes >= 100
         m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64.png"
-      else if data.mine.dislikes = 0 AND data.total.dislikes < 100
+      else if data.mine.dislikes = 0 and data.total.dislikes < 100
         m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64.png"
       end if
     end if
@@ -2299,7 +2299,7 @@ sub gotReactions(msg as object)
   m.getreactionTask.control = "STOP"
 end sub
 sub setReaction(videoID, reaction)
-  m.setreactionTask.setfields({accessToken:m.accessToken:action:reaction:claimid:videoID:constants:m.constants})
+  m.setreactionTask.setfields({ accessToken: m.accessToken: action: reaction: claimid: videoID: constants: m.constants })
   m.setreactionTask.observeField("status", "setReactionDone")
   m.setreactionTask.control = "RUN"
 end sub
@@ -2315,19 +2315,19 @@ sub setReactionDone(msg as object)
 end sub
 
 sub block(channelID)
-  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"blocked": [channelID]}:changeType:"append"})
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
 sub unBlock(channelID)
-  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"blocked": [channelID]}:changeType:"remove"})
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
 sub follow(channelID)
-  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"following": [channelID]}:changeType:"append"})
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
@@ -2338,7 +2338,7 @@ sub follow(channelID)
 end sub
 
 sub unFollow(channelID)
-  m.setpreferencesTask.setFields({accessToken:m.accessToken:uid:m.uid:authtoken:m.authtoken:constants:m.constants:oldHash:m.wallet.oldHash:newHash:m.wallet.newHash:walletData:m.wallet.walletData:uid:m.flowUID:preferences:{"following": [channelID]}:changeType:"remove"})
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
@@ -2392,28 +2392,28 @@ sub observeFields(task, fieldaarray)
 end sub
 
 'General HTTP/Registry-Related Functions
-sub gotCookies(msg as Object)
-    cookies = msg.getData()
-    if cookies.Count() > 0
-      ?"COOKIE:"
-      ?FormatJson(cookies)
-      ?"COOKIE_END"
-      SetRegistry("authRegistry","cookies", FormatJSON(cookies))
-      m.cookies = cookies
+sub gotCookies(msg as object)
+  cookies = msg.getData()
+  if cookies.Count() > 0
+    ?"COOKIE:"
+    ?FormatJson(cookies)
+    ?"COOKIE_END"
+    SetRegistry("authRegistry", "cookies", FormatJSON(cookies))
+    m.cookies = cookies
+  end if
+end sub
+
+function GetRegistry(registry, key) as dynamic
+  try
+    if m[registry].Exists(key)
+      return m[registry].Read(key)
     end if
-End Sub
+  catch e
+    return invalid
+  end try
+end function
 
-Function GetRegistry(registry, key) As Dynamic
-    try
-     if m[registry].Exists(key)
-         return m[registry].Read(key)
-     endif
-    catch e
-      return invalid
-    end try
-End Function
-
-Function SetRegistry(registry, key, value) As boolean
+function SetRegistry(registry, key, value) as boolean
   try
     m[registry].Write(key, value)
     m[registry].Flush()
@@ -2421,24 +2421,24 @@ Function SetRegistry(registry, key, value) As boolean
   catch e
     return false
   end try
-End Function
+end function
 
-Function IsValid(value As Dynamic) As Boolean 'TheEndless Roku Development forums
+function IsValid(value as dynamic) as boolean 'TheEndless Roku Development forums
   try
-    Return Type(value) <> "<uninitialized>" And value <> invalid
+    return Type(value) <> "<uninitialized>" and value <> invalid
   catch e
     return false
   end try
-End Function
+end function
 
-Function deleteReg (section = "" As String) As Void 'belltown Roku Development forums (https://community.roku.com/t5/Roku-Developer-Program/Registry-not-Cleared-if-App-is-deleted/m-p/428861/highlight/true#M30587)
-    r = CreateObject ("roRegistry")
-    If section = ""
-        For Each regSection In r.GetSectionList ()
-            r.Delete (regSection)
-        End For
-    Else
-        r.Delete (section)
-    Endif
-    r.Flush ()
-End Function
+function deleteReg(section = "" as string) as void 'belltown Roku Development forums (https://community.roku.com/t5/Roku-Developer-Program/Registry-not-Cleared-if-App-is-deleted/m-p/428861/highlight/true#M30587)
+  r = CreateObject ("roRegistry")
+  if section = ""
+    For Each regSection In r.GetSectionList ()
+      r.Delete (regSection)
+    end for
+  else
+    r.Delete (section)
+  end if
+  r.Flush ()
+end function
