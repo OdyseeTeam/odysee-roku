@@ -89,7 +89,6 @@ function ChannelToVideoGrid(channel)
         ?channel + " is livestreaming with chat claimid: " + streamStatus.chatData.result.items[0].claim_id
         item = {}
         'since the user is livestreaming, we should add it here, before anything else.
-        mediaindex = {}
         result = []
         content = createObject("RoSGNode", "ContentNode")
         'This will allow us to insert 1 item at the very beginning, since we use counter+curRow to form the Rows that the user views.
@@ -120,7 +119,6 @@ function ChannelToVideoGrid(channel)
         currow.appendChild(curitem)
     else
         ?channel + " is not livestreaming"
-        mediaindex = {}
         result = []
         content = createObject("RoSGNode", "ContentNode")
         counter = 0
@@ -233,7 +231,6 @@ function ChannelToVideoGrid(channel)
                     curitem = invalid
                 end if
                 result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
-                mediaindex[item.guid] = item
                 item = invalid
             end if
         end for
@@ -241,7 +238,7 @@ function ChannelToVideoGrid(channel)
         ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"
 
         '?"manufacturing finished for key: "+subkey
-        return { contentarray: result: index: mediaindex: content: content } 'Returns the array
+        return { contentarray: result: content: content } 'Returns the array
     else
         return { error: true }
     end if

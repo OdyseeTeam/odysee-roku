@@ -53,7 +53,6 @@ Function ClaimsToVideoGrid(claims)
         end if
     end while
     items = response.result.items
-    mediaindex={}
     result=[]
     counter=0
     content=createObject("RoSGNode","ContentNode")
@@ -125,12 +124,11 @@ Function ClaimsToVideoGrid(claims)
             curitem = invalid
         end if
         result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
-        mediaindex[item.guid] = item
         item = invalid
     end for
     '?type(content)
     ?"exported"+Str(content.getChildCount()*4)+" items from Odysee (Video Search)"
 
     '?"manufacturing finished for key: "+subkey
-    return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
+    return  {contentarray:result:content:content} 'Returns the array
 End Function

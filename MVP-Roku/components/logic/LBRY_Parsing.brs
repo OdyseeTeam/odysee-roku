@@ -1,7 +1,6 @@
 'All parsing functions (creating feed, etc)
 
 Function ManufacturePlaceholderVideoGrid(amount, category) 'Create Placeholder Grid with Amount items.
-    mediaindex={}
     result=[]
     counter=0
     content=createObject("RoSGNode","ContentNode")
@@ -53,9 +52,8 @@ Function ManufacturePlaceholderVideoGrid(amount, category) 'Create Placeholder G
         end if
 
         result.push(item)
-        mediaindex[item.guid] = item
     end for
 
     '?"manufacturing finished for key: "+subkey
-    return  {contentarray:result:index:mediaindex:content:content} 'Returns the array
+    return  {contentarray:result:content:content} 'Returns the array
 End Function

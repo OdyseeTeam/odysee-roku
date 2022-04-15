@@ -105,14 +105,9 @@ sub init()
   m.date = CreateObject("roDateTime")
   m.chatArray = [] 'legacy: left in for now.
   m.superChatArray = []
-  m.thumbnailCache = []
-  m.messageHeights = []
   m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]", "")
   m.chatImageRegex = CreateObject("roRegex", "(?:!\[(.*?)\]\((.*?)\))", "") 'incredibly scuffed
   m.channelIDs = {}
-  m.mediaIndex = {}
-  m.baseMediaIndex = {}
-  m.favoritesMediaIndex = {}
   m.categories = {}
   m.authTask = createObject("roSGNode", "authTask")
   m.urlResolver = createObject("roSGNode", "resolveLBRYURL")
@@ -471,8 +466,6 @@ sub threadDone(msg as object)
         thread.control = "RUN"
       end if
     else
-      m.baseMediaIndex.append(thread.output.index)
-      m.mediaIndex = m.baseMediaIndex
       ?thread.rawname
       m.categories.addReplace(thread.rawname, thread.output.content)
       thread.unObserveField("output")
@@ -493,8 +486,6 @@ sub threadDone(msg as object)
         thread.control = "RUN"
         m.runningthreads.Push(thread)
       else
-        ?m.mediaIndex
-        ?m.mediaIndex.Count()
         ?m.categories
         ?m.categories[m.categories.Keys()[0]]
         ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
@@ -503,10 +494,8 @@ sub threadDone(msg as object)
         m.loadingText.translation = "[800,0]"
         m.loadingText.vertAlign = "center"
         m.loadingText.horizAlign = "left"
-        if m.mediaIndex.Count() > 0
-          if m.authTask.authPhase > 0
-            finishInit()
-          end if
+        if m.authTask.authPhase > 0
+          finishInit()
         else
           retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
         end if
@@ -541,7 +530,9 @@ sub finishInit()
   end if
 end sub
 
-function onKeyEvent(key as string, press as boolean) as boolean 'Maps back button to leave video
+'UI BACKBONE
+function onKeyEvent(key as string, press as boolean) as boolean 'Literally the backbone of the entire user interface
+  'TODO: make more readable
   ?"task running state is:"
   ?m.taskRunning
   if m.taskRunning = False
@@ -550,17 +541,9 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
     ?"current ui array:"
     ?m.uiLayers
     if press = true
+
       if key = "OK"
         if m.video.visible = true and m.videoOverlayGroup.visible = true
-          'TODO: redo videoButtonSelected for these text strings
-          '"channelButton": "videoButtonsChannelIcon", 0
-          '"following": "videoButtonsFollowingIcon", 1
-          '"like": "videoButtonsLikeIcon",
-          '"dislike": "videoButtonsDislikeIcon",
-          '"toggleChat": "videoButtonsChatToggle",
-          '"playPause": "videoButtonsPlayIcon", 3
-          '"previousItem", 2
-          '"nextItem"
           if m.videoButtonSelected <> "none"
             ? "Current Button:"
             ? m.videoButtonSelected
@@ -612,6 +595,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
               'Play Button
               if m.video.visible
                 showVideoOverlay()
+                'Video transition state:
+                '0=None, 1=Rewind, 2=FastForward
                 if m.videoTransitionState = 0
                   deleteSpinner()
                   if m.video.state = "playing"
@@ -658,9 +643,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
               ? "like"
               ? m.wasLoggedIn
               if m.wasLoggedIn
-                if m.currentVideoReactions.mine.likes > 0
+                if m.currentVideoReactions.mine.likes > 0 AND m.currentVideoReactions.mine.dislikes = 0
                   setReaction(m.currentVideoClaimID, "negate")
                 else
+                  setReaction(m.currentVideoClaimID, "negate")
                   setReaction(m.currentVideoClaimID, "like")
                 end if
               end if
@@ -669,9 +655,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
               ? m.wasLoggedIn
               if m.wasLoggedIn
                 ' Dislike
-                if m.currentVideoReactions.mine.dislikes > 0
+                if m.currentVideoReactions.mine.dislikes > 0 AND m.currentVideoReactions.mine.likes = 0
                   setReaction(m.currentVideoClaimID, "negate")
                 else
+                  setReaction(m.currentVideoClaimID, "negate")
                   setReaction(m.currentVideoClaimID, "dislike")
                 end if
               end if
@@ -688,6 +675,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           end if
         end if
       end if
+
       if key = "back" 'If the back button is pressed
         if m.video.visible
           returnToUIPage()
@@ -757,6 +745,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           return true
         end if
       end if
+
       if key = "play"
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
@@ -782,6 +771,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           end if
         end if
       end if
+
       if key = "rewind"
         ?m.video.visible
         ?m.ffrwTimer.control
@@ -804,6 +794,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           end if
         end if
       end if
+
       if key = "fastforward"
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
@@ -830,6 +821,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           end if
         end if
       end if
+
       if key = "options"
         if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
           if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) and m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
@@ -845,6 +837,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           end if
         end if
       end if
+
       if key = "up"
         if m.video.visible
           showVideoOverlay()
@@ -875,6 +868,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           end if
         end if
       end if
+
       if key = "down"
         if m.video.visible
           hideVideoOverlay()
@@ -899,6 +893,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           end if
         end if
       end if
+
       if key = "left"
         if m.video.visible
           showVideoOverlay()
@@ -960,6 +955,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           m.focusedItem = 4 '[confirm search]
         end if
       end if
+
       if key = "right"
         if m.video.visible
           showVideoOverlay()
@@ -1008,6 +1004,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Maps back butto
           row = invalid
           itemFocused = invalid
         end if
+
       end if
     else
       return true
@@ -1116,7 +1113,6 @@ sub categorySelectorFocusChanged(msg)
     end if
     'base = m.JSONTask.output["PRIMARY_CONTENT"]
     'm.videoGrid.content = base["content"]
-    'm.mediaIndex = base["index"]
   end if
 end sub
 
@@ -1982,16 +1978,6 @@ sub didInstall(msg as object)
   end if
 end sub
 
-sub indexloaded(msg as object)
-  if type(msg) = "roSGNodeEvent" and msg.getField() = "mediaIndex"
-    m.mediaIndex = msg.getData()
-    '?"m.mediaIndex= "; m.mediaIndex
-  end if
-  'get run time deeplink updates'
-  'm.global.observeField("deeplink", handleDeepLink)
-  m.LoadTask.control = "STOP"
-end sub
-
 function on_close(event as object) as void
   print "WebSocket closed"
   if m.reinitialize
@@ -2233,9 +2219,6 @@ sub gotFavorites(msg as object)
     if thread.error
       thread.control = "STOP"
     else
-      m.favoritesMediaIndex.append(thread.output.index)
-      m.mediaIndex = m.baseMediaIndex
-      m.mediaIndex.append(m.favoritesMediaIndex)
       m.categories.addReplace("FAVORITES", thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"

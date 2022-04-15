@@ -90,7 +90,6 @@ function ClaimsToChannelGrid(claims)
         return { result: {}, success: false }
     end if
     if validChannels.Count() >= 1
-        mediaindex = {}
         result = []
         counter = 0
         i = 0
@@ -139,12 +138,11 @@ function ClaimsToChannelGrid(claims)
                 curitem = invalid
             end if
             result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
-            mediaindex[item.guid] = item
             item = invalid
             i += 1
         end for
         ?"exported" + Str(content.getChildCount() * 4) + " channels from Odysee (Channel Search)"
-        return { contentarray: result: index: mediaindex: content: content: success: true }
+        return { contentarray: result: content: content: success: true }
     else
         return { result: {}, success: false }
     end if

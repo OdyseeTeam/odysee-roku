@@ -45,7 +45,6 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             end if
         end while
         items = response.result.items
-        mediaindex = {}
         result = []
         counter = 0
         content = createObject("RoSGNode", "ContentNode")
@@ -118,7 +117,6 @@ function ChannelsToVideoGrid(channels, blockedChannels)
                 curitem = invalid
             end if
             result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
-            mediaindex[item.guid] = item
             item = invalid
         end for
         '?type(content)
@@ -126,7 +124,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
 
         '?"manufacturing finished for key: "+subkey
         m.top.error = false
-        return { contentarray: result: index: mediaindex: content: content } 'Returns the array
+        return { contentarray: result: content: content } 'Returns the array
     catch e
         m.top.error = true
         m.top.numerrors += 1
