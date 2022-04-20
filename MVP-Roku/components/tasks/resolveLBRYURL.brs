@@ -71,13 +71,13 @@ function siteMethod(lbry_url)
     getRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=get"
     getRequestOutput = postJSON(getRequestJSON, getRequestURL, invalid)
     vurl = getRequestOutput["result"]["streaming_url"]
-    if m.global.constants.enableStatistics
-        'get video length (needed for meta)
-        resolveRequestJSON = FormatJson({ "jsonrpc": "2.0", "method": "resolve", "params": { "urls": [lbry_url], "include_purchase_receipt": false, "include_is_my_output": false } })
-        resolveRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=resolve"
-        resolveRequestOutput = postJSON(resolveRequestJSON, resolveRequestURL, invalid)
-        vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
-    end if
+
+    'Video length is needed for more than just metadata, since our custom UI uses it as well.
+    'Disabling statistics still disables sending it.
+    resolveRequestJSON = FormatJson({ "jsonrpc": "2.0", "method": "resolve", "params": { "urls": [lbry_url], "include_purchase_receipt": false, "include_is_my_output": false } })
+    resolveRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=resolve"
+    resolveRequestOutput = postJSON(resolveRequestJSON, resolveRequestURL, invalid)
+    vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
 
     vresolvedRedirectURL = resolveRedirect(vurl)
     ?vresolvedRedirectURL
@@ -96,6 +96,6 @@ function siteMethod(lbry_url)
         return { videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url } 'returns video+statdata
     else
         m.top.error = false
-        return { videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title } 'stat data is not needed for playback w/o statistics
+        return { videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength } 'stat data is not needed for playback w/o statistics
     end if
 end function

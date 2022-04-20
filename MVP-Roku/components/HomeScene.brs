@@ -220,7 +220,7 @@ sub init()
   m.constantsTask.control = "RUN"
 end sub
 
-'TODO: order app according to startup/seperate brightscript into seperate scripts for UI/startup/etc.
+'TODO: order app according to startup[done]/seperate brightscript into seperate scripts for UI/startup/etc.
 
 'STARTUP TASKS
 sub gotConstants()
@@ -310,7 +310,7 @@ sub authPhaseChanged(msg as object)
         authDone()
       end if
       m.authTask.authPhase = 1
-      m.authTask.control = "RUN"
+      m.authTask.control = "RUN" 'TODO: this is probably redundant since we literally stop it on authDone
       ?"Task Restarted"
     end if
     if data = 0
@@ -680,11 +680,12 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         if m.video.visible
           returnToUIPage()
           return true
-        else if (m.uiLayer = 0 and m.focusedItem = 1) or (m.uiLayer = 0 and m.focusedItem = 2)
+        else if (m.uiLayer = 0 and m.focusedItem = 1) or (m.uiLayer = 0 and m.focusedItem = 2) 'are favorites or category 1 in focus with no additional UI layers?
           'TODO: add "are you sure you want to exit Odysee" screen
           'for now, re-add old behavior
           return false
-        else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0
+        else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0 'is anything but search in focus with no additional UI layers?
+          'TODO: this might be redundant, try removing eventually.
           'set focus to selector
           ErrorDismissed()
           m.videoButtons.setFocus(false)
@@ -696,14 +697,13 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.focusedItem = 1 '[selector]
           return true
         else if m.uiLayer > 0
-          'go back a UI layer
           ?"popping layer"
-          if m.uiLayers.Count() > 0
-            if m.categorySelector.itemFocused = 1
+          if m.uiLayers.Count() > 0 'is there more than one UI layer?
+            if m.categorySelector.itemFocused = 1 'are favorites in focus?
               m.uiLayer = 0
               m.uiLayers = []
               m.videoGrid.content = m.categories["FAVORITES"]
-            else
+            else 'go back a UI layer
               m.uiLayers.pop()
               m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
               if isValid(m.uiLayers[m.uiLayers.Count() - 1])
@@ -715,13 +715,13 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ?"went back to", m.uiLayer
             end if
           end if
-          if m.categorySelector.itemFocused = 0 and m.uiLayers.Count() = 0
+          if m.categorySelector.itemFocused = 0 and m.uiLayers.Count() = 0 'is search in focus, and are there no additional UI layers?
             m.uiLayer = 0
             ?"(search) went back to", m.uiLayer
             backToKeyboard()
           end if
-          if m.categorySelector.itemFocused > 1 and m.uiLayers.Count() = 0 'not search, on category.
-            'set focus to selector
+          if m.categorySelector.itemFocused > 1 and m.uiLayers.Count() = 0 'is anything but search in focus, and are there no additional UI layers?
+            'this means we have no layers to fall back to, so by default, we should set focus to selector
             m.uiLayer = 0
             ?"(catsel) went back to", m.uiLayer
             ErrorDismissed()
@@ -733,8 +733,9 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.focusedItem = 1 '[selector]
           end if
           return true
-        else if m.uiLayer = 0
-          'set focus to selector
+        else if m.uiLayer = 0 'is the first UI layer occupying vgrid? (FALLBACK)
+          'this means we have no layers to fall back to, so by default, we should set focus to selector
+          'this exists because we still have to fall back to selector even with search.
           ErrorDismissed()
           m.searchKeyboard.setFocus(false)
           m.searchKeyboardDialog.setFocus(false)
@@ -749,6 +750,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       if key = "play"
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
+          'Video transition state:
+          '0=None, 1=Rewind, 2=FastForward
           if m.videoTransitionState = 0
             deleteSpinner()
             if m.video.state = "playing"
@@ -771,7 +774,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
         end if
       end if
-
+      'TODO: add jumpAmount to changeVideoPosition, since 1 second granularity should be only used on 1x
       if key = "rewind"
         ?m.video.visible
         ?m.ffrwTimer.control
@@ -782,7 +785,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           if m.videoTransitionState <> 1
             m.ffrwTimer.duration = .5
           end if
-          m.videoTransitionState = 1
+          m.videoTransitionState = 1 'Reset to RW
           m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
           ?m.ffrwTimer.control
           if m.ffrwTimer.control = "start"
@@ -801,7 +804,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           if m.videoTransitionState <> 2
             m.ffrwTimer.duration = .3
           end if
-          m.videoTransitionState = 2
+          m.videoTransitionState = 2 'Reset to FF
           m.video.control = "prebuffer" 'it's better to prebuffer immediately as we are moving forwards in the video
           if m.ffrwTimer.control = "start"
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
@@ -1004,7 +1007,6 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           row = invalid
           itemFocused = invalid
         end if
-
       end if
     else
       return true
@@ -1133,16 +1135,6 @@ sub hideVideoOverlay()
   m.videoUITimer.control = "stop"
   m.videoUITimer.unobserveField("fire")
   m.videoOverlayGroup.visible = false
-end sub
-
-sub warningdismissed()
-  m.errorText.visible = false
-  m.errorSubtext.visible = false
-  m.errorButton.visible = false
-  m.errorButton.unobserveField("buttonSelected")
-  m.errorButton.setFocus(false)
-  m.global.scene.signalBeacon("AppDialogComplete")
-  finishInit()
 end sub
 
 sub resetVideoGrid()
@@ -1355,7 +1347,6 @@ sub resolveVideo(url = invalid)
           m.videoContent.Live = true
           m.video.content = m.videoContent
           m.video.visible = true
-          'TODO: Reposition video dialog
           m.videoProgressBar.visible = false 'its live, we don't need progress updates.
           m.videoProgressBarp1.visible = false
           m.videoProgressBarp2.visible = false
@@ -1493,6 +1484,7 @@ sub changeVideoPosition()
     m.videoVP = m.video.position
   end if
   if m.videoTransitionState = 2
+    'TODO: 1 second only on 1x
     if m.videoVP + 1 <= m.urlResolver.output.length
       m.video.seek = m.videoVP + 1
       m.videoVP += 1
@@ -2260,7 +2252,6 @@ sub gotReactions(msg as object)
   ? data.mine
   ? data.total
   ? m.videoButtonsDislikeIcon
-  'TODO: fix setting videoButtonsDislikeIcon's Poster URL/Dislike Detection Logic
   '{"mine":{"dislikes":0,"likes":0},"total":{"dislikes":3,"likes":6}}
   if isValid(data.mine) and isValid(data.total)
     if isValid(data.mine.dislikes) and isValid(data.mine.likes) and isValid(data.total.dislikes) and isValid(data.total.likes)
@@ -2268,22 +2259,33 @@ sub gotReactions(msg as object)
       ? data.mine.likes + data.total.likes
       ? "dislikes"
       ? data.mine.dislikes + data.total.dislikes
+      ratioed = false
+
+      'If 2 times more people dislike the video than like it, it's obviously ratioed.
+      if ((data.total.likes+data.mine.likes+.01)/(data.total.dislikes+data.mine.dislikes+.01)) >= 2 'ratioed
+        ratioed = true
+      end if
+
       if data.mine.likes > 0
         m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64-selected.png"
       else
         m.videoButtonsLikeIcon.posterUrl = "pkg:/images/generic/tu64.png"
       end if
+
+      if ratioed
+        m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64.png"
+      else
+        m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64.png"
+      end if
+
       if data.mine.dislikes > 0
-        if data.total.dislikes >= 99
+        if ratioed
           m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64-selected.png"
         else
           m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64-selected.png"
         end if
-      else if data.mine.dislikes = 0 and data.total.dislikes >= 100
-        m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/fu64.png"
-      else if data.mine.dislikes = 0 and data.total.dislikes < 100
-        m.videoButtonsDislikeIcon.posterUrl = "pkg:/images/generic/td64.png"
       end if
+
     end if
   end if
   ? m.videoButtonsDislikeIcon
