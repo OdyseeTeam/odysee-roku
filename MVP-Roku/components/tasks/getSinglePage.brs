@@ -13,19 +13,29 @@ sub master()
 end sub
 
 function ChannelsToVideoGrid(channels, blockedChannels)
-    if isValid(m.top.blocked)
-        blockedChannels = m.top.blocked
-        for i = 0 to channels.Count() - 1 step 1
-            for each blockedchannel in blockedChannels
-                if channels[i] = blockedchannel
-                    channels.Delete(i) 'remove blocked channels from query, allowing more room for others
-                end if
-            end for
-        end for
-        blockedChannels = invalid
-    end if
+    
 
     try
+        'TODO: impliment blocking channels during parsing, not in the beginning.
+        'Incoming channels can be invalid in open queries. (e.g: Universe)
+        trialChannels = m.top.channels
+        if isValid(m.top.blocked) AND isValid(m.top.channels)
+            blockedChannels = m.top.blocked
+            for i = 0 to channels.Count() - 1 step 1
+                for each blockedchannel in blockedChannels
+                    if trialChannels[i] = blockedchannel
+                        ? "deleting one"
+                        trialChannels.Delete(i) 'remove blocked channels from query, allowing more room for others
+                    end if
+                end for
+            end for
+            if trialChannels.Count() > 0
+                channels = trialChannels
+            else
+                chanels = m.top.channels
+            end if
+            blockedChannels = invalid
+        end if
         queryOutput = "placeholder"
         date = CreateObject("roDateTime")
         max = 48
