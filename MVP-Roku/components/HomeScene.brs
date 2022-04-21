@@ -2262,7 +2262,7 @@ sub gotReactions(msg as object)
       ratioed = false
 
       'If 2 times more people dislike the video than like it, it's obviously ratioed.
-      if ((data.total.likes+data.mine.likes+.01)/(data.total.dislikes+data.mine.dislikes+.01)) >= 2 'ratioed
+      if ((data.total.dislikes+data.mine.dislikes+.01)/(data.total.likes+data.mine.likes+.01)) >= 2 'ratioed
         ratioed = true
       end if
 
