@@ -130,7 +130,7 @@ end function
 
 function getLivestream(channel)
     try
-        livestreamStatus = getJSON(m.top.constants["LIVE_API_V2"] + "/is_live?channel_claim_id=" + channel)
+        livestreamStatus = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
         liveData = livestreamStatus.data
         lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
         lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
