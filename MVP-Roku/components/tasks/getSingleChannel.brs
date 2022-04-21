@@ -127,9 +127,9 @@ function ChannelToVideoGrid(channel)
     end if
 end function
 
-
 function getLivestream(channel)
     try
+        'Github seems to be at least one commit behind, making a placeholder commit.
         livestreamStatus = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
         liveData = livestreamStatus.data
         lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
