@@ -132,12 +132,16 @@ function getLivestream(channel)
         'Github seems to be at least one commit behind, making a placeholder commit.
         livestreamStatus = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
         liveData = livestreamStatus.data
-        lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-        lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
-        livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
-        liveClaim = livestreamclaimquery["result"]["items"][0]
-        liveItem = parseLiveData(channel, liveData, liveClaim)
-        return { liveItem: liveItem : success: true }
+        if liveData["Live"]
+            lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
+            livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
+            liveClaim = livestreamclaimquery["result"]["items"][0]
+            liveItem = parseLiveData(channel, liveData, liveClaim)
+            return { liveItem: liveItem : success: true }
+        else
+            return { success: false }
+        end if
     catch e
         'if all else fails, try legacy
         return getLivestreamLegacy(channel)
