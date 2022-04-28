@@ -129,34 +129,15 @@ function getLivestream(channel)
         'Github seems to be at least one commit behind, making a placeholder commit.
         livestreamStatus = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
         liveData = livestreamStatus.data
-        lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-        lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
-        livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
-        liveClaim = livestreamclaimquery["result"]["items"][0]
-        liveItem = parseLiveData(channel, liveData, liveClaim)
-        return { liveItem: liveItem : success: true }
-    catch e
-        'if all else fails, try legacy
-        return getLivestreamLegacy(channel)
-    end try
-end function
-
-function getLivestreamLegacy(channel)
-    try
-        'This finds if a user is livestreaming. If it is, it gets the livestream data, and then resolves the chat claimId for that individual livestream.
-        'Chat is only attached to the latest livestream. If the user streams more than one livestream, we will have a problem.
-        livestreamStatus = getJSON(m.top.constants["LIVE_API"] + "/" + channel)
-        livestreamData = livestreamStatus["data"]
-        if livestreamData.live = false
-            return { success: false }
-        else
+        if liveData["Live"]
             lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "claim_type": "stream", "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": [channel], "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": true, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": false } })
-            liveClaim = postJSON(lsqueryJSON, lsqueryURL, invalid).result.items[0]
-            'if start=releaseTime, we used legacy
-            liveData = { "ActiveClaim": { "ClaimID": liveClaim.claim_id, "ReleaseTime": livestreamstatus["data"]["timestamp"] }, "Start": livestreamstatus["data"]["timestamp"], "VideoURL": livestreamstatus["data"]["url"] }
+            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
+            livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
+            liveClaim = livestreamclaimquery["result"]["items"][0]
             liveItem = parseLiveData(channel, liveData, liveClaim)
             return { liveItem: liveItem : success: true }
+        else
+            return { success: false }
         end if
     catch e
         return { success: false }
