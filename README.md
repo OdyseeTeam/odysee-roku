@@ -1,8 +1,7 @@
 <h1 align="center">Odysee Roku App (Unofficial) EXPERIMENTAL DEVICE-FLOW BRANCH</h1>
 <div align="center">
-  <strong>THIS IS HIGHLY EXPERIMENTAL AND CAN+MAY BREAK YOUR ODYSEE WALLET, USE AT YOUR OWN RISK!</strong>
+  <strong>THIS IS HIGHLY EXPERIMENTAL AND MAY BREAK YOUR ODYSEE WALLET, USE AT YOUR OWN RISK!</strong>
   <strong>ENCRYPTION SUPPORT IS NOT IMPLEMENTED.</strong>
-  <strong>This has not been heavily tested yet in any capacity, please do not use this in production.</strong>
 </div>
 
 <div align="center">

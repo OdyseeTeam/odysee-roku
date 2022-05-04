@@ -45,7 +45,7 @@ sub master()
         ' Then you poll the token endpoint with the returned device_code to get an access token.
         'https://sso.odysee.com/auth/realms/Users/protocol/openid-connect/token
         ?"authphase is 1: begin new auth"
-        accountRoot = m.top.constants["ROOT_SSO"]+""
+        accountRoot = m.top.constants["ROOT_SSO"] + ""
         json = { response_type: "device_code": client_id: "odysee-roku-unofficial" }
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/auth/device", {})
         m.top.verifyURL = authreq.verification_uri
@@ -65,7 +65,7 @@ sub master()
         checkRefresh()
     end if
     if m.top.authPhase = 2
-        accountRoot = m.top.constants["ROOT_SSO"]+""
+        accountRoot = m.top.constants["ROOT_SSO"] + ""
         json = { grant_type: "urn:ietf:params:oauth:grant-type:device_code": client_id: "odysee-roku-unofficial": device_code: m.top.deviceCode }
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
         ?FormatJson(authreq)
@@ -113,8 +113,8 @@ sub master()
     end if
     if m.top.authPhase = 10 'User wants to log out.
         'https://stackoverflow.com/a/46769801 really helped me out with this
-        json = {refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial"}
-        accountRoot = m.top.constants["ROOT_SSO"]+""
+        json = { refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial" }
+        accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/logout", { "Authorization": "Bearer " + m.top.accessToken })
         ? json
         ? accountRoot
@@ -132,31 +132,39 @@ sub checkRefresh()
         ?"token expired, renew"
         m.top.output = { authorized: false, state: "PENDING", debug: {} }
         json = { grant_type: "refresh_token": refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial" }
-        accountRoot = m.top.constants["ROOT_SSO"]+""
+        accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
-        if isValid(authreq.error)
+        try
+            if isValid(authreq.error)
+                m.top.authPhase = 4
+                m.top.accessToken = ""
+                m.top.refreshToken = ""
+                m.top.authPhase = 1
+                m.top.output = { authorized: false, state: "INVALID", debug: authreq }
+            end if
+            if isValid(authreq.access_token)
+                m.top.accessToken = authreq.access_token
+                m.top.refreshToken = authreq.refresh_token
+                'authreq.expires_in
+                'authreq.refresh_expires_in
+                curUnixTime = CreateObject("roDateTime").AsSeconds()
+                m.top.accessTokenExpiration = curUnixTime + authreq.expires_in
+                m.top.refreshTokenExpiration = curUnixTime + authreq.refresh_expires_in
+                ?"Access Expires At:"
+                ?m.top.accessTokenExpiration
+                ?"Refresh Expires At:"
+                ?m.top.refreshTokenExpiration
+                curUnixTime = invalid
+                m.top.output = { authorized: true, state: "OK", debug: authreq }
+                m.top.authPhase = 3
+            end if
+        catch e
             m.top.authPhase = 4
             m.top.accessToken = ""
             m.top.refreshToken = ""
             m.top.authPhase = 1
             m.top.output = { authorized: false, state: "INVALID", debug: authreq }
-        end if
-        if isValid(authreq.access_token)
-            m.top.accessToken = authreq.access_token
-            m.top.refreshToken = authreq.refresh_token
-            'authreq.expires_in
-            'authreq.refresh_expires_in
-            curUnixTime = CreateObject("roDateTime").AsSeconds()
-            m.top.accessTokenExpiration = curUnixTime + authreq.expires_in
-            m.top.refreshTokenExpiration = curUnixTime + authreq.refresh_expires_in
-            ?"Access Expires At:"
-            ?m.top.accessTokenExpiration
-            ?"Refresh Expires At:"
-            ?m.top.refreshTokenExpiration
-            curUnixTime = invalid
-            m.top.output = { authorized: true, state: "OK", debug: authreq }
-            m.top.authPhase = 3
-        end if
+        end try
     else
         ?"token still valid"
         ?"current time:"
@@ -168,7 +176,7 @@ sub checkRefresh()
         ?"Refresh is:"
         ?"`" + m.top.refreshToken + "`"
         ?"getting user info (TEST)"
-        accountRoot = m.top.constants["ROOT_SSO"]+""
+        accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = getJSONAuthenticated(accountRoot + "/auth/realms/Users/protocol/openid-connect/userinfo", { "Authorization": "Bearer " + m.top.accessToken })
         ?FormatJson(authreq)
         if isValid(authreq.error)
