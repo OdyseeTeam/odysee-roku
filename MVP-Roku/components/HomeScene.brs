@@ -2195,7 +2195,7 @@ sub gotUserPrefs()
     end for
   end if
   if m.favoritesThread.state = "init" and favoritesChanged or m.favoritesThread.state = "stop" and favoritesChanged
-    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if
