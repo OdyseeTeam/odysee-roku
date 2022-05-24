@@ -14,7 +14,7 @@ sub init()
   m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
   m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
   m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
-  m.videoTransitionState = 0 '0=None, 1=Rewind, 2=FastForward
+  m.videoTransitionState = 0 '0=None, -1=Rewind, 1=FastForward....
   m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
   m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
   m.searchType = "channel" 'changed to either video or channel
@@ -596,7 +596,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               if m.video.visible
                 showVideoOverlay()
                 'Video transition state:
-                '0=None, 1=Rewind, 2=FastForward
+                '0=None, -1=Rewind, 1=FastForward
                 if m.videoTransitionState = 0
                   deleteSpinner()
                   if m.video.state = "playing"
@@ -751,7 +751,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
           'Video transition state:
-          '0=None, 1=Rewind, 2=FastForward
+          '0=None, -1=Rewind, 1=FastForward
           if m.videoTransitionState = 0
             deleteSpinner()
             if m.video.state = "playing"
@@ -782,16 +782,18 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         ?m.videoVP
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
-          if m.videoTransitionState <> 1
+          if m.videoTransitionState >= 0
             m.ffrwTimer.duration = .5
+            m.videoTransitionState = -1 'Reset to RW, stage1
           end if
-          m.videoTransitionState = 1 'Reset to RW
+          m.videoTransitionState-=1 'use VTS to track numPressed
           m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
           ?m.ffrwTimer.control
-          if m.ffrwTimer.control = "start"
+          if m.ffrwTimer.control = "start" AND m.videoTransitionState > -5
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
           else
+            m.ffrwTimer.duration = .5
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.control = "start"
           end if
@@ -801,14 +803,17 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       if key = "fastforward"
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
-          if m.videoTransitionState <> 2
-            m.ffrwTimer.duration = .3
+          if m.videoTransitionState <= 0
+            m.ffrwTimer.duration = .5
+            m.videoTransitionState = 1 'Reset to FF, stage1
           end if
-          m.videoTransitionState = 2 'Reset to FF
+          m.videoTransitionState+=1  'use VTS to track numPressed
           m.video.control = "prebuffer" 'it's better to prebuffer immediately as we are moving forwards in the video
-          if m.ffrwTimer.control = "start"
+          if m.ffrwTimer.control = "start" AND m.videoTransitionState < 5
+            m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
           else
+            m.ffrwTimer.duration = .5
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.control = "start"
           end if
@@ -1483,8 +1488,9 @@ sub changeVideoPosition()
   if m.videoVP = 0
     m.videoVP = m.video.position
   end if
-  if m.videoTransitionState = 2
-    'TODO: 1 second only on 1x
+  if m.videoTransitionState > 0 AND m.videoTransitionState < 5
+
+    '1 second only on 1x/finegrain
     if m.videoVP + 1 <= m.urlResolver.output.length
       m.video.seek = m.videoVP + 1
       m.videoVP += 1
@@ -1494,7 +1500,25 @@ sub changeVideoPosition()
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.videoVP)
     end if
-  else if m.videoTransitionState = 1
+
+  else if m.videoTransitionState > 0 AND m.videoTransitionState >= 5
+
+    '5+ seconds on coarser
+    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*5
+    if m.videoVP + videoScrubSpeed <= m.urlResolver.output.length
+      m.video.seek = m.videoVP + videoScrubSpeed
+      m.videoVP += videoScrubSpeed
+      if m.videoVP > 0
+        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
+      end if
+      m.videoProgressBarp1.text = getvideoLength(m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + videoScrubSpeed - m.videoVP)
+    end if
+    
+  else if m.videoTransitionState < 0 AND m.videoTransitionState > -5
+
+    '1 second only on 1x/finegrain
+
     if m.videoVP - 1 >= 0
       m.video.seek = m.videoVP - 1
       m.videoVP = m.videoVP - 1
@@ -1502,8 +1526,23 @@ sub changeVideoPosition()
         m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
       end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
-      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length - 1 - m.videoVP)
     end if
+
+  else if m.videoTransitionState < 0 AND m.videoTransitionState <= -5
+
+    '5+ seconds on coarser
+    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*5
+    if m.videoVP - videoScrubSpeed >= 0
+      m.video.seek = m.videoVP - videoScrubSpeed
+      m.videoVP = m.videoVP - videoScrubSpeed
+      if m.videoVP > 0
+        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
+      end if
+      m.videoProgressBarp1.text = getvideoLength(m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length - videoScrubSpeed - m.videoVP)
+    end if
+    videoScrubSpeed = invalid
   end if
 end sub
 
@@ -1629,6 +1668,7 @@ function onVideoStateChanged(msg as object)
       end if
       if state = "playing"
         deleteSpinner()
+        m.videoTransitionState = 0
       else if state = "buffering"
         addSpinner()
       end if
@@ -1650,8 +1690,10 @@ sub addSpinner()
   centerx = invalid
   centery = invalid
 end sub
+
 sub deleteSpinner()
   if isValid(m.busySpinner)
+    m.busySpinner.visible = false
     m.top.removeChild(m.busySpinner)
     m.busySpinner = invalid
   end if
