@@ -15,6 +15,7 @@ sub init()
   m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
   m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
   m.videoTransitionState = 0 '0=None, -1=Rewind, 1=FastForward....
+  m.videoTransitionStateLimit = 6 'How many times does the user have to press RW/FF before coarse scrubbing?
   m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
   m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
   m.searchType = "channel" 'changed to either video or channel
@@ -789,7 +790,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.videoTransitionState-=1 'use VTS to track numPressed
           m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
           ?m.ffrwTimer.control
-          if m.ffrwTimer.control = "start" AND m.videoTransitionState > -5
+          if m.ffrwTimer.control = "start" AND abs(m.videoTransitionState) > m.videoTransitionStateLimit
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
           else
@@ -809,7 +810,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
           m.videoTransitionState+=1  'use VTS to track numPressed
           m.video.control = "prebuffer" 'it's better to prebuffer immediately as we are moving forwards in the video
-          if m.ffrwTimer.control = "start" AND m.videoTransitionState < 5
+          if m.ffrwTimer.control = "start" AND abs(m.videoTransitionState) > m.videoTransitionStateLimit
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
           else
@@ -1488,7 +1489,7 @@ sub changeVideoPosition()
   if m.videoVP = 0
     m.videoVP = m.video.position
   end if
-  if m.videoTransitionState > 0 AND m.videoTransitionState < 5
+  if m.videoTransitionState > 0 AND abs(m.videoTransitionState) < m.videoTransitionStateLimit
 
     '1 second only on 1x/finegrain
     if m.videoVP + 1 <= m.urlResolver.output.length
@@ -1501,7 +1502,7 @@ sub changeVideoPosition()
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.videoVP)
     end if
 
-  else if m.videoTransitionState > 0 AND m.videoTransitionState >= 5
+  else if m.videoTransitionState > 0 AND abs(m.videoTransitionState) >= m.videoTransitionStateLimit
 
     '5+ seconds on coarser
     videoScrubSpeed = (Abs(m.videoTransitionState)-4)*5
@@ -1515,7 +1516,7 @@ sub changeVideoPosition()
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + videoScrubSpeed - m.videoVP)
     end if
     
-  else if m.videoTransitionState < 0 AND m.videoTransitionState > -5
+  else if m.videoTransitionState < 0 AND abs(m.videoTransitionState) < m.videoTransitionStateLimit
 
     '1 second only on 1x/finegrain
 
@@ -1529,7 +1530,7 @@ sub changeVideoPosition()
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length - 1 - m.videoVP)
     end if
 
-  else if m.videoTransitionState < 0 AND m.videoTransitionState <= -5
+  else if m.videoTransitionState < 0 AND abs(m.videoTransitionState) >= m.videoTransitionStateLimit
 
     '5+ seconds on coarser
     videoScrubSpeed = (Abs(m.videoTransitionState)-4)*5
@@ -1668,7 +1669,7 @@ function onVideoStateChanged(msg as object)
       end if
       if state = "playing"
         deleteSpinner()
-        m.videoTransitionState = 0
+        'm.videoTransitionState = 0
       else if state = "buffering"
         addSpinner()
       end if
@@ -1683,12 +1684,12 @@ function onVideoStateChanged(msg as object)
 end function
 
 sub addSpinner()
-  m.busySpinner = m.top.createChild("BusySpinner")
+  if isValid(m.busySpinner) = false
+    m.busySpinner = m.top.createChild("BusySpinner")
+  end if
   m.busySpinner.poster.uri = "pkg:/images/generic/spaceman.png"
   m.busySpinner.translation = [870, 450]
   m.busySpinner.visible = true
-  centerx = invalid
-  centery = invalid
 end sub
 
 sub deleteSpinner()
