@@ -15,7 +15,7 @@ sub init()
   m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
   m.videoEndingTimeSet = false 'Did we set the ending time in seconds on the video?
   m.videoTransitionState = 0 '0=None, -1=Rewind, 1=FastForward....
-  m.videoTransitionStateLimit = 6 'How many times does the user have to press RW/FF before coarse scrubbing?
+  m.videoTransitionStateLimit = 5 'How many times does the user have to press RW/FF before coarse scrubbing?
   m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
   m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
   m.searchType = "channel" 'changed to either video or channel
@@ -784,17 +784,18 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
           if m.videoTransitionState >= 0
-            m.ffrwTimer.duration = .5
+            m.ffrwTimer.duration = .7
             m.videoTransitionState = -1 'Reset to RW, stage1
+          else
+            m.videoTransitionState-=1 'use VTS to track numPressed
           end if
-          m.videoTransitionState-=1 'use VTS to track numPressed
           m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
           ?m.ffrwTimer.control
           if m.ffrwTimer.control = "start" AND abs(m.videoTransitionState) > m.videoTransitionStateLimit
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
           else
-            m.ffrwTimer.duration = .5
+            m.ffrwTimer.duration = .7
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.control = "start"
           end if
@@ -805,16 +806,17 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         if m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
           if m.videoTransitionState <= 0
-            m.ffrwTimer.duration = .5
+            m.ffrwTimer.duration = .7
             m.videoTransitionState = 1 'Reset to FF, stage1
+          else
+            m.videoTransitionState+=1  'use VTS to track numPressed
           end if
-          m.videoTransitionState+=1  'use VTS to track numPressed
-          m.video.control = "prebuffer" 'it's better to prebuffer immediately as we are moving forwards in the video
+          m.video.control = "stop" 'better not to prebuffer at all.
           if m.ffrwTimer.control = "start" AND abs(m.videoTransitionState) > m.videoTransitionStateLimit
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
           else
-            m.ffrwTimer.duration = .5
+            m.ffrwTimer.duration = .7
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.control = "start"
           end if
@@ -1504,8 +1506,8 @@ sub changeVideoPosition()
 
   else if m.videoTransitionState > 0 AND abs(m.videoTransitionState) >= m.videoTransitionStateLimit
 
-    '5+ seconds on coarser
-    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*5
+    '2+ seconds on coarser
+    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*2
     if m.videoVP + videoScrubSpeed <= m.urlResolver.output.length
       m.video.seek = m.videoVP + videoScrubSpeed
       m.videoVP += videoScrubSpeed
@@ -1532,8 +1534,8 @@ sub changeVideoPosition()
 
   else if m.videoTransitionState < 0 AND abs(m.videoTransitionState) >= m.videoTransitionStateLimit
 
-    '5+ seconds on coarser
-    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*5
+    '2+ seconds on coarser
+    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*2
     if m.videoVP - videoScrubSpeed >= 0
       m.video.seek = m.videoVP - videoScrubSpeed
       m.videoVP = m.videoVP - videoScrubSpeed
