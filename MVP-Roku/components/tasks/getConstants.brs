@@ -16,8 +16,5 @@ sub master()
     if isValid(globalAPIConstants["ROOT_SDK"]) = false
         globalAPIConstants["ROOT_SDK"] = "https://api.na-backend.odysee.com" 'SDK is used for changing wallet (follow/unfollow/etc.)
     end if
-    'globalAPIConstants["ROOT_API"] = "http://192.168.240.110:8082"
-    'globalAPIConstants["ROOT_SDK"] = "http://192.168.240.110:8081"
-    'globalAPIConstants["ROOT_SSO"] = "http://192.168.240.110:8080"
     m.top.constants = globalAPIConstants
 end sub
