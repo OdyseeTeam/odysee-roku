@@ -6,50 +6,16 @@
         <field id="height"      type="float" onChange="updateLayout"/>
         <field id="itemContent" type="node" onChange="itemContentChanged"/>
     </interface>
-
-    <script type="text/brightscript">
-        <![CDATA[
-            Sub Init()
-                m.Poster = m.top.findNode("poster")
-                m.Title = m.top.findNode("title")
-                m.Published = m.top.findNode("published")
-                m.LBC = m.top.findNode("lbc")
-                m.Background = m.top.findNode("ibackground")
-                m.Creator = m.top.findNode("creator")
-            End Sub
-            Sub itemContentChanged()
-                m.Poster.loadWidth = m.top.itemContent.thumbnailDimensions[0]
-                m.Poster.loadHeight = m.top.itemContent.thumbnailDimensions[1]
-                m.Poster.uri = m.top.itemContent.HDPOSTERURL
-                m.Title.text = m.top.itemContent.TITLE
-                m.Creator.text = m.top.itemContent.CREATOR
-                m.Published.text = m.top.itemContent.RELEASEDATE
-            End Sub
-            Sub updateLayout()
-                If m.top.height > 0 And m.top.width > 0 Then
-                    if m.top.height > 349
-                        m.Title.wrap = true
-                    else
-                        m.Title.wrap = false
-                    end if
-                    m.Poster.width  = m.top.width-20
-                    m.Poster.loadwidth  = m.poster.width
-                    m.Poster.height = 197
-                    m.poster.loadHeight = m.poster.height
-                    m.Background.width = m.top.width
-                    m.Background.height = m.top.height
-                    m.Title.width = m.top.width-20
-                    m.Published.width = m.top.width-20
-                    m.Creator.width = m.top.width-20
-                End If
-            End Sub]]>
-    </script>
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/ui/PosterItem.brs" />
     <children>
         <!--[351,197] is our item size, poster is hardcoded to 197 but true item size will be background.-->
         <Rectangle
         id="ibackground"
         color="0x1f1f1f" />
         <Poster id="poster" loadDisplayMode="limitSize" loadWidth="320" loadHeight="180" translation="[10,10]">
+        </Poster>
+        <Poster id="liveIcon" uri = "pkg:/images/liveIcon.png" visible="false">
         </Poster>
         <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,210]" wrap = "true" numLines = "2" lineSpacing = "3" text="title">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>

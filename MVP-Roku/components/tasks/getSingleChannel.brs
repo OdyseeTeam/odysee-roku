@@ -24,7 +24,7 @@ function ChannelToVideoGrid(channel)
         currow = createObject("RoSGNode", "ContentNode")
         counter = 1
         curitem = createObject("RoSGNode", "ContentNode")
-        curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", guid: "" }) 'added GUID so we can pass it to chat
+        curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", guid: "", backgroundColor: "#3f0000"}) 'added GUID so we can pass it to chat
         curitem.setFields(streamStatus.liveItem)
         currow.appendChild(curitem)
     else
@@ -154,7 +154,7 @@ function parseLiveData(channel, liveData, liveClaim)
     streamStart = time.AsSeconds()
     time = invalid
     item.Title = liveClaim["value"]["title"]
-    item.Creator = liveClaim["signing_channel"]["name"].Replace("@", "")
+    item.Creator = liveClaim["signing_channel"]["name"]
     item.Channel = channel
     item.ReleaseDate = timestr
     item.startUTC = streamStart 'for future use

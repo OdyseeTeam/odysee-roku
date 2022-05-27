@@ -10,7 +10,6 @@
     "ROOT_API": "https://api.odysee.com",
     "VIDEO_API": "https://cdn.lbryplayer.xyz",
     "WATCHMAN": "https://watchman.na-backend.odysee.com",
-    "ROOT_API": "https://api.odysee.com",
     "ROOT_SSO": "https://sso.odysee.com",
     "ROOT_SDK": "https://api.na-backend.odysee.com",
     "FRONTPAGE_URL": "https://odysee.com/$/api/content/v2/get"
