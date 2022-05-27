@@ -4,6 +4,7 @@
     "IMAGE_PROCESSOR": "https://thumbnails.odysee.com/optimize/s:390:220/quality:85/plain/",
     "LIGHTHOUSE_API": "https://lighthouse.odysee.com/search",
     "LIVE_API": "https://api.live.odysee.com/v1/odysee/live",
+    "NEW_LIVE_API": "https://api.odysee.live/livestream",
     "LIVE_REPLAY_API": "https://api.live.odysee.com/v1/replays/odysee",
     "QUERY_API": "https://api.na-backend.odysee.com",
     "ROOT_API": "https://api.odysee.com",
