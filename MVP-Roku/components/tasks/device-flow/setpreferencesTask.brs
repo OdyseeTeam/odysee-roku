@@ -70,22 +70,19 @@ function set_prefs()
                         ?formatJson(userPreferences)
                         if isValid(userPreferences.blocked)
                             for each user in userPreferences.blocked
-                                user.replace(";","#")
-                                blocked.push(user.split("#")[1])
+                                blocked.push(user.replace("#",":").split(":").Pop())
                             end for
                         end if
                         if isValid(userPreferences.following)
                             for each user in userPreferences.following
                                 if Type(user) <> "roString"
-                                    user.uri.replace(";","#")
-                                    followingaa.addReplace(user.uri.split("#")[1], "a") '(for Following page)
+                                    followingaa.addReplace(user.uri.replace("#",":").split(":").Pop(), "a") '(for Following page)
                                 end if
                             end for
                         end if
                         if isValid(userPreferences.subscriptions)
                             for each subscription in userPreferences.subscriptions
-                                subscription.replace(";","#")
-                                followingaa.addReplace(subscription.split("#")[1], "a") '(abuse AssociativeArray addReplace to remove duplicates)
+                                followingaa.addReplace(subscription.replace("#",":").split(":").Pop(), "a") '(abuse AssociativeArray addReplace to remove duplicates)
                             end for
                         end if
                         following.append(followingaa.Keys()) 'get output (no duplicates)
@@ -94,17 +91,17 @@ function set_prefs()
                         'm.top.preferences = { blocked: blocked: following: following: collections: collections }
                         if isValid(preferences.result.shared.value.blocked) and isValid(m.top.preferences.blocked)
                             for each subclaim in m.top.preferences.blocked
-                                subclaim.replace(";","#")
+                                curSubclaim = subclaim.replace("#", ":")
                                 isDuplicate = false
-                                if subclaim.split("#").Count() > 1
+                                if curSubclaim.split(":").Count() > 1
                                     for each blockeduser in blocked
-                                        if subclaim.split("#").Pop() = blockeduser
+                                        if curSubclaim.split(":").Pop() = blockeduser
                                             isDuplicate = true
                                         end if
                                     end for
                                     'assume that we are in non-legacy format inside legacy datastructure
                                     if isDuplicate = false
-                                        preferences.result.shared.value.blocked.push(subclaim)
+                                        preferences.result.shared.value.blocked.push(curSubclaim)
                                     end if
                                 else
                                     'legacy: we will need to look up this channel
@@ -113,18 +110,19 @@ function set_prefs()
                                     response = postJSON(queryJSON, queryURL, invalid)
                                     try
                                         for each blockeduser in blocked
-                                            if response.result.items[0]["permanent_url"].split("#").Pop() = blockeduser
+                                            if response.result.items[0]["permanent_url"].split("#").Pop() = blockeduser 'legacy, contains # on purpose.
                                                 isDuplicate = true
                                             end if
                                         end for
                                         if isDuplicate = false
-                                            preferences.result.shared.value.blocked.push(response.result.items[0]["permanent_url"])
+                                            preferences.result.shared.value.blocked.push(response.result.items[0]["permanent_url"].replace("#", ":")) 'should replace it after though.
                                         end if
                                     catch e
                                         ?e
                                         stop
                                     end try
                                 end if
+                                curSubclaim = invalid
                             end for
                         end if
                         if isValid(preferences.result.shared.value.following) and isValid(m.top.preferences.following)
@@ -133,30 +131,32 @@ function set_prefs()
                                 isDuplicate = false
                                 if Type(subclaim) <> "roString" 'already in non-raw format, no need for additional parsing
                                     if isValid(subclaim.uri) and isValid(subclaim["notificationsDisabled"])
-                                        subclaim.uri.replace(";","#")
                                         for each followeduser in following
-                                            if subclaim.uri.split("#").Pop() = followeduser
+                                            curSubclaim = subclaim.uri.replace("#", ":")
+                                            if curSubclaim.split(":").Pop() = followeduser.replace("#", ":")
                                                 isDuplicate = true
                                             end if
                                         end for
                                         if isDuplicate = false
-                                            preferences.result.shared.value.following.append([subclaim])
-                                            prenotify_new_follow(subclaim.uri.split("#").Pop())
+                                            preferences.result.shared.value.following.append([subclaim.replace("#", ":").replace("#", ":")])
+                                            prenotify_new_follow(curSubclaim.split(":").Pop())
                                         end if
                                     end if
+                                    curSubclaim = invalid
                                 else 'in raw claim format: needs additional data
-                                    subclaim.replace(";","#")
-                                    if subclaim.split("#").Count() > 1
+                                    curSubclaim = subclaim.replace("#", ":")
+                                    if curSubclaim.split(":").Count() > 1
                                         for each followeduser in following
-                                            if subclaim.split("#").Pop() = followeduser
+                                            if curSubclaim.split(":").Pop() = followeduser
                                                 isDuplicate = true
                                             end if
                                         end for
                                         'assume that we are in non-legacy format inside legacy datastructure
                                         if isDuplicate = false
-                                            preferences.result.shared.value.following.append([{ uri: subclaim, "notificationsDisabled": "true" }])
-                                            prenotify_new_follow(subclaim.split("#").Pop())
+                                            preferences.result.shared.value.following.append([{ uri: curSubclaim.replace("#", ":"), "notificationsDisabled": "true" }])
+                                            prenotify_new_follow(curSubclaim.split(":").Pop())
                                         end if
+                                        curSubclaim = invalid
                                     else
                                         'legacy: we will need to look up this channel
                                         queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
@@ -164,12 +164,12 @@ function set_prefs()
                                         response = postJSON(queryJSON, queryURL, invalid)
                                         'try
                                             for each followeduser in following
-                                                if response.result.items[0]["permanent_url"].split("#").Pop() = followeduser
+                                                if response.result.items[0]["permanent_url"].split("#").Pop() = followeduser 'legacy, contains # on purpose.
                                                     isDuplicate = true
                                                 end if
                                             end for
                                             if isDuplicate = false
-                                                preferences.result.shared.value.following.append([{ uri: response.result.items[0]["permanent_url"], "notificationsDisabled": "true" }])
+                                                preferences.result.shared.value.following.append([{ uri: response.result.items[0]["permanent_url"].replace("#", ":"), "notificationsDisabled": "true" }])
                                                 prenotify_new_follow(subclaim)
                                             end if
                                         'catch e
@@ -187,28 +187,30 @@ function set_prefs()
                                 isDuplicate = false
                                 if Type(subclaim) <> "roString" 'already in non-raw format, no need for additional parsing
                                     if isValid(subclaim.uri) and isValid(subclaim["notificationsDisabled"])
-                                        subclaim.uri.replace(";","#")
+                                        curSubclaim = subclaim.uri.replace("#", ":")
                                         for each followeduser in following
-                                            if subclaim.uri.split("#").Pop() = followeduser
+                                            if curSubclaim.split(":").Pop() = followeduser
                                                 isDuplicate = true
                                             end if
                                         end for
                                         if isDuplicate = false
-                                            preferences.result.shared.value.subscriptions.push(subclaim.uri)
+                                            preferences.result.shared.value.subscriptions.push(curSubclaim.replace("#", ":"))
                                         end if
                                     end if
+                                    curSubclaim = invalid
                                 else 'in raw claim format: needs additional data
-                                    subclaim.replace(";","#")
-                                    if subclaim.split("#").Count() > 1
+                                    curSubclaim = subclaim.replace("#", ":")
+                                    if curSubclaim.split(":").Count() > 1
                                         'assume that we are in non-legacy format inside legacy datastructure
                                         for each followeduser in following
-                                            if subclaim.split("#").Pop() = followeduser
+                                            if subclaim.split(":").Pop() = followeduser
                                                 isDuplicate = true
                                             end if
                                         end for
                                         if isDuplicate = false
-                                            preferences.result.shared.value.subscriptions.push(subclaim)
+                                            preferences.result.shared.value.subscriptions.push(curSubclaim)
                                         end if
+                                        curSubclaim = invalid
                                     else
                                         'legacy: we will need to look up this channel
                                         queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
@@ -216,12 +218,12 @@ function set_prefs()
                                         response = postJSON(queryJSON, queryURL, invalid)
                                         try
                                             for each followeduser in following
-                                                if response.result.items[0]["permanent_url"].split("#").Pop() = followeduser
+                                                if response.result.items[0]["permanent_url"].split("#").Pop() = followeduser  'legacy, contains # on purpose.
                                                     isDuplicate = true
                                                 end if
                                             end for
                                             if isDuplicate = false
-                                                preferences.result.shared.value.subscriptions.push(response.result.items[0]["permanent_url"])
+                                                preferences.result.shared.value.subscriptions.push(response.result.items[0]["permanent_url"].replace("#", ":"))
                                             end if
                                         catch e
                                             ?e
@@ -239,21 +241,24 @@ function set_prefs()
                                     try
                                         for i = 0 to preferences.result.shared.value.blocked.Count() - 1
                                             if isValid(preferences.result.shared.value.blocked[i])
-                                                preferences.result.shared.value.blocked[i].replace(";","#")
-                                                ? preferences.result.shared.value.blocked[i]
+                                                curBlocked = preferences.result.shared.value.blocked[i].replace("#", ":")
+                                                ? curBlocked
                                                 for each change in m.top.preferences.blocked
-                                                    if change.split("#").Count() > 1
-                                                        if preferences.result.shared.value.blocked[i] = change
+                                                    curChange = change.replace("#",":")
+                                                    if curChange.split(":").Count() > 1
+                                                        if curBlocked = curChange
                                                             preferences.result.shared.value.blocked.Delete(i)
                                                         end if
                                                     else
-                                                        if preferences.result.shared.value.blocked[i].split("#").Pop() = change
+                                                        if curChange.split(":").Pop() = change
                                                             preferences.result.shared.value.blocked.Delete(i)
                                                         end if
                                                     end if
                                                 end for
                                             end if
                                         end for
+                                        curBlocked = invalid
+                                        curChange = invalid
                                         i = invalid
                                     catch e
                                         ?"Modification Error:"
@@ -261,15 +266,16 @@ function set_prefs()
                                     end try
                                     for i = 0 to preferences.result.shared.value.following.Count() - 1
                                         if isValid(preferences.result.shared.value.following[i])
-                                            preferences.result.shared.value.following[i].uri.replace(";","#")
+                                            curFollowing = preferences.result.shared.value.following[i].replace("#", ":")
                                             for each change in m.top.preferences.following
-                                                if change.split("#").Count() > 1
-                                                    if preferences.result.shared.value.following[i]["uri"] = change
+                                                curChange = change.replace("#",":")
+                                                if curChange.split(":").Count() > 1
+                                                    if curFollowing = curChange
                                                         preferences.result.shared.value.following.Delete(i)
-                                                        prenotify_delete_follow(change.split("#").Pop())
+                                                        prenotify_delete_follow(curChange.split(":").Pop())
                                                     end if
                                                 else
-                                                    if preferences.result.shared.value.following[i]["uri"].split("#").Pop() = change
+                                                    if curChange.split(":").Pop() = change
                                                         preferences.result.shared.value.following.Delete(i)
                                                         prenotify_delete_follow(change)
                                                     end if
@@ -277,18 +283,21 @@ function set_prefs()
                                             end for
                                         end if
                                     end for
+                                    curBlocked = invalid
+                                    curChange = invalid
                                     i = invalid
                                     try
                                         for i = 0 to preferences.result.shared.value.subscriptions.Count() - 1
                                             if isValid(preferences.result.shared.value.subscriptions[i])
-                                                preferences.result.shared.value.subscriptions[i].replace(";","#")
+                                                curSubscriptions = preferences.result.shared.value.subscriptions[i].replace("#",":")
                                                 for each change in m.top.preferences.following
-                                                    if change.split("#").Count() > 1
-                                                        if preferences.result.shared.value.subscriptions[i] = change
+                                                    curChange = change.replace("#",":")
+                                                    if curChange.split(":").Count() > 1
+                                                        if preferences.result.shared.value.subscriptions[i] = curChange
                                                             preferences.result.shared.value.subscriptions.Delete(i)
                                                         end if
                                                     else
-                                                        if preferences.result.shared.value.subscriptions[i].split("#").Pop() = change
+                                                        if preferences.result.shared.value.subscriptions[i].split(":").Pop() = change
                                                             preferences.result.shared.value.subscriptions.Delete(i)
                                                         end if
                                                     end if
@@ -307,6 +316,7 @@ function set_prefs()
                     end if
                     ? "MODIFIED:"
                     ?formatJson(preferences.result.shared.value)
+                    'STOP
                 end if
             end if
         end if

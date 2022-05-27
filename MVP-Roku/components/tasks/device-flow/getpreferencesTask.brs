@@ -51,22 +51,19 @@ function get_prefs()
                 ?formatJson(userPreferences)
                 if isValid(userPreferences.blocked)
                     for each user in userPreferences.blocked
-                        user.replace(";","#")
-                        blocked.push(user.split("#").Pop())
+                        blocked.push(user.replace("#",":").split(":").Pop())
                     end for
                 end if
                 if isValid(userPreferences.following)
                     for each user in userPreferences.following
                         if Type(user) <> "String"
-                            user.uri.replace(";","#")
-                            followingaa.addReplace(user.uri.split("#").Pop(), "a") '(for Following page)
+                            followingaa.addReplace(user.uri.replace("#",":").split(":").Pop(), "a") '(for Following page)
                         end if
                     end for
                 end if
                 if isValid(userPreferences.subscriptions)
                     for each subscription in userPreferences.subscriptions
-                        subscription.replace(";","#")
-                        followingaa.addReplace(subscription.split("#").Pop(), "a") '(abuse AssociativeArray addReplace to remove duplicates)
+                        followingaa.addReplace(subscription.replace("#",":").split(":").Pop(), "a") '(abuse AssociativeArray addReplace to remove duplicates)
                     end for
                 end if
                 following.append(followingaa.Keys()) 'get output (no duplicates)
@@ -86,7 +83,7 @@ function get_prefs()
                                     if builtInCollections[collection].items.Count() >= 80
                                         curcollection = { name: builtInCollections[collection].name: items: [] }
                                         for i = 0 to 80
-                                            curcollection.items.push(builtInCollections[collection].items[i].replace(";","#"))
+                                            curcollection.items.push(builtInCollections[collection].items[i].replace("#",":"))
                                         end for
                                         collections.push(curcollection)
                                         curcollection = invalid
@@ -94,7 +91,7 @@ function get_prefs()
                                     else
                                         curcollection = { name: builtInCollections[collection].name: items: [] }
                                         for i = 0 to builtInCollections[collection].items.Count() - 1
-                                            curcollection.items.push(builtInCollections[collection].items[i].replace(";","#"))
+                                            curcollection.items.push(builtInCollections[collection].items[i].replace("#",":"))
                                         end for
                                         collections.push(curcollection)
                                         curcollection = invalid
@@ -115,7 +112,7 @@ function get_prefs()
                                     if unpublishedCollections[collection].items.Count() >= 80
                                         curcollection = { name: unpublishedCollections[collection].name: items: [] }
                                         for i = 0 to 80
-                                            curcollection.items.push(unpublishedCollections[collection].items[i].replace(";","#"))
+                                            curcollection.items.push(unpublishedCollections[collection].items[i].replace("#",":"))
                                         end for
                                         collections.push(curcollection)
                                         curcollection = invalid
@@ -123,7 +120,7 @@ function get_prefs()
                                     else
                                         curcollection = { name: unpublishedCollections[collection].name: items: [] }
                                         for i = 0 to unpublishedCollections[collection].items.Count() - 1
-                                            curcollection.items.push(unpublishedCollections[collection].items[i].replace(";","#"))
+                                            curcollection.items.push(unpublishedCollections[collection].items[i].replace("#",":"))
                                         end for
                                         collections.push(curcollection)
                                         curcollection = invalid
