@@ -14,11 +14,14 @@ sub itemContentChanged()
     m.Title.text = m.top.itemContent.TITLE
     m.Creator.text = m.top.itemContent.CREATOR
     m.Published.text = m.top.itemContent.RELEASEDATE
-    if isValid(m.top.itemContent.BACKGROUNDCOLOR)
-        m.Background.color = m.top.itemContent.BACKGROUNDCOLOR
-    end if
-    if m.top.itemContent.itemType = "livestream"
-        m.liveIcon.visible = true
+    if isValid(m.top.itemContent.ITEMTYPE)
+        if m.top.itemContent.ITEMTYPE = "livestream"
+            m.Background.color = "#3f0000"
+            m.liveIcon.visible = true
+        else
+            m.Background.color = "0x1f1f1f"
+            m.liveIcon.visible = false
+        end if
     end if
 end sub
 sub updateLayout()

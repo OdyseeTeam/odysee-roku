@@ -14,25 +14,6 @@ sub master()
 end sub
 function ChannelToVideoGrid(channel)
     streamStatus = getLivestream(channel)
-    ? streamStatus
-    ? Type(streamStatus)
-    if streamStatus.success = true
-        result = []
-        'since the user is livestreaming, we should add it here, before anything else.
-        content = createObject("RoSGNode", "ContentNode")
-        'This will allow us to insert 1 item at the very beginning, since we use counter+curRow to form the Rows that the user views.
-        currow = createObject("RoSGNode", "ContentNode")
-        counter = 1
-        curitem = createObject("RoSGNode", "ContentNode")
-        curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "", guid: "", backgroundColor: "#3f0000"}) 'added GUID so we can pass it to chat
-        curitem.setFields(streamStatus.liveItem)
-        currow.appendChild(curitem)
-    else
-        ? channel + " is not livestreaming"
-        result = []
-        content = createObject("RoSGNode", "ContentNode")
-        counter = 0
-    end if
     queryOutput = "placeholder"
     date = CreateObject("roDateTime")
     max = 48
@@ -54,6 +35,29 @@ function ChannelToVideoGrid(channel)
     end while
     if m.top.error = false
         items = response.result.items
+        try
+            m.top.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + items[1].signing_channel.value.thumbnail.url
+        catch e
+            m.top.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+        end try
+        defaultChannelIcon = m.top.channelIcon
+        if streamStatus.success = true
+            result = []
+            'since the user is livestreaming, we should add it here, before anything else.
+            content = createObject("RoSGNode", "ContentNode")
+            'This will allow us to insert 1 item at the very beginning, since we use counter+curRow to form the Rows that the user views.
+            currow = createObject("RoSGNode", "ContentNode")
+            counter = 1
+            curitem = createObject("RoSGNode", "ContentNode")
+            curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", guid: "", ChannelIcon: defaultChannelIcon})
+            curitem.setFields(streamStatus.liveItem)
+            currow.appendChild(curitem)
+        else
+            ? channel + " is not livestreaming"
+            result = []
+            content = createObject("RoSGNode", "ContentNode")
+            counter = 0
+        end if
         ? "got " + str(items.Count()) + " items from Odysee"
         for i = 0 to items.Count() - 1 step 1 'Parse response
             item = {}
@@ -61,7 +65,7 @@ function ChannelToVideoGrid(channel)
             item.Creator = items[i].signing_channel.name
             item.Description = ""
             item.Channel = items[i].signing_channel.claim_id
-            item.lbc = items[i].meta.effective_amount + " LBC"
+            item.ChannelIcon = defaultChannelIcon
             time = CreateObject("roDateTime")
             try
                 time.FromSeconds(items[i].meta.creation_timestamp)
@@ -93,7 +97,7 @@ function ChannelToVideoGrid(channel)
                     currow = createObject("RoSGNode", "ContentNode")
                 end if
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" })
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
@@ -106,7 +110,7 @@ function ChannelToVideoGrid(channel)
                 currow = invalid
                 currow = createObject("RoSGNode", "ContentNode")
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" })
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 counter = 1
@@ -114,6 +118,7 @@ function ChannelToVideoGrid(channel)
             end if
             item = invalid
         end for
+        defaultChannelIcon = invalid
         '? type(content)
         ? "exported" + Str(content.getChildCount() * 4) + " items from Odysee"
 
