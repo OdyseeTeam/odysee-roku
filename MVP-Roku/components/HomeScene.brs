@@ -40,6 +40,7 @@ sub init()
   m.videoContent = createObject("roSGNode", "ContentNode")
   m.videoGrid = m.top.findNode("vgrid")
   m.categorySelector = m.top.findNode("selector")
+  m.categorySelectorEndIndicator = m.top.findNode("catselectorendindicator")
   m.searchKeyboard = m.top.findNode("searchKeyboard")
   m.vjschars = { "play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730) }
   m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
@@ -513,7 +514,11 @@ sub finishInit()
   m.sidebarBackground.visible = true
   m.odyseeLogo.visible = true
   m.videoGrid.visible = true
-  m.categorySelector.jumpToItem = 2
+  if m.favoritesLoaded
+    m.categorySelector.jumpToItem = 1
+  else
+    m.categorySelector.jumpToItem = 2
+  end if
   m.categorySelector.visible = true
   m.loaded = True
   m.taskRunning = false
@@ -1120,6 +1125,11 @@ sub categorySelectorFocusChanged(msg)
       ?m.categorySelector.itemFocused
       trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
       m.videoGrid.content = m.categories[trueName]
+    end if
+    if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
+      m.categorySelectorEndIndicator.visible = true
+    else
+      m.categorySelectorEndIndicator.visible = false
     end if
     'base = m.JSONTask.output["PRIMARY_CONTENT"]
     'm.videoGrid.content = base["content"]

@@ -112,6 +112,16 @@
             columnWidths="[110,70]"
             visible = "false"
     />
+    <Label
+        id="catselectorendindicator"
+        height="20"
+        width="60"
+        font="font:SmallestBoldSystemFont"
+        text = "..."
+        horizAlign = "left"
+        vertAlign = "center"
+        translation="[140,995]"
+        visible = "false" />
     <RowList
         id= "vgrid"
         translation= "[210,120]"
