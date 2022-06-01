@@ -270,7 +270,7 @@
     <Timer
     id="videoUITimer"
     repeat="false"
-    duration="3"
+    duration="5"
     />
 
     <!--DEV USE ONLY-->

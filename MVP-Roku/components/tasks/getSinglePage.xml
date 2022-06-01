@@ -9,6 +9,8 @@
             <field id="rawname" type="String"/>
             <!--Channels to NOT get in query-->
             <field id="blocked" type="roArray"/>
+            <!--Should we attempt to resolve livestreams? (false by default)-->
+            <field id="resolveLivestreams" type="bool" value="false"/>
             <!--Account-Specific Vars-->
             <field id="uid" type="Int"/>
             <field id="authtoken" type="String"/>

@@ -13,11 +13,13 @@ sub master()
 end sub
 
 function ChannelsToVideoGrid(channels, blockedChannels)
-    
-
+    result = [] 'This is an array of associativeArrays that can be used to set a ContentNode
     try
         'TODO: impliment blocking channels during parsing, not in the beginning.
+        'TODO: Change how the vgrid is formed from the beginning (create array of items to append to vgrid, format into rows later.)
         'Incoming channels can be invalid in open queries. (e.g: Universe)
+
+        'Stage 1: Parse content
         trialChannels = m.top.channels
         if isValid(m.top.blocked) AND isValid(m.top.channels)
             blockedChannels = m.top.blocked
@@ -32,7 +34,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             if trialChannels.Count() > 0
                 channels = trialChannels
             else
-                chanels = m.top.channels
+                channels = m.top.channels
             end if
             blockedChannels = invalid
         end if
@@ -55,9 +57,6 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             end if
         end while
         items = response.result.items
-        result = []
-        counter = 0
-        content = createObject("RoSGNode", "ContentNode")
         ?"got " + str(items.Count()) + " items from Odysee"
         for i = 0 to items.Count() - 1 step 1 'Parse response
             item = {}
@@ -101,7 +100,13 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             'item.streamFormat = ""
             item.source = "odysee"
             item.itemType = "video"
-            'Create content (content -> row -> item)
+            result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
+            item = invalid
+        end for
+        'Stage 2: Format Content (content -> row -> item) from "result"/preparsed.
+        content = createObject("RoSGNode", "ContentNode")
+        counter = 0
+        for each item in result
             if counter < 4
                 if IsValid(currow) <> true
                     currow = createObject("RoSGNode", "ContentNode")
@@ -126,8 +131,6 @@ function ChannelsToVideoGrid(channels, blockedChannels)
                 counter = 1
                 curitem = invalid
             end if
-            result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
-            item = invalid
         end for
         '?type(content)
         ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"
