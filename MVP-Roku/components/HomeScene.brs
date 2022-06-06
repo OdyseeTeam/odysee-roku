@@ -2380,7 +2380,7 @@ sub follow(channelID)
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
   m.preferences.following.push(channelID)
-  m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true})
   m.favoritesThread.observeField("output", "gotFavorites")
   m.favoritesThread.control = "RUN"
 end sub
@@ -2395,7 +2395,7 @@ sub unFollow(channelID)
       m.preferences.following.Delete(i)
     end if
   end for
-  m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true})
   m.favoritesThread.observeField("output", "gotFavorites")
   m.favoritesThread.control = "RUN"
 end sub
