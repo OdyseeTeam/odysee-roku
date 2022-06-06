@@ -398,7 +398,7 @@ sub gotCIDS()
           ?"found following"
           ?formatJson(m.preferences["following"])
           thread = CreateObject("roSGNode", "getSinglePage")
-          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
           thread.observeField("output", "threadDone")
           m.threads.push(thread)
           m.favoritesLoaded = true 'favorites were loaded because user is logged in
