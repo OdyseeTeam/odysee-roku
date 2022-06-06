@@ -16,12 +16,11 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     result = [] 'This is an array of associativeArrays that can be used to set a ContentNode
     try
         'TODO: impliment blocking channels during parsing, not in the beginning.
-        'TODO: Change how the vgrid is formed from the beginning (create array of items to append to vgrid, format into rows later.)
         'Incoming channels can be invalid in open queries. (e.g: Universe)
 
         'Stage 1: Parse content
         trialChannels = m.top.channels
-        if isValid(m.top.blocked) AND isValid(m.top.channels)
+        if isValid(m.top.blocked) and isValid(m.top.channels)
             blockedChannels = m.top.blocked
             for i = 0 to channels.Count() - 1 step 1
                 for each blockedchannel in blockedChannels
@@ -57,6 +56,16 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             end if
         end while
         items = response.result.items
+        if m.top.resolveLivestreams 'we have to resolve livestreams now, apparently.
+            for each channel in channels
+                streamStatus = getLivestream(channel)
+                if streamStatus.success = true
+                    result.push(streamStatus.liveItem)
+                end if
+            end for
+           'STOP
+        end if
+        
         ?"got " + str(items.Count()) + " items from Odysee"
         for i = 0 to items.Count() - 1 step 1 'Parse response
             item = {}
@@ -64,7 +73,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             item.Creator = items[i].signing_channel.name
             item.Description = ""
             item.Channel = items[i].signing_channel.claim_id
-            
+
             try
                 if isValid(items[i].signing_channel.value.thumbnail.url)
                     item.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + items[i].signing_channel.value.thumbnail.url
@@ -112,7 +121,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
                     currow = createObject("RoSGNode", "ContentNode")
                 end if
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "" , ChannelIcon: ""})
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
@@ -125,7 +134,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
                 currow = invalid
                 currow = createObject("RoSGNode", "ContentNode")
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "" , ChannelIcon: ""})
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 counter = 1
@@ -143,4 +152,61 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         m.top.numerrors += 1
         return { error: true }
     end try
+end function
+
+
+function getLivestream(channel)
+    try
+        'Github seems to be at least one commit behind, making a placeholder commit.
+        livestreamStatus = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
+        liveData = livestreamStatus.data
+        if liveData["Live"]
+            lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
+            livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
+            liveClaim = livestreamclaimquery["result"]["items"][0]
+            liveItem = parseLiveData(channel, liveData, liveClaim)
+            return { liveItem: liveItem : success: true }
+        else
+            return { success: false }
+        end if
+    catch e
+        return { success: false }
+    end try
+end function
+
+function parseLiveData(channel, liveData, liveClaim)
+    item = {}
+    time = CreateObject("roDateTime")
+    time.FromISO8601String(liveData["ActiveClaim"]["ReleaseTime"])
+    timestr = time.AsDateString("short-month-short-weekday") + " "
+    timestr = timestr.Trim()
+    time.FromISO8601String(liveData["Start"])
+    streamStart = time.AsSeconds()
+    time = invalid
+    item.Title = liveClaim["value"]["title"]
+    item.Creator = liveClaim["signing_channel"]["name"]
+    item.Channel = channel
+    item.ReleaseDate = timestr
+    item.startUTC = streamStart 'for future use
+    item.guid = liveData["ActiveClaim"]["ClaimID"]
+    try
+        item.HDPosterURL = m.top.constants["IMAGE_PROCESSOR"] + liveClaim["value"]["thumbnail"]["url"]
+    catch e
+        item.HDPosterURL = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+    end try
+    item.thumbnailDimensions = [360, 240]
+    try
+        item.channelIcon = m.top.constants["IMAGE_PROCESSOR"] + liveClaim["signing_channel"]["value"]["thumbnail"]["url"]
+    catch e
+        item.channelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+    end try
+    item.url = liveData["VideoURL"]
+    item.stream = { url: item.url }
+    item.link = item.url
+    item.streamFormat = "hls"
+    item.source = "odysee"
+    item.itemType = "livestream"
+    'STOP
+    return item
 end function

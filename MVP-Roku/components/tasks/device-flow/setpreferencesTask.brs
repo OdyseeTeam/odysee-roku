@@ -241,7 +241,11 @@ function set_prefs()
                                     try
                                         for i = 0 to preferences.result.shared.value.blocked.Count() - 1
                                             if isValid(preferences.result.shared.value.blocked[i])
-                                                curBlocked = preferences.result.shared.value.blocked[i].replace("#", ":")
+                                                if isValid(preferences.result.shared.value.blocked[i]["uri"])
+                                                    curBlocked = preferences.result.shared.value.following[i]["uri"].replace("#", ":")
+                                                else
+                                                    curBlocked = preferences.result.shared.value.blocked[i].replace("#", ":")
+                                                end if
                                                 ? curBlocked
                                                 for each change in m.top.preferences.blocked
                                                     curChange = change.replace("#",":")
@@ -266,7 +270,11 @@ function set_prefs()
                                     end try
                                     for i = 0 to preferences.result.shared.value.following.Count() - 1
                                         if isValid(preferences.result.shared.value.following[i])
-                                            curFollowing = preferences.result.shared.value.following[i].replace("#", ":")
+                                            if isValid(preferences.result.shared.value.following[i]["uri"])
+                                                curFollowing = preferences.result.shared.value.following[i]["uri"].replace("#", ":")
+                                            else
+                                                curFollowing = preferences.result.shared.value.following[i].replace("#", ":")
+                                            end if
                                             for each change in m.top.preferences.following
                                                 curChange = change.replace("#",":")
                                                 if curChange.split(":").Count() > 1
