@@ -13,16 +13,16 @@ sub master()
 end sub
 
 function resolve(lbry_url)
-    'try
+    try
         'get base URL
         ?lbry_url
         spliturl = lbry_url.split("#")
         friendlyname = spliturl[0].split("/")[2]
         return siteMethod(lbry_url)
-    'catch e
-    '    m.top.error = true
-    '    return { error: true }
-    'end try
+    catch e
+        m.top.error = true
+        return { error: true }
+    end try
 end function
 
 function siteMethod(lbry_url)
