@@ -546,8 +546,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
     ?"current ui layer:", m.uiLayer
     ?"current ui array:"
     ?m.uiLayers
-    if press = true
-
+    if press
       if key = "OK"
         if m.video.visible = true and m.videoOverlayGroup.visible = true
           if m.videoButtonSelected <> "none"
@@ -691,8 +690,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           'for now, re-add old behavior
           return false
         else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0 'is anything but search in focus with no additional UI layers?
-          'TODO: this might be redundant, try removing eventually.
           'set focus to selector
+          m.categorySelector.visible = true
           ErrorDismissed()
           m.videoButtons.setFocus(false)
           m.searchKeyboard.setFocus(false)
@@ -701,6 +700,11 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
+          if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
+            m.categorySelectorEndIndicator.visible = true
+          else
+            m.categorySelectorEndIndicator.visible = false
+          end if
           return true
         else if m.uiLayer > 0
           ?"popping layer"
@@ -717,16 +721,18 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                   downsizeVideoGrid()
                 end if
               end if
-              m.uiLayer = m.uiLayer - 1
+              m.uiLayer-=1
               ?"went back to", m.uiLayer
             end if
           end if
           if m.categorySelector.itemFocused = 0 and m.uiLayers.Count() = 0 'is search in focus, and are there no additional UI layers?
+            m.categorySelector.visible = true
             m.uiLayer = 0
             ?"(search) went back to", m.uiLayer
             backToKeyboard()
           end if
           if m.categorySelector.itemFocused > 1 and m.uiLayers.Count() = 0 'is anything but search in focus, and are there no additional UI layers?
+            m.categorySelector.visible = true
             'this means we have no layers to fall back to, so by default, we should set focus to selector
             m.uiLayer = 0
             ?"(catsel) went back to", m.uiLayer
@@ -737,9 +743,15 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.searchHistoryDialog.setFocus(false)
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector]
+            if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
+              m.categorySelectorEndIndicator.visible = true
+            else
+              m.categorySelectorEndIndicator.visible = false
+            end if
           end if
           return true
         else if m.uiLayer = 0 'is the first UI layer occupying vgrid? (FALLBACK)
+          m.categorySelector.visible = true
           'this means we have no layers to fall back to, so by default, we should set focus to selector
           'this exists because we still have to fall back to selector even with search.
           ErrorDismissed()
@@ -749,6 +761,27 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
+          if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
+            m.categorySelectorEndIndicator.visible = true
+          else
+            m.categorySelectorEndIndicator.visible = false
+          end if
+          return true
+        else
+          m.categorySelector.visible = true
+          'default case.
+          ErrorDismissed()
+          m.searchKeyboard.setFocus(false)
+          m.searchKeyboardDialog.setFocus(false)
+          m.searchHistoryBox.setFocus(false)
+          m.searchHistoryDialog.setFocus(false)
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+          if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
+            m.categorySelectorEndIndicator.visible = true
+          else
+            m.categorySelectorEndIndicator.visible = false
+          end if
           return true
         end if
       end if
@@ -1834,11 +1867,15 @@ sub gotVideoSearch(msg as object)
         currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer = m.uiLayer + 1
+          m.uiLayer+=1
+          m.categorySelector.visible = false
+          m.categorySelectorEndIndicator.visible = false
         end if
       else
         m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer = m.uiLayer + 1
+        m.uiLayer+=1
+        m.categorySelector.visible = false
+        m.categorySelectorEndIndicator.visible = false
       end if
       m.videoGrid.setFocus(true)
     else
@@ -1869,11 +1906,15 @@ sub gotChannelSearch(msg as object)
         currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer = m.uiLayer + 1
+          m.uiLayer+=1
+          m.categorySelector.visible = false
+          m.categorySelectorEndIndicator.visible = false
         end if
       else
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer = m.uiLayer + 1
+        m.uiLayer+=1
+        m.categorySelector.visible = false
+        m.categorySelectorEndIndicator.visible = false
       end if
       m.videoGrid.setFocus(true)
     else
@@ -1911,11 +1952,15 @@ sub gotResolvedChannel(msg as object)
         currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer = m.uiLayer + 1
+          m.uiLayer+=1
+          m.categorySelector.visible = false
+          m.categorySelectorEndIndicator.visible = false
         end if
       else
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer = m.uiLayer + 1
+        m.uiLayer+=1
+        m.categorySelector.visible = false
+        m.categorySelectorEndIndicator.visible = false
       end if
       m.videoGrid.setFocus(true)
     end if
