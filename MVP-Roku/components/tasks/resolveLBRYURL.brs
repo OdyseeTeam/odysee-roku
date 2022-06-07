@@ -13,59 +13,19 @@ sub master()
 end sub
 
 function resolve(lbry_url)
-    try
+    'try
         'get base URL
         ?lbry_url
         spliturl = lbry_url.split("#")
         friendlyname = spliturl[0].split("/")[2]
-        if friendlyname.split("").Count() = 40
-            try
-                return splitMethod(lbry_url)
-            catch e
-                return siteMethod(lbry_url)
-            end try
-        else
-            'Slower: Site Method
-            return siteMethod(lbry_url)
-        end if
-    catch e
-        m.top.error = true
-        return { error: true }
-    end try
-end function
-
-function splitMethod(lbry_url)
-    try
-        'Preferred: Single Claim Search Method
-        spliturl = lbry_url.split("#")
-        friendlyname = spliturl[0].split("/")[2]
-        claimid = spliturl[1]
-        ?spliturl
-        ?friendlyname
-        ?claimid
-        resQuery = postJSON(FormatJson({ "method": "claim_search", "params": {"claim_type": "stream", "claim_ids": [claimid], "has_source": true, "has_no_source": false, "page_size": 1, "no_totals": true, "include_purchase_receipt": false, "include_is_my_output": false } }), m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search", invalid)
-        sdHash = resQuery["result"]["items"][0]["value"]["source"]["sd_hash"]
-        vurl = resolveRedirect(m.top.constants["VIDEO_API"] + "/api/v4/streams/free/" + friendlyname + "/" + claimid + "/" + Left(sdHash, 6))
-        vLength = resQuery["result"]["items"][0]["value"]["video"]["duration"]
-        vresolvedRedirect = vurl.split(".")
-        vresolvedRedirectLen = vresolvedRedirect.Count()
-        if vresolvedRedirect[vresolvedRedirectLen - 1] = "m3u8"
-            vtype = "hls"
-            vplayerrawsplit = vresolvedRedirect[0].split("/")
-            vplayer = vplayerrawsplit[vplayerrawsplit.Count() - 1]
-        else
-            vtype = "mp4"
-            vplayer = "use-p1" 'default to use-p1 since cdn.lbryplayer.xyz is use-p1
-        end if
-        m.top.error = false
-        return { videourl: vurl, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url }
-    catch e
         return siteMethod(lbry_url)
-    end try
+    'catch e
+    '    m.top.error = true
+    '    return { error: true }
+    'end try
 end function
 
 function siteMethod(lbry_url)
-    'Slower: Site Method
     ?"Attempting secondary resolution method (slower!)"
     getRequestJSON = FormatJson({ "jsonrpc": "2.0", "method": "get", "params": { "uri": lbry_url, "save_file": false } })
     getRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=get"
@@ -78,8 +38,26 @@ function siteMethod(lbry_url)
     resolveRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=resolve"
     resolveRequestOutput = postJSON(resolveRequestJSON, resolveRequestURL, invalid)
     vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
-
-    vresolvedRedirectURL = resolveRedirect(vurl)
+    vresolvedRedirectURL = resolveRedirect(vurl.EncodeUri())
+    vregex = CreateObject("roRegex", "[^a-zA-Z0-9\-\.\,\s]", "")
+    vresSplit = vresolvedRedirectURL.split("/")
+    vresDone = []
+    for each suburl in vresSplit
+        if suburl <> ""
+            if Instr(0, suburl, "http:") > -1 AND suburl.split("").Count() = 5 OR Instr(0, suburl, "https:") > -1 AND suburl.split("").Count() = 6
+                vresDone.push(suburl+"/") 'single slash since we'll be joining with /
+            else
+                replaced = vregex.ReplaceAll(suburl, "")
+                if replaced = ""
+                    replaced = "roku"
+                end if
+                vResDone.push(replaced)
+                replaced = invalid
+            end if
+        end if
+    end for
+    vregex = invalid
+    vresolvedRedirectURL = vresDone.join("/")
     ?vresolvedRedirectURL
     vresolvedRedirect = vresolvedRedirectURL.split(".")
     vresolvedRedirectLen = vresolvedRedirect.Count()

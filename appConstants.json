@@ -2,7 +2,7 @@
     "CHAT_API": "ws://sockety.odysee.com/ws",
     "COMMENT_API": "https://comments.odysee.com/api/v2",
     "IMAGE_PROCESSOR": "https://thumbnails.odycdn.com/optimize/s:390:220/quality:85/plain/",
-    "CHANNEL_ICON_PROCESSOR": "https://thumbnails.odycdn.com/optimize/s:100:0/quality:85/plain/",
+    "CHANNEL_ICON_PROCESSOR": "https://thumbnails.odycdn.com/optimize/s:100:0/quality:95/plain/",
     "LIGHTHOUSE_API": "https://lighthouse.odysee.com/search",
     "LIGHTHOUSE_ALT": "https://recsys.odysee.com/search",
     "LIVE_API": "https://api.live.odysee.com/v1/odysee/live",
