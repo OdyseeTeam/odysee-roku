@@ -41,7 +41,15 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         date = CreateObject("roDateTime")
         max = 48
         queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "claim_type": "stream", "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channels, "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true } })
+        date = CreateObject("roDateTime")
+        date.Mark()
+        curTime = date.AsSeconds()
+        if m.top.rawname = "FAVORITES"
+            orderBy = ["release_time"]
+        else
+            orderBy = ["trending_group","trending_mixed"]
+        end if
+        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "claim_type": "stream", "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channels, "not_channel_ids": [], "order_by": orderBy, "release_time": "<"+curTime.toStr(), "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true } })
         response = postJSON(queryJSON, queryURL, invalid)
         retries = 0
         while true
@@ -86,7 +94,11 @@ function ChannelsToVideoGrid(channels, blockedChannels)
 
             time = CreateObject("roDateTime")
             try
-                time.FromSeconds(items[i].meta.creation_timestamp)
+                try
+                    time.FromSeconds(items[i]["value"]["release_time"])
+                catch e
+                    time.FromSeconds(items[i].meta.creation_timestamp)
+                end try
             catch e
                 time.FromSeconds(items[i].timestamp)
             end try

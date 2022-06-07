@@ -57,7 +57,11 @@ function ChannelToVideoGrid(channel)
             item.ChannelIcon = defaultChannelIcon
             time = CreateObject("roDateTime")
             try
-                time.FromSeconds(items[i].meta.creation_timestamp)
+                try
+                    time.FromSeconds(items[i]["value"]["release_time"])
+                catch e
+                    time.FromSeconds(items[i].meta.creation_timestamp)
+                end try
             catch e
                 time.FromSeconds(items[i].timestamp)
             end try
