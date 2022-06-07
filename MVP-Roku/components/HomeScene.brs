@@ -688,10 +688,12 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         else if (m.uiLayer = 0 and m.focusedItem = 1) or (m.uiLayer = 0 and m.focusedItem = 2) 'are favorites or category 1 in focus with no additional UI layers?
           'TODO: add "are you sure you want to exit Odysee" screen
           'for now, re-add old behavior
+          'VGM02 
+          showCategorySelector()
           return false
         else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0 'is anything but search in focus with no additional UI layers?
           'set focus to selector
-          m.categorySelector.visible = true
+          m.uiLayer = 0
           ErrorDismissed()
           m.videoButtons.setFocus(false)
           m.searchKeyboard.setFocus(false)
@@ -700,19 +702,19 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
-          if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
-            m.categorySelectorEndIndicator.visible = true
-          else
-            m.categorySelectorEndIndicator.visible = false
-          end if
+          'VGM02 
+          showCategorySelector()
           return true
         else if m.uiLayer > 0
+          'VGM01
+          hideCategorySelector()
           ?"popping layer"
           if m.uiLayers.Count() > 0 'is there more than one UI layer?
             if m.categorySelector.itemFocused = 1 'are favorites in focus?
               m.uiLayer = 0
               m.uiLayers = []
               m.videoGrid.content = m.categories["FAVORITES"]
+              showCategorySelector()
             else 'go back a UI layer
               m.uiLayers.pop()
               m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
@@ -722,17 +724,19 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 end if
               end if
               m.uiLayer-=1
+              if m.uiLayer = 0
+                'VGM02 
+                showCategorySelector()
+              end if
               ?"went back to", m.uiLayer
             end if
           end if
           if m.categorySelector.itemFocused = 0 and m.uiLayers.Count() = 0 'is search in focus, and are there no additional UI layers?
-            m.categorySelector.visible = true
             m.uiLayer = 0
             ?"(search) went back to", m.uiLayer
             backToKeyboard()
           end if
           if m.categorySelector.itemFocused > 1 and m.uiLayers.Count() = 0 'is anything but search in focus, and are there no additional UI layers?
-            m.categorySelector.visible = true
             'this means we have no layers to fall back to, so by default, we should set focus to selector
             m.uiLayer = 0
             ?"(catsel) went back to", m.uiLayer
@@ -743,15 +747,11 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.searchHistoryDialog.setFocus(false)
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector]
-            if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
-              m.categorySelectorEndIndicator.visible = true
-            else
-              m.categorySelectorEndIndicator.visible = false
-            end if
+            'VGM02 
+            showCategorySelector()
           end if
           return true
         else if m.uiLayer = 0 'is the first UI layer occupying vgrid? (FALLBACK)
-          m.categorySelector.visible = true
           'this means we have no layers to fall back to, so by default, we should set focus to selector
           'this exists because we still have to fall back to selector even with search.
           ErrorDismissed()
@@ -761,14 +761,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
-          if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
-            m.categorySelectorEndIndicator.visible = true
-          else
-            m.categorySelectorEndIndicator.visible = false
-          end if
+          'VGM02 
+          showCategorySelector()
           return true
         else
-          m.categorySelector.visible = true
           'default case.
           ErrorDismissed()
           m.searchKeyboard.setFocus(false)
@@ -777,11 +773,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
-          if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
-            m.categorySelectorEndIndicator.visible = true
-          else
-            m.categorySelectorEndIndicator.visible = false
-          end if
+          'VGM02
+          showCategorySelector()
           return true
         end if
       end if
@@ -873,6 +866,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "options"
         if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
+          'VGM01
+          hideCategorySelector()
           if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) and m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
             curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
             m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
@@ -1073,6 +1068,8 @@ sub videoButtonFocused(msg)
 end sub
 
 sub categorySelectorFocusChanged(msg)
+  'VGM02 
+  showCategorySelector()
   '?"[Selector] focus changed from:"
   '?m.categorySelector.itemUnfocused
   '?"to:"
@@ -1310,6 +1307,8 @@ sub cleanupToUIPage() 'more aggressive returnToUIPage, until I recreate the UI l
 end sub
 
 sub backToKeyboard()
+  'VGM02 
+  showCategorySelector()
   resetVideoGrid()
   m.searchKeyboard.visible = True
   m.searchKeyboardDialog.visible = True
@@ -1820,7 +1819,7 @@ sub execSearch(search, searchType)
   ?search, searchType
   if searchType = "video"
     ?"will run video search."
-    m.videoSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.videoSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, rawname: "VSEARCH" })
     m.videoSearch.observeField("output", "gotVideoSearch")
     m.videoSearch.control = "RUN"
     m.taskRunning = True
@@ -1834,7 +1833,7 @@ sub execSearch(search, searchType)
   end if
   if searchType = "channel"
     ?"will run channel search."
-    m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, rawname: "VSEARCH" })
     m.channelSearch.observeField("output", "gotChannelSearch")
     m.channelSearch.control = "RUN"
     m.taskRunning = True
@@ -1868,14 +1867,14 @@ sub gotVideoSearch(msg as object)
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
           m.uiLayer+=1
-          m.categorySelector.visible = false
-          m.categorySelectorEndIndicator.visible = false
+          'VGM01
+          hideCategorySelector()
         end if
       else
         m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
         m.uiLayer+=1
-        m.categorySelector.visible = false
-        m.categorySelectorEndIndicator.visible = false
+        'VGM01
+        hideCategorySelector()
       end if
       m.videoGrid.setFocus(true)
     else
@@ -1907,14 +1906,14 @@ sub gotChannelSearch(msg as object)
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
           m.uiLayer+=1
-          m.categorySelector.visible = false
-          m.categorySelectorEndIndicator.visible = false
+          'VGM01
+          hideCategorySelector()
         end if
       else
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
         m.uiLayer+=1
-        m.categorySelector.visible = false
-        m.categorySelectorEndIndicator.visible = false
+        'VGM01
+        hideCategorySelector()
       end if
       m.videoGrid.setFocus(true)
     else
@@ -1946,6 +1945,7 @@ sub gotResolvedChannel(msg as object)
       m.taskRunning = False
       m.focusedItem = 2 '[video grid]
       if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+        ? "last layer is valid"
         previousData = m.uiLayers[m.uiLayers.Count() - 1]
         currentData = data.content
         previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
@@ -1953,14 +1953,15 @@ sub gotResolvedChannel(msg as object)
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
           m.uiLayer+=1
-          m.categorySelector.visible = false
-          m.categorySelectorEndIndicator.visible = false
+          'VGM01
+          hideCategorySelector()
         end if
       else
+        ? "default state"
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
         m.uiLayer+=1
-        m.categorySelector.visible = false
-        m.categorySelectorEndIndicator.visible = false
+        'VGM01
+        hideCategorySelector()
       end if
       m.videoGrid.setFocus(true)
     end if
@@ -2057,6 +2058,26 @@ sub clearHistory()
     for item = 0 to cCount
       m.searchHistoryContent.removeChildIndex(0)
     end for
+  end if
+end sub
+
+sub hideCategorySelector()
+  m.categorySelector.visible = false
+  m.sidebarTrim.visible = false
+  m.sidebarBackground.visible = false
+  m.categorySelectorEndIndicator.visible = false
+  m.videoGrid.translation = [110,120]
+end sub
+
+sub showCategorySelector()
+  m.videoGrid.translation = [210,120]
+  m.categorySelector.visible = true
+  m.sidebarTrim.visible = true
+  m.sidebarBackground.visible = true
+  if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
+    m.categorySelectorEndIndicator.visible = true
+  else
+    m.categorySelectorEndIndicator.visible = false
   end if
 end sub
 
