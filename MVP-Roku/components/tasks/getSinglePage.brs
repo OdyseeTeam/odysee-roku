@@ -15,28 +15,9 @@ end sub
 function ChannelsToVideoGrid(channels, blockedChannels)
     result = [] 'This is an array of associativeArrays that can be used to set a ContentNode
     try
-        'TODO: impliment blocking channels during parsing, not in the beginning.
         'Incoming channels can be invalid in open queries. (e.g: Universe)
-
         'Stage 1: Parse content
-        trialChannels = m.top.channels
-        if isValid(m.top.blocked) and isValid(m.top.channels)
-            blockedChannels = m.top.blocked
-            for i = 0 to channels.Count() - 1 step 1
-                for each blockedchannel in blockedChannels
-                    if trialChannels[i] = blockedchannel
-                        ? "deleting one"
-                        trialChannels.Delete(i) 'remove blocked channels from query, allowing more room for others
-                    end if
-                end for
-            end for
-            if trialChannels.Count() > 0
-                channels = trialChannels
-            else
-                channels = m.top.channels
-            end if
-            blockedChannels = invalid
-        end if
+        channels = m.top.channels
         queryOutput = "placeholder"
         date = CreateObject("roDateTime")
         max = 48
@@ -44,12 +25,15 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         date = CreateObject("roDateTime")
         date.Mark()
         curTime = date.AsSeconds()
-        if m.top.rawname = "FAVORITES"
+
+        if m.top.rawname = "FAVORITES" OR m.top.sortOrder = "new"
             orderBy = ["release_time"]
         else
             orderBy = ["trending_group","trending_mixed"]
         end if
-        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "claim_type": "stream", "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channels, "not_channel_ids": [], "order_by": orderBy, "release_time": "<"+curTime.toStr(), "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true } })
+
+        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "claim_type": "stream", "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channels, "not_channel_ids": m.top.blocked, "order_by": orderBy, "release_time": "<"+curTime.toStr(), "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true } })
+
         response = postJSON(queryJSON, queryURL, invalid)
         retries = 0
         while true

@@ -11,6 +11,7 @@
             <field id="blocked" type="roArray"/>
             <!--Should we attempt to resolve livestreams? (false by default)-->
             <field id="resolveLivestreams" type="bool" value="false"/>
+            <field id="sortorder" type="String" value="trending"/>
             <!--Account-Specific Vars-->
             <field id="uid" type="Int"/>
             <field id="authtoken" type="String"/>

@@ -407,15 +407,30 @@ sub gotCIDS()
     end if
     for each category in m.channelIDs 'create categories for selector
       catData = m.channelIDs[category]
+      catOrder = "trending"
+      excludedChannelIds = []
+      if isValid(catData.order)
+        if Type(catData.order) = "roString"
+          catOrder = catData.order
+        end if
+      end if
+      if isValid(catData.excludedChannelIds)
+        if type(catData.excludedChannelId) = "roArray"
+          excludedChannelIds.append(catData.excludedChannelIds)
+        end if
+      end if
       thread = CreateObject("roSGNode", "getSinglePage")
       if m.wasLoggedIn and m.preferences.Count() > 0
-        thread.setFields({ constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: m.preferences.blocked })
+        excludedChannelIds.append(m.preferences.blocked)
+        thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
       else
-        thread.setFields({ constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+        thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
       end if
       thread.observeField("output", "threadDone")
       m.threads.push(thread)
       catData = invalid 'save memory
+      catOrder = invalid
+      excludedChannelIds = invalid
     end for
     ?"Done, starting threader."
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
