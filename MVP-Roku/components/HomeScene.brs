@@ -1063,6 +1063,7 @@ sub videoButtonFocused(msg)
   if Type(mData) = "roInt"
     if isValid(m.videoButtons.content.getChildren(-1, 0)[mData].itemID)
       m.videoButtonSelected = m.videoButtons.content.getChildren(-1, 0)[mData].itemID
+      showVideoOverlay()
     end if
   end if
 end sub
