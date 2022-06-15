@@ -89,87 +89,55 @@ function ChannelToVideoGrid(channel)
         'Stage 2: Format Content (content -> row -> item) from "result"/preparsed.
         content = createObject("RoSGNode", "ContentNode")
         counter = 0
-        for each item in result
-            if counter < 4
-                if IsValid(currow) <> true
-                    currow = createObject("RoSGNode", "ContentNode")
-                end if
-                curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
-                curitem.setFields(item)
-                currow.appendChild(curitem)
-                if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
+        rowSize = 4
+        if result.Count() > rowSize
+            for each item in result
+                if counter < rowSize
+                    if IsValid(currow) <> true
+                        currow = createObject("RoSGNode", "ContentNode")
+                    end if
+                    curitem = createObject("RoSGNode", "ContentNode")
+                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
+                    curitem.setFields(item)
+                    currow.appendChild(curitem)
+                    if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
+                        content.appendChild(currow)
+                    end if
+                    counter += 1
+                    curitem = invalid
+                else
                     content.appendChild(currow)
+                    currow = invalid
+                    currow = createObject("RoSGNode", "ContentNode")
+                    curitem = createObject("RoSGNode", "ContentNode")
+                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
+                    curitem.setFields(item)
+                    currow.appendChild(curitem)
+                    counter = 1
+                    curitem = invalid
                 end if
-                counter += 1
-                curitem = invalid
-            else
-                content.appendChild(currow)
-                currow = invalid
-                currow = createObject("RoSGNode", "ContentNode")
+            end for
+        else
+            currow = createObject("RoSGNode", "ContentNode")
+            for each item in result
                 curitem = createObject("RoSGNode", "ContentNode")
                 curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
-                counter = 1
                 curitem = invalid
-            end if
-        end for
+            end for
+            content.appendChild(currow)
+        end if
+        rowSize = invalid
         defaultChannelIcon = invalid
         '? type(content)
         ? "exported" + Str(content.getChildCount() * 4) + " items from Odysee"
-
+        if content.getChildCount() = 0
+            STOP
+        end if
         '? "manufacturing finished for key: "+subkey
         return { contentarray: result: content: content } 'Returns the array
     else
         return { error: true }
     end if
-end function
-
-function getLivestream(channel)
-    try
-        'Github seems to be at least one commit behind, making a placeholder commit.
-        livestreamStatus = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
-        liveData = livestreamStatus.data
-        if liveData["Live"]
-            lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
-            livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
-            liveClaim = livestreamclaimquery["result"]["items"][0]
-            liveItem = parseLiveData(channel, liveData, liveClaim)
-            return { liveItem: liveItem : success: true }
-        else
-            return { success: false }
-        end if
-    catch e
-        return { success: false }
-    end try
-end function
-
-function parseLiveData(channel, liveData, liveClaim)
-    item = {}
-    time = CreateObject("roDateTime")
-    time.FromISO8601String(liveData["ActiveClaim"]["ReleaseTime"])
-    timestr = time.AsDateString("short-month-short-weekday") + " "
-    timestr = timestr.Trim()
-    time.FromISO8601String(liveData["Start"])
-    streamStart = time.AsSeconds()
-    time = invalid
-    item.Title = liveClaim["value"]["title"]
-    item.Creator = liveClaim["signing_channel"]["name"]
-    item.Channel = channel
-    item.ReleaseDate = timestr
-    item.startUTC = streamStart 'for future use
-    item.guid = liveData["ActiveClaim"]["ClaimID"]
-    thumbnail = m.top.constants["IMAGE_PROCESSOR"] + liveClaim["value"]["thumbnail"]["url"]
-    item.HDPosterURL = thumbnail
-    item.thumbnailDimensions = [360, 240]
-    item.channelIcon = m.top.channelIcon
-    item.url = liveData["VideoURL"]
-    item.stream = { url: item.url }
-    item.link = item.url
-    item.streamFormat = "hls"
-    item.source = "odysee"
-    item.itemType = "livestream"
-    return item
 end function

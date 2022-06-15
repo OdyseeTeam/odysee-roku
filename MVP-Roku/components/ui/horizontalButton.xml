@@ -47,7 +47,7 @@
     m.itemOutline.color = m.top.itemContent.outlineColor
     m.top.itemContent.backgroundColor = Left(m.top.itemContent.backgroundColor, 8)
     m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
-    m.itemFocusBackground.color = m.top.itemContent.backgroundColor+"CC"
+    m.itemFocusBackground.color = m.top.itemContent.backgroundColor+"AA"
   end function
 
   function itemFocus()
@@ -60,9 +60,11 @@
   function gotFocus()
     if m.top.isFocused
       m.itemBackground.color = m.top.itemContent.backgroundColor+"00"
-      m.itemText.color = m.top.itemContent.outlineColor
+      m.itemOutline.color = "0xC70039FF"
+      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"FF"
     else
       m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
+      m.itemOutline.color = "0xFFFFFFFF"
       m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"99"
     end if
   end function

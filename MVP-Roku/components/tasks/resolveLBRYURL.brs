@@ -39,7 +39,6 @@ function siteMethod(lbry_url)
     resolveRequestOutput = postJSON(resolveRequestJSON, resolveRequestURL, invalid)
     vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
     vresolvedRedirectURL = resolveRedirect(vurl.EncodeUri())
-    vregex = CreateObject("roRegex", "[^a-zA-Z0-9\-\.\,\s]", "")
     vresSplit = vresolvedRedirectURL.split("/")
     vresDone = []
     for each suburl in vresSplit
@@ -47,16 +46,12 @@ function siteMethod(lbry_url)
             if Instr(0, suburl, "http:") > -1 AND suburl.split("").Count() = 5 OR Instr(0, suburl, "https:") > -1 AND suburl.split("").Count() = 6
                 vresDone.push(suburl+"/") 'single slash since we'll be joining with /
             else
-                replaced = vregex.ReplaceAll(suburl, "")
-                if replaced = ""
-                    replaced = "roku"
-                end if
+                replaced = suburl.EncodeUriComponent()
                 vResDone.push(replaced)
                 replaced = invalid
             end if
         end if
     end for
-    vregex = invalid
     vresolvedRedirectURL = vresDone.join("/")
     ?vresolvedRedirectURL
     vresolvedRedirect = vresolvedRedirectURL.split(".")
