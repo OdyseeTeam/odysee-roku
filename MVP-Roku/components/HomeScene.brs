@@ -3,7 +3,7 @@ sub init()
   'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
   m.appTimer = CreateObject("roTimeSpan")
   m.appTimer.Mark()
-  m.maxThreads = 2
+  m.maxThreads = 4
   m.runningThreads = []
   m.threads = []
   'UI Logic/State Variables

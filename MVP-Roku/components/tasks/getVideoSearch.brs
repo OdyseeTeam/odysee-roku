@@ -62,7 +62,11 @@ Function ClaimsToVideoGrid(claims)
     For i=0 To items.Count()-1 Step 1 'Parse response
         item = {}
         item.Title = items[i].value.title
-        item.Creator = items[i].signing_channel.name
+        try
+            item.Creator = items[i].signing_channel.value.title
+        catch e
+            item.Creator = items[i].signing_channel.name
+        end try
         item.Description = ""
         item.Channel = items[i].signing_channel.claim_id
         try
@@ -74,7 +78,6 @@ Function ClaimsToVideoGrid(claims)
         catch e
             item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
         end try
-        item.lbc = items[i].meta.effective_amount+" LBC"
         time = CreateObject("roDateTime")
         try
             try
@@ -110,7 +113,7 @@ Function ClaimsToVideoGrid(claims)
                 currow = createObject("RoSGNode","ContentNode")
             end if
             curitem = createObject("RoSGNode","ContentNode")
-            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: ""})
+            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
             curitem.setFields(item)
             currow.appendChild(curitem)
             if i = items.Count()-1 'misalignment fix, will need to implement this better later.
@@ -123,7 +126,7 @@ Function ClaimsToVideoGrid(claims)
             currow = invalid
             currow = createObject("RoSGNode","ContentNode")
             curitem = createObject("RoSGNode","ContentNode")
-            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: ""})
+            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
             curitem.setFields(item)
             currow.appendChild(curitem)
             counter = 1

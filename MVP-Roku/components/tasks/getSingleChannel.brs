@@ -51,7 +51,11 @@ function ChannelToVideoGrid(channel)
         for i = 0 to items.Count() - 1 step 1 'Parse response
             item = {}
             item.Title = items[i].value.title
-            item.Creator = items[i].signing_channel.name
+            try
+                item.Creator = items[i].signing_channel.value.title
+            catch e
+                item.Creator = items[i].signing_channel.name
+            end try
             item.Description = ""
             item.Channel = items[i].signing_channel.claim_id
             item.ChannelIcon = defaultChannelIcon

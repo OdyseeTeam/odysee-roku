@@ -96,7 +96,11 @@ function ClaimsToChannelGrid(claims)
         content = createObject("RoSGNode", "ContentNode")
         for each channel in validChannels
             item = {}
-            item.Title = channel.name
+            try
+                item.Title = channel.value.title
+            catch e
+                item.Title = channel.name
+            end try
             item.Creator = ""
             item.Description = ""
             item.Channel = channel.claim_id
