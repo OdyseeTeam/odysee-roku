@@ -9,7 +9,7 @@ sub master()
     ?"[CIDSTask]: Current locale is:"
     ?locale
     try
-        fpURL = m.global.constants.frontpageURL
+        fpURL = m.top.constants.frontpageURL
         fpURL = "https://kp.odysee.com/$/api/content/v2/get?format=roku"
         if IsValid(getJSON(fpURL).data[locale]) 'Use Locale (if exists) (odysee logic diagram)
             frontpageCIDS = getJSON(fpURL).data[locale].categories

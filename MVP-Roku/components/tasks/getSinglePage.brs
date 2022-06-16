@@ -32,7 +32,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             orderBy = ["trending_group","trending_mixed"]
         end if
 
-        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "claim_type": "stream", "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channels, "not_channel_ids": m.top.blocked, "order_by": orderBy, "release_time": "<"+curTime.toStr(), "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true } })
+        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "claim_type": "stream", "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channels, "not_channel_ids": blockedChannels, "order_by": orderBy, "release_time": "<"+curTime.toStr(), "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true } })
 
         response = postJSON(queryJSON, queryURL, invalid)
         retries = 0
@@ -49,13 +49,23 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         end while
         items = response.result.items
         if m.top.resolveLivestreams 'we have to resolve livestreams now, apparently.
-            for each channel in channels
-                streamStatus = getLivestream(channel)
-                if streamStatus.success = true
-                    result.push(streamStatus.liveItem)
-                end if
-            end for
-           'STOP
+            if isValid(channels)
+                for each channel in channels
+                    streamStatus = getLivestream(channel)
+                    if streamStatus.success = true
+                        result.push(streamStatus.liveItem)
+                    end if
+                end for
+            else
+                'We need to do something entirely different here: resolve ALL livestreams that are valid.
+                channels = getLivestreamChannelList(blockedChannels)
+                for each channel in channels
+                    streamStatus = getLivestream(channel)
+                    if streamStatus.success = true
+                        result.push(streamStatus.liveItem)
+                    end if
+                end for
+            end if
         end if
         
         ?"got " + str(items.Count()) + " items from Odysee"

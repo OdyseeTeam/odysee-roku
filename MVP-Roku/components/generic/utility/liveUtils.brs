@@ -21,6 +21,50 @@ function getLivestream(channel)
     end try
 end function
 
+function getLivestreamChannelList(excluded_cids) 'creates a preformatted+sorted channel IDs list from the livestream endpoint
+    cidMap = {}
+    if excluded_cids.Count() > 0
+        for each channelID in excluded_cids
+            cidMap.addReplace(channelID, true)
+        end for
+    end if
+    'https://api.odysee.live/livestream/all
+    livestreamData = getJSON(m.top.constants["NEW_LIVE_API"]+"/all")
+    livestreamIDs = []
+    if isValid(livestreamData["data"])
+        if livestreamData["data"].Count() > 0
+            livestreamData["data"].sortBy("ViewerCount", "r")
+            numLiveItems = 0
+            i = 0
+            while true
+                if isValid(livestreamData["data"][i])
+                    CCID = livestreamData["data"][i]["ChannelClaimID"]
+                    if isValid(cidMap[CCID]) = false
+                        livestreamIDs.push(CCID)
+                        numLiveItems+=1
+                    end if
+                    CCID = invalid
+                    if numLiveItems = 8
+                        exit while
+                    end if
+                    i+=1
+                else
+                    exit while
+                end if
+            end while
+            cidMap = invalid
+            livestreamData = invalid
+            numLiveItems = invalid
+            i = invalid
+            return livestreamIDs
+        else
+            return false
+        end if
+    else
+        return false
+    end if
+end function
+
 function parseLiveData(channel, liveData, liveClaim)
     item = {}
     time = CreateObject("roDateTime")
@@ -31,7 +75,11 @@ function parseLiveData(channel, liveData, liveClaim)
     streamStart = time.AsSeconds()
     time = invalid
     item.Title = liveClaim["value"]["title"]
-    item.Creator = liveClaim["signing_channel"]["name"]
+    try
+        item.Creator = liveClaim["signing_channel"]["value"]["title"]
+    catch e
+        item.Creator = liveClaim["signing_channel"]["name"]
+    end try
     item.Channel = channel
     item.ReleaseDate = timestr
     item.startUTC = streamStart 'for future use

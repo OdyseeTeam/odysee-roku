@@ -415,9 +415,19 @@ sub gotCIDS()
       thread = CreateObject("roSGNode", "getSinglePage")
       if m.wasLoggedIn and m.preferences.Count() > 0
         excludedChannelIds.append(m.preferences.blocked)
-        thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+        if category = "wildwest"
+          ? "is wildwest, resolving livestreams"
+          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+        else
+          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+        end if
       else
-        thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+        if category = "wildwest"
+          ? "is wildwest, resolving livestreams"
+          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+        else
+          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+        end if
       end if
       thread.observeField("output", "threadDone")
       m.threads.push(thread)

@@ -14,7 +14,7 @@
     "WATCHMAN": "https://watchman.na-backend.odysee.com",
     "ROOT_SSO": "https://sso.odysee.com",
     "ROOT_SDK": "https://api.na-backend.odysee.com",
-    "FRONTPAGE_URL": "https://odysee.com/$/api/content/v2/get",
+    "FRONTPAGE_URL": "https://kp.odysee.com/$/api/content/v2/get?format=roku",
     "ACCESS_HEADERS": {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
         "origin": "https://odysee.com",
         "referer": "https://roku.odysee.com/",
