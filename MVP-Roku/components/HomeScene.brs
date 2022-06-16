@@ -22,6 +22,7 @@ sub init()
   m.searchKeyboardItemArray = [5, 11, 17, 23, 29, 35, 38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
   m.uiLayer = 0 '0=Base (Channel Grid/Search), 1=First search layer, 2=Second search layer
   m.uiLayers = [] 'directly correlates with m.uiLayer-1. Layer 0 is managed by the sidebar/categorySelector.
+  m.reinitialize = false
   m.videoButtonSelected = "none"
   'UI Items
   m.errorText = m.top.findNode("warningtext")

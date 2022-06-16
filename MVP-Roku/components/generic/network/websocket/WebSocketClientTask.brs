@@ -84,7 +84,7 @@ function runtask() as void
                 end try
                 'TODO: fix message support/superchat endpoint
                 'stop
-                if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1 and message_supported  and isValid(m.blocked[superchatitem["channel_id"]]) = false
+                if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1 and message_supported and isValid(m.blocked[superchatitem["channel_id"]]) = false
                     if superChatLength > 4
                         exit for
                     end if
@@ -95,15 +95,17 @@ function runtask() as void
             ? "WSC: Superchat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             ? m.superchat
             m.parseTimer.Mark()
-            chatResponse.result.items.Reverse()
-            for each chatitem in chatResponse.result.items
-                if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 and isValid(m.blocked[chatitem["channel_id"]]) = false
-                    m.parsedChat.push(parseComment(chatitem)) 'so we can add/remove comments quickly later on
-                end if
-            end for
-            for each chatitem in m.parsedChat
-                m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
-            end for
+            if isValid(chatResponse.result.items)
+                chatResponse.result.items.Reverse()
+                for each chatitem in chatResponse.result.items
+                    if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 and isValid(m.blocked[chatitem["channel_id"]]) = false
+                        m.parsedChat.push(parseComment(chatitem)) 'so we can add/remove comments quickly later on
+                    end if
+                end for
+                for each chatitem in m.parsedChat
+                    m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
+                end for
+            end if
             ? "WSC: Chat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             m.top.superchat = m.superchat
             m.top.chat = { raw: m.rawChat, parsed: m.parsedChat }
@@ -175,7 +177,7 @@ function runtask() as void
                                             if isValid(message.data.comment.channel_id)
                                                 ? "got a comment"
                                                 chatitem = message.data.comment
-                                                if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 AND isValid(m.blocked[chatitem.channel_id]) = false
+                                                if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 and isValid(m.blocked[chatitem.channel_id]) = false
                                                     m.parsedChat.push(parseComment(chatitem))
                                                 end if
                                                 chatitem = invalid
