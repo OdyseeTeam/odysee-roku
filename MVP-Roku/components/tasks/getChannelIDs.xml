@@ -2,6 +2,8 @@
 
 <component name="getChannelIDs" extends="Task">
     <interface>
+            <!--Universal (determined) constants-->
+            <field id="constants" type="assocarray"/>
             <field id="channelids" type="assocarray"/>
             <field id="error" type="bool"/>
             <field id="categoryselectordata" type="node"/>

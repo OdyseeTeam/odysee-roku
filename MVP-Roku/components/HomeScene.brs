@@ -347,16 +347,9 @@ sub authDone()
     end if
 
     m.video.EnableCookies()
-
-    'Video Headers.
-    veaders = {"User-Agent": m.global.constants["userAgent"],
-               "origin": "https://odysee.com",
-               "referer": "https://roku.odysee.com/",
-               "Access-Control-Allow-Origin": "https://odysee.com/"}
-
-    m.video.SetHeaders(veaders)
-    veaders = invalid
+    m.video.SetHeaders(m.constants["ACCESS_HEADERS"])
     m.video.AddCookies(m.cookies)
+    m.cidsTask.setField("constants", m.constants)
     m.cidsTask.control = "RUN"
   end if
 end sub

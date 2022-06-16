@@ -8,7 +8,7 @@ function getLivestream(channel)
             lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
             livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
             liveClaim = livestreamclaimquery["result"]["items"][0]
-            if getRawText(liveData["VideoURL"]) = "{error: True}"
+            if getRawTextAuthenticated(liveData["VideoURL"], m.top.constants["ACCESS_HEADERS"]) = "{error: True}"
                 return { success: false }
             end if
             liveItem = parseLiveData(channel, liveData, liveClaim)
