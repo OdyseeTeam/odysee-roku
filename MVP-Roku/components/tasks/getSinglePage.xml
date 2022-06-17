@@ -25,4 +25,5 @@
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/liveUtils.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/parseLib.brs" />
 </component>
