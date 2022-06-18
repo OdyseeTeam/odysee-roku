@@ -16,7 +16,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     result = [] 'This is an array of associativeArrays that can be used to set a ContentNode
     lastParsedAmount = 0
     currentParsedAmount = 0
-    max = 48 ' Amount of items needed
+    max = 28 ' Amount of items needed
     channels = m.top.channels
     gotEnough = false 'got enough items?
 
