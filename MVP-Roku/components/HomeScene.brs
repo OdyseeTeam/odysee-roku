@@ -29,6 +29,7 @@ sub init()
   m.errorSubtext = m.top.findNode("warningsubtext")
   m.errorButton = m.top.findNode("warningbutton")
   m.loadingText = m.top.findNode("loadingtext")
+  m.loadingBackground = m.top.findNode("loadingbackground")
   m.header = m.top.findNode("headerrectangle")
   m.chatBox = m.top.findNode("ChatBox")
   m.superChatBox = m.top.findNode("SuperChatBox")
@@ -94,13 +95,13 @@ sub init()
     m.vStatsTimer = CreateObject("roTimeSpan")
     m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
 
-    observeFields("watchman", {"output": "watchmanRan",
-                               "cookies": "gotCookies"})
+    observeFields("watchman", { "output": "watchmanRan",
+    "cookies": "gotCookies" })
 
     m.rokuInstall = createObject("roSGNode", "rokuInstall") 'analytics (install)
 
-    observeFields("rokuInstall", {"output": "didInstall",
-                                  "cookies": "gotCookies"})
+    observeFields("rokuInstall", { "output": "didInstall",
+    "cookies": "gotCookies" })
 
   end if
   m.ws = createObject("roSGNode", "WebSocketClient")
@@ -512,6 +513,7 @@ sub threadDone(msg as object)
         ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
         m.videoGrid.content = m.categories[m.categories.Keys()[0]]
         m.loadingText.visible = false
+        m.loadingBackground.visible = false
         m.loadingText.translation = "[800,0]"
         m.loadingText.vertAlign = "center"
         m.loadingText.horizAlign = "left"
@@ -667,7 +669,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ? "like"
               ? m.wasLoggedIn
               if m.wasLoggedIn
-                if m.currentVideoReactions.mine.likes > 0 AND m.currentVideoReactions.mine.dislikes = 0
+                if m.currentVideoReactions.mine.likes > 0 and m.currentVideoReactions.mine.dislikes = 0
                   setReaction(m.currentVideoClaimID, "negate")
                 else
                   setReaction(m.currentVideoClaimID, "negate")
@@ -679,7 +681,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ? m.wasLoggedIn
               if m.wasLoggedIn
                 ' Dislike
-                if m.currentVideoReactions.mine.dislikes > 0 AND m.currentVideoReactions.mine.likes = 0
+                if m.currentVideoReactions.mine.dislikes > 0 and m.currentVideoReactions.mine.likes = 0
                   setReaction(m.currentVideoClaimID, "negate")
                 else
                   setReaction(m.currentVideoClaimID, "negate")
@@ -707,7 +709,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         else if (m.uiLayer = 0 and m.focusedItem = 1) or (m.uiLayer = 0 and m.focusedItem = 2) 'are favorites or category 1 in focus with no additional UI layers?
           'TODO: add "are you sure you want to exit Odysee" screen
           'for now, re-add old behavior
-          'VGM02 
+          'VGM02
           showCategorySelector()
           return false
         else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0 'is anything but search in focus with no additional UI layers?
@@ -721,7 +723,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
-          'VGM02 
+          'VGM02
           showCategorySelector()
           return true
         else if m.uiLayer > 0
@@ -742,9 +744,9 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                   downsizeVideoGrid()
                 end if
               end if
-              m.uiLayer-=1
+              m.uiLayer -= 1
               if m.uiLayer = 0
-                'VGM02 
+                'VGM02
                 showCategorySelector()
               end if
               ?"went back to", m.uiLayer
@@ -766,7 +768,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.searchHistoryDialog.setFocus(false)
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector]
-            'VGM02 
+            'VGM02
             showCategorySelector()
           end if
           return true
@@ -780,7 +782,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
-          'VGM02 
+          'VGM02
           showCategorySelector()
           return true
         else
@@ -837,11 +839,11 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.ffrwTimer.duration = .7
             m.videoTransitionState = -1 'Reset to RW, stage1
           else
-            m.videoTransitionState-=1 'use VTS to track numPressed
+            m.videoTransitionState -= 1 'use VTS to track numPressed
           end if
           m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
           ?m.ffrwTimer.control
-          if m.ffrwTimer.control = "start" AND abs(m.videoTransitionState) > m.videoTransitionStateLimit
+          if m.ffrwTimer.control = "start" and abs(m.videoTransitionState) > m.videoTransitionStateLimit
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
           else
@@ -859,10 +861,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.ffrwTimer.duration = .7
             m.videoTransitionState = 1 'Reset to FF, stage1
           else
-            m.videoTransitionState+=1  'use VTS to track numPressed
+            m.videoTransitionState += 1 'use VTS to track numPressed
           end if
           m.video.control = "stop" 'better not to prebuffer at all.
-          if m.ffrwTimer.control = "start" AND abs(m.videoTransitionState) > m.videoTransitionStateLimit
+          if m.ffrwTimer.control = "start" and abs(m.videoTransitionState) > m.videoTransitionStateLimit
             m.ffrwTimer.observeField("fire", "changeVideoPosition")
             m.ffrwTimer.duration = m.ffrwTimer.duration / 2
           else
@@ -897,6 +899,21 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.videoGrid.visible = false
             m.loadingText.visible = true
             m.loadingText.text = "Resolving Channel..."
+          end if
+        end if
+      end if
+
+      if key = "replay"
+        if m.focusedItem = 2
+          if m.categorySelector.itemFocused > 0
+            ? "CATEGORY REFRESH"
+            if m.categorySelector.itemFocused = 1
+              trueName = "FAVORITES"
+            else
+              trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
+            end if
+            ? "would refresh " + trueName
+            'toRefresh = m.categories[trueName]
           end if
         end if
       end if
@@ -1088,7 +1105,7 @@ sub videoButtonFocused(msg)
 end sub
 
 sub categorySelectorFocusChanged(msg)
-  'VGM02 
+  'VGM02
   showCategorySelector()
   '?"[Selector] focus changed from:"
   '?m.categorySelector.itemUnfocused
@@ -1294,6 +1311,18 @@ sub resolveError()
   m.errorButton.setFocus(true)
 end sub
 
+sub malformedVideoError()
+  m.videoGrid.setFocus(false)
+  m.videoGrid.visible = False
+  m.errorText.text = "Error: Video is corrupt/malformed."
+  m.errorSubtext.text = "Uploader: https://lbry.com/faq/video-publishing-guide"
+  m.errorText.visible = true
+  m.errorSubtext.visible = true
+  m.errorButton.visible = true
+  m.errorButton.observeField("buttonSelected", "resolveerrorDismissed")
+  m.errorButton.setFocus(true)
+end sub
+
 sub resolveErrorDismissed()
   m.errorButton.setFocus(false)
   m.errorButton.unobserveField("buttonSelected")
@@ -1327,7 +1356,7 @@ sub cleanupToUIPage() 'more aggressive returnToUIPage, until I recreate the UI l
 end sub
 
 sub backToKeyboard()
-  'VGM02 
+  'VGM02
   showCategorySelector()
   resetVideoGrid()
   m.searchKeyboard.visible = True
@@ -1431,9 +1460,9 @@ sub resolveVideo(url = invalid)
           ?m.video
           m.videoButtons.animateToItem = 3
           observeFields("ws", { "on_close": "on_close",
-                                "on_error": "on_error",
-                                "chat": "on_chat",
-                                "superchat": "on_superchat"})
+            "on_error": "on_error",
+            "chat": "on_chat",
+          "superchat": "on_superchat" })
           if isValid(m.preferences)
             if isValid(m.preferences.blocked)
               m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
@@ -1553,8 +1582,7 @@ sub changeVideoPosition()
   if m.videoVP = 0
     m.videoVP = m.video.position
   end if
-  if m.videoTransitionState > 0 AND abs(m.videoTransitionState) < m.videoTransitionStateLimit
-
+  if m.videoTransitionState > 0 and abs(m.videoTransitionState) < m.videoTransitionStateLimit
     '1 second only on 1x/finegrain
     if m.videoVP + 1 <= m.urlResolver.output.length
       m.video.seek = m.videoVP + 1
@@ -1566,10 +1594,10 @@ sub changeVideoPosition()
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.videoVP)
     end if
 
-  else if m.videoTransitionState > 0 AND abs(m.videoTransitionState) >= m.videoTransitionStateLimit
+  else if m.videoTransitionState > 0 and abs(m.videoTransitionState) >= m.videoTransitionStateLimit
 
     '2+ seconds on coarser
-    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*2
+    videoScrubSpeed = (Abs(m.videoTransitionState) - 4) * 2
     if m.videoVP + videoScrubSpeed <= m.urlResolver.output.length
       m.video.seek = m.videoVP + videoScrubSpeed
       m.videoVP += videoScrubSpeed
@@ -1579,8 +1607,8 @@ sub changeVideoPosition()
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + videoScrubSpeed - m.videoVP)
     end if
-    
-  else if m.videoTransitionState < 0 AND abs(m.videoTransitionState) < m.videoTransitionStateLimit
+
+  else if m.videoTransitionState < 0 and abs(m.videoTransitionState) < m.videoTransitionStateLimit
 
     '1 second only on 1x/finegrain
 
@@ -1594,10 +1622,10 @@ sub changeVideoPosition()
       m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length - 1 - m.videoVP)
     end if
 
-  else if m.videoTransitionState < 0 AND abs(m.videoTransitionState) >= m.videoTransitionStateLimit
+  else if m.videoTransitionState < 0 and abs(m.videoTransitionState) >= m.videoTransitionStateLimit
 
     '2+ seconds on coarser
-    videoScrubSpeed = (Abs(m.videoTransitionState)-4)*2
+    videoScrubSpeed = (Abs(m.videoTransitionState) - 4) * 2
     if m.videoVP - videoScrubSpeed >= 0
       m.video.seek = m.videoVP - videoScrubSpeed
       m.videoVP = m.videoVP - videoScrubSpeed
@@ -1627,6 +1655,8 @@ sub playResolvedVideo(msg as object)
       m.urlResolver.control = "STOP"
       m.taskRunning = False
       resolveError()
+    else if isValid(data.length) = false
+      malformedVideoError()
     else
       m.videoGrid.visible = true
       m.videoGrid.setFocus(false)
@@ -1667,41 +1697,41 @@ sub playResolvedVideo(msg as object)
 end sub
 
 function getvideoLength(length)
-  timeConverter = CreateObject("roDateTime")
-  timeConverter.FromSeconds(length)
-  days = timeConverter.GetDayOfMonth().ToStr()
-  hours = timeConverter.GetHours().ToStr()
-  minutes = timeConverter.GetMinutes().ToStr()
-  seconds = timeConverter.GetSeconds().ToStr()
-  result = ""
-  if timeConverter.GetDayOfMonth() < 10
-    days = "0" + timeConverter.GetDayOfMonth().ToStr()
-  end if
-  if timeConverter.GetHours() < 10
-    hours = "0" + timeConverter.GetHours().ToStr()
-  end if
-  if timeConverter.GetMinutes() < 10
-    minutes = "0" + timeConverter.GetMinutes().ToStr()
-  end if
-  if timeConverter.GetSeconds() < 10
-    seconds = "0" + timeConverter.GetSeconds().ToStr()
-  end if
-  if length < 3600
-    'use minute format
-    result = minutes + ":" + seconds
-  end if
-  if length >= 3600 and length < 86400
-    result = hours + ":" + minutes + ":" + seconds
-  end if
-  if length >= 86400 'TODO: make videos above month length display proper length
-    result = days + ":" + hours + ":" + minutes + ":" + seconds
-  end if
-  timeConverter = invalid
-  days = invalid
-  hours = invalid
-  minutes = invalid
-  seconds = invalid
-  return result
+    timeConverter = CreateObject("roDateTime")
+    timeConverter.FromSeconds(length)
+    days = timeConverter.GetDayOfMonth().ToStr()
+    hours = timeConverter.GetHours().ToStr()
+    minutes = timeConverter.GetMinutes().ToStr()
+    seconds = timeConverter.GetSeconds().ToStr()
+    result = ""
+    if timeConverter.GetDayOfMonth() < 10
+      days = "0" + timeConverter.GetDayOfMonth().ToStr()
+    end if
+    if timeConverter.GetHours() < 10
+      hours = "0" + timeConverter.GetHours().ToStr()
+    end if
+    if timeConverter.GetMinutes() < 10
+      minutes = "0" + timeConverter.GetMinutes().ToStr()
+    end if
+    if timeConverter.GetSeconds() < 10
+      seconds = "0" + timeConverter.GetSeconds().ToStr()
+    end if
+    if length < 3600
+      'use minute format
+      result = minutes + ":" + seconds
+    end if
+    if length >= 3600 and length < 86400
+      result = hours + ":" + minutes + ":" + seconds
+    end if
+    if length >= 86400 'TODO: make videos above month length display proper length
+      result = days + ":" + hours + ":" + minutes + ":" + seconds
+    end if
+    timeConverter = invalid
+    days = invalid
+    hours = invalid
+    minutes = invalid
+    seconds = invalid
+    return result
 end function
 
 function onVideoStateChanged(msg as object)
@@ -1886,13 +1916,13 @@ sub gotVideoSearch(msg as object)
         currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer+=1
+          m.uiLayer += 1
           'VGM01
           hideCategorySelector()
         end if
       else
         m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer+=1
+        m.uiLayer += 1
         'VGM01
         hideCategorySelector()
       end if
@@ -1925,13 +1955,13 @@ sub gotChannelSearch(msg as object)
         currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer+=1
+          m.uiLayer += 1
           'VGM01
           hideCategorySelector()
         end if
       else
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer+=1
+        m.uiLayer += 1
         'VGM01
         hideCategorySelector()
       end if
@@ -1972,14 +2002,14 @@ sub gotResolvedChannel(msg as object)
         currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-          m.uiLayer+=1
+          m.uiLayer += 1
           'VGM01
           hideCategorySelector()
         end if
       else
         ? "default state"
         m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
-        m.uiLayer+=1
+        m.uiLayer += 1
         'VGM01
         hideCategorySelector()
       end if
@@ -2086,11 +2116,11 @@ sub hideCategorySelector()
   m.sidebarTrim.visible = false
   m.sidebarBackground.visible = false
   m.categorySelectorEndIndicator.visible = false
-  m.videoGrid.translation = [110,120]
+  m.videoGrid.translation = [110, 120]
 end sub
 
 sub showCategorySelector()
-  m.videoGrid.translation = [210,120]
+  m.videoGrid.translation = [210, 120]
   m.categorySelector.visible = true
   m.sidebarTrim.visible = true
   m.sidebarBackground.visible = true
@@ -2405,7 +2435,7 @@ sub gotReactions(msg as object)
       ratioed = false
 
       'If 2 times more people dislike the video than like it, it's obviously ratioed.
-      if ((data.total.dislikes+data.mine.dislikes+.01)/(data.total.likes+data.mine.likes+.01)) >= 2 'ratioed
+      if ((data.total.dislikes + data.mine.dislikes + .01) / (data.total.likes + data.mine.likes + .01)) >= 2 'ratioed
         ratioed = true
       end if
 
@@ -2468,7 +2498,7 @@ sub follow(channelID)
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
   m.preferences.following.push(channelID)
-  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true})
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
   m.favoritesThread.observeField("output", "gotFavorites")
   m.favoritesThread.control = "RUN"
 end sub
@@ -2483,7 +2513,7 @@ sub unFollow(channelID)
       m.preferences.following.Delete(i)
     end if
   end for
-  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true})
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
   m.favoritesThread.observeField("output", "gotFavorites")
   m.favoritesThread.control = "RUN"
 end sub

@@ -26,7 +26,14 @@
         width="1920"
         height="1080"
         translation="[0,0]" />
-    <Label id="loadingtext" font="font:Inter-Emoji" color="#ffffff" width="1920" height="1080" vertAlign="center" horizAlign="center" text="Loading....">
+    <Poster
+        id="loadingbackground"
+        uri="pkg:/images/channel-splash-fhd.png"
+        width="1920"
+        height="1080"
+        translation="[0,0]" 
+    />
+    <Label id="loadingtext" font="font:Inter-Emoji" color="#ffffff" width="1920" height="1080" translation="[0,200]" vertAlign="center" horizAlign="center" text="Loading....">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
     </Label>
     <Rectangle
