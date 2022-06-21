@@ -22,7 +22,7 @@ sub init()
   m.searchKeyboardItemArray = [5, 11, 17, 23, 29, 35, 38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
   m.uiLayer = 0 '0=Base (Channel Grid/Search), 1=First search layer, 2=Second search layer
   m.uiLayers = [] 'directly correlates with m.uiLayer-1. Layer 0 is managed by the sidebar/categorySelector.
-  m.reinitialize = false
+  m.reinitialize = true
   m.videoButtonSelected = "none"
   'UI Items
   m.errorText = m.top.findNode("warningtext")
@@ -1436,9 +1436,9 @@ sub resolveVideo(url = invalid)
                                 "superchat": "on_superchat"})
           if isValid(m.preferences)
             if isValid(m.preferences.blocked)
-              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.creator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
+              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
             else
-              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.creator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
+              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
             end if
           end if
           ? m.ws.open
@@ -2115,7 +2115,6 @@ function on_close(event as object) as void
   print "WebSocket closed"
   if m.reinitialize
     m.ws.open = m.SERVER
-    m.reinitialize = false
   end if
 end function
 
@@ -2140,6 +2139,9 @@ end function
 function on_error(event as object) as void
   print "WebSocket error"
   print event.getData()
+  if m.reinitialize
+    m.ws.open = m.SERVER
+  end if
 end function
 
 'Registry+Utility Functions

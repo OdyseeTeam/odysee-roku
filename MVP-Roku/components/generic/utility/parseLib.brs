@@ -26,7 +26,7 @@ function parseVideo(itemIn)
             catch e
                 item.Creator = curItem.signing_channel.name
             end try
-            item.Description = ""
+            item.rawCreator = curItem.signing_channel.name
             item.Channel = curItem.signing_channel.claim_id
     
             try
@@ -56,12 +56,8 @@ function parseVideo(itemIn)
                 thumbnail = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
             end try
             item.HDPosterURL = thumbnail
-            item.thumbnailDimensions = [360, 240]
             'all set on watching video due to https://QUERY_API/api/v1/proxy?m=get
             item.url = curItem.permanent_url.Trim() 'to be used to resolve with m?=get
-            'item.stream = {url : item.url}
-            'item.link = item.url
-            'item.streamFormat = ""
             item.source = "odysee"
             item.itemType = "video"
             return item
@@ -84,35 +80,15 @@ function getVideoPage(pageNum)
     response = postJSON(query, queryURL, invalid)
     retries = 0
     while true
-        if IsValid(response.error)
+        try
+            return response.result.items
+        catch e
             response = postJSON(query, queryURL, invalid)
             retries += 1
-        else
-            exit while
-        end if
+        end try
         if retries > 5
-            exit while
-        end if
-    end while
-    if isValid(response.error)
-        stop
-        m.top.error = true
-        return false
-    else
-        if isValid(response.result.items)
-            'this will return an array of items from our query
-            'clean memory, we got the response we wanted (debug unneeded)
-            date = invalid
-            curTime = invalid
-            queryURL = invalid
-            queryJSON = invalid
-            query = invalid
-            retries = invalid
-            return response.result.items
-        else
-            stop
             m.top.error = true
             return false
         end if
-    end if
+    end while
 end function

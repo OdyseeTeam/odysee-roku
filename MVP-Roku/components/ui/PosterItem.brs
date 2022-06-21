@@ -8,8 +8,6 @@ sub Init()
     m.Creator = m.top.findNode("creator")
 end sub
 sub itemContentChanged()
-    m.Poster.loadWidth = m.top.itemContent.thumbnailDimensions[0]
-    m.Poster.loadHeight = m.top.itemContent.thumbnailDimensions[1]
     m.Poster.uri = m.top.itemContent.HDPOSTERURL
     m.Title.text = m.top.itemContent.TITLE
     m.Creator.text = m.top.itemContent.CREATOR
