@@ -98,7 +98,7 @@ function runtask() as void
             if isValid(chatResponse.result.items)
                 chatResponse.result.items.Reverse()
                 for each chatitem in chatResponse.result.items
-                    if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 and isValid(m.blocked[chatitem["channel_id"]]) = false
+                    if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 and isValid(m.blocked[chatitem["channel_id"]]) = false and chatitem.is_pinned = false
                         m.parsedChat.push(parseComment(chatitem)) 'so we can add/remove comments quickly later on
                     end if
                 end for
@@ -211,7 +211,7 @@ function runtask() as void
                                     cid = invalid
                                     m.rawChat = []
                                     for each chatitem in m.parsedChat
-                                        m.rawChat.push(chatitem["username"] + "]: " + chatitem["message"].replace("\n", " ").Trim())
+                                        m.rawChat.push(chatitem["username"] + ": " + chatitem["message"].replace("\n", " ").Trim())
                                     end for
                                     m.top.chat = { raw: m.rawChat, parsed: m.parsedChat }
                                     ? "WSC: Removing message took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
