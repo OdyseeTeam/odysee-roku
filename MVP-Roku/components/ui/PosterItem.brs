@@ -6,6 +6,8 @@ sub Init()
     m.LBC = m.top.findNode("lbc")
     m.Background = m.top.findNode("ibackground")
     m.Creator = m.top.findNode("creator")
+    m.videoLength = m.top.findNode("videoLength")
+    m.videoLengthBackground = m.top.findNode("lbackground")
 end sub
 sub itemContentChanged()
     m.Poster.uri = m.top.itemContent.HDPOSTERURL
@@ -16,9 +18,23 @@ sub itemContentChanged()
         if m.top.itemContent.ITEMTYPE = "livestream"
             m.Background.color = "#3f0000"
             m.liveIcon.visible = true
-        else
+            m.videoLength.visible = false
+            m.videoLengthBackground.visible = false
+        else if m.top.itemContent.ITEMTYPE = "video"
             m.Background.color = "0x1f1f1f"
             m.liveIcon.visible = false
+        else if m.top.itemContent.ITEMTYPE = "channel"
+            m.Background.color = "0x1f1f1f"
+            m.liveIcon.visible = false
+            m.videoLength.visible = false
+            m.videoLengthBackground.visible = false
+        end if
+    end if
+    if isValid(m.top.itemContent.videolength) AND isValid(m.top.itemContent.ITEMTYPE)
+        if m.top.itemContent.videolength <> "" AND m.top.itemContent.ITEMTYPE = "video"
+            m.videoLength.visible = true
+            m.videoLengthBackground.visible = true
+            m.videoLength.text = m.top.itemContent.videolength
         end if
     end if
 end sub
@@ -28,6 +44,10 @@ sub updateLayout()
             m.Title.wrap = true
         else
             m.Title.wrap = false
+            m.liveIcon.visible = false
+            m.videoLength.visible = false
+            m.videoLengthBackground.visible = false
+            m.videoLength.text = ""
         end if
         m.Poster.width = m.top.width - 20
         m.Poster.loadwidth = m.poster.width

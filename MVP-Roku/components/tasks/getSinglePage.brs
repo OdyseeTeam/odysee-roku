@@ -94,7 +94,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
                 currow = createObject("RoSGNode", "ContentNode")
             end if
             curitem = createObject("RoSGNode", "ContentNode")
-            curitem.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "" })
+            curitem.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "" })
             curitem.setFields(item)
             currow.appendChild(curitem)
             'if counter = items.Count() - 1 'misalignment fix, will need to implement this better later.
@@ -107,7 +107,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             currow = invalid
             currow = createObject("RoSGNode", "ContentNode")
             curitem = createObject("RoSGNode", "ContentNode")
-            curitem.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "" })
+            curitem.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "" })
             curitem.setFields(item)
             currow.appendChild(curitem)
             counter = 1

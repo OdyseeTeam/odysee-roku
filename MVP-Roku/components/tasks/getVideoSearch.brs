@@ -67,6 +67,9 @@ Function ClaimsToVideoGrid(claims)
         catch e
             item.Creator = items[i].signing_channel.name
         end try
+        if isValid(items[i]["value"]["video"]["duration"])
+            item.videoLength = getvideoLength(items[i]["value"]["video"]["duration"])
+        end if
         item.Description = ""
         item.Channel = items[i].signing_channel.claim_id
         try
@@ -113,7 +116,7 @@ Function ClaimsToVideoGrid(claims)
                 currow = createObject("RoSGNode","ContentNode")
             end if
             curitem = createObject("RoSGNode","ContentNode")
-            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
+            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", videoLength: "" })
             curitem.setFields(item)
             currow.appendChild(curitem)
             if i = items.Count()-1 'misalignment fix, will need to implement this better later.
@@ -126,7 +129,7 @@ Function ClaimsToVideoGrid(claims)
             currow = invalid
             currow = createObject("RoSGNode","ContentNode")
             curitem = createObject("RoSGNode","ContentNode")
-            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
+            curitem.addFields({creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", videoLength: "" })
             curitem.setFields(item)
             currow.appendChild(curitem)
             counter = 1
@@ -141,3 +144,41 @@ Function ClaimsToVideoGrid(claims)
     '?"manufacturing finished for key: "+subkey
     return  {contentarray:result:content:content} 'Returns the array
 End Function
+
+function getvideoLength(length)
+    timeConverter = CreateObject("roDateTime")
+    timeConverter.FromSeconds(length)
+    days = timeConverter.GetDayOfMonth().ToStr()
+    hours = timeConverter.GetHours().ToStr()
+    minutes = timeConverter.GetMinutes().ToStr()
+    seconds = timeConverter.GetSeconds().ToStr()
+    result = ""
+    if timeConverter.GetDayOfMonth() < 10
+      days = "0" + timeConverter.GetDayOfMonth().ToStr()
+    end if
+    if timeConverter.GetHours() < 10
+      hours = "0" + timeConverter.GetHours().ToStr()
+    end if
+    if timeConverter.GetMinutes() < 10
+      minutes = "0" + timeConverter.GetMinutes().ToStr()
+    end if
+    if timeConverter.GetSeconds() < 10
+      seconds = "0" + timeConverter.GetSeconds().ToStr()
+    end if
+    if length < 3600
+      'use minute format
+      result = minutes + ":" + seconds
+    end if
+    if length >= 3600 and length < 86400
+      result = hours + ":" + minutes + ":" + seconds
+    end if
+    if length >= 86400 'TODO: make videos above month length display proper length
+      result = days + ":" + hours + ":" + minutes + ":" + seconds
+    end if
+    timeConverter = invalid
+    days = invalid
+    hours = invalid
+    minutes = invalid
+    seconds = invalid
+    return result
+  end function

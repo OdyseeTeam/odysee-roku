@@ -3,7 +3,8 @@ function parseVideo(itemIn)
     'check repost/item source has valid media_type
     'TODO: replace all isValid checks with try/catch
     item = {}
-
+    m.timeConverter = CreateObject("roDateTime")
+    m.time = CreateObject("roDateTime")
     'Find out if item is repost
     if isValid(itemIn.reposted_claim)
         curItem = itemIn.reposted_claim
@@ -28,26 +29,25 @@ function parseVideo(itemIn)
             end try
             item.rawCreator = curItem.signing_channel.name
             item.Channel = curItem.signing_channel.claim_id
-    
+            if isValid(curItem["value"]["video"]["duration"])
+                item.videoLength = getvideoLength(curItem["value"]["video"]["duration"])
+            end if
             try
                 item.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + curItem.signing_channel.value.thumbnail.url
             catch e
                 item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
             end try
-    
-            time = CreateObject("roDateTime")
             try
                 try
-                    time.FromSeconds(curItem["value"]["release_time"])
+                    m.time.FromSeconds(curItem["value"]["release_time"])
                 catch e
-                    time.FromSeconds(curItem.meta.creation_timestamp)
+                    m.time.FromSeconds(curItem.meta.creation_timestamp)
                 end try
             catch e
-                time.FromSeconds(curItem.timestamp)
+                m.time.FromSeconds(curItem.timestamp)
             end try
-            timestr = time.AsDateString("short-month-short-weekday") + " "
+            timestr = m.time.AsDateString("short-month-short-weekday") + " "
             timestr = timestr.Trim()
-            time = invalid
             item.ReleaseDate = timestr
             item.guid = curItem.claim_id
             try
@@ -70,9 +70,9 @@ function parseVideo(itemIn)
 end function
 
 function getVideoPage(pageNum)
-    date = CreateObject("roDateTime")
-    date.Mark()
-    curTime = date.AsSeconds()
+    m.time = CreateObject("roDateTime")
+    m.time.Mark()
+    curTime = m.time.AsSeconds()
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
     'orderBy support temporarily removed for this implementation
     queryJSON = { "jsonrpc": "2.0", "method": "claim_search", "params": { "channel_ids": m.top.channels, "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"],"release_time": "<"+curTime.toStr() }, "id": m.top.uid }
@@ -92,3 +92,39 @@ function getVideoPage(pageNum)
         end if
     end while
 end function
+
+function getvideoLength(length)
+    m.timeConverter.FromSeconds(length)
+    days = m.timeConverter.GetDayOfMonth().ToStr()
+    hours = m.timeConverter.GetHours().ToStr()
+    minutes = m.timeConverter.GetMinutes().ToStr()
+    seconds = m.timeConverter.GetSeconds().ToStr()
+    result = ""
+    if m.timeConverter.GetDayOfMonth() < 10
+      days = "0" + m.timeConverter.GetDayOfMonth().ToStr()
+    end if
+    if m.timeConverter.GetHours() < 10
+      hours = "0" + m.timeConverter.GetHours().ToStr()
+    end if
+    if m.timeConverter.GetMinutes() < 10
+      minutes = "0" + m.timeConverter.GetMinutes().ToStr()
+    end if
+    if m.timeConverter.GetSeconds() < 10
+      seconds = "0" + m.timeConverter.GetSeconds().ToStr()
+    end if
+    if length < 3600
+      'use minute format
+      result = minutes + ":" + seconds
+    end if
+    if length >= 3600 and length < 86400
+      result = hours + ":" + minutes + ":" + seconds
+    end if
+    if length >= 86400 'TODO: make videos above month length display proper length
+      result = days + ":" + hours + ":" + minutes + ":" + seconds
+    end if
+    days = invalid
+    hours = invalid
+    minutes = invalid
+    seconds = invalid
+    return result
+  end function
