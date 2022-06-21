@@ -56,6 +56,7 @@ function ChannelToVideoGrid(channel)
             catch e
                 item.Creator = items[i].signing_channel.name
             end try
+            item.rawCreator = items[i].signing_channel.name
             item.Description = ""
             item.Channel = items[i].signing_channel.claim_id
             item.ChannelIcon = defaultChannelIcon
@@ -101,7 +102,7 @@ function ChannelToVideoGrid(channel)
                         currow = createObject("RoSGNode", "ContentNode")
                     end if
                     curitem = createObject("RoSGNode", "ContentNode")
-                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
+                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "",  rawCreator: "" })
                     curitem.setFields(item)
                     currow.appendChild(curitem)
                     if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
@@ -114,7 +115,7 @@ function ChannelToVideoGrid(channel)
                     currow = invalid
                     currow = createObject("RoSGNode", "ContentNode")
                     curitem = createObject("RoSGNode", "ContentNode")
-                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
+                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", rawCreator: "" })
                     curitem.setFields(item)
                     currow.appendChild(curitem)
                     counter = 1
@@ -125,7 +126,7 @@ function ChannelToVideoGrid(channel)
             currow = createObject("RoSGNode", "ContentNode")
             for each item in result
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "" })
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", rawCreator: "" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 curitem = invalid
