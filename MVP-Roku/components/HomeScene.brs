@@ -904,16 +904,53 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "replay"
-        if m.focusedItem = 2
+        if m.focusedItem = 2 '[video grid]
           if m.categorySelector.itemFocused > 0
             ? "CATEGORY REFRESH"
-            if m.categorySelector.itemFocused = 1
-              trueName = "FAVORITES"
+            if m.categorySelector.itemFocused = 1 and m.wasLoggedIn 'update favorites
+              m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+              m.favoritesThread.observeField("output", "gotFavorites")
+              m.favoritesThread.control = "RUN"
             else
               trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
+              ? "would refresh " + trueName
+              catData = m.channelIDs[trueName]
+              excludedChannelIds = []
+              catOrder = "trending"
+              if isValid(catData.order)
+                if Type(catData.order) = "roString"
+                  catOrder = catData.order
+                end if
+              end if
+              if isValid(catData.excludedChannelIds)
+                if type(catData.excludedChannelId) = "roArray"
+                  excludedChannelIds.append(catData.excludedChannelIds)
+                end if
+              end if
+              thread = CreateObject("roSGNode", "getSinglePage")
+              if m.wasLoggedIn and m.preferences.Count() > 0
+                excludedChannelIds.append(m.preferences.blocked)
+                if trueName = "wildwest"
+                  ? "is wildwest, resolving livestreams"
+                  thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                else
+                  thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                end if
+              else
+                if trueName = "wildwest"
+                  ? "is wildwest, resolving livestreams"
+                  thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                else
+                  thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                end if
+              end if
+              thread.observeField("output", "gotCategoryRefresh")
+              thread.control = "RUN"
+              'toRefresh = m.categories[trueName]
+              'catData = invalid 'save memory
+              'catOrder = invalid
+              'excludedChannelIds = invalid
             end if
-            ? "would refresh " + trueName
-            'toRefresh = m.categories[trueName]
           end if
         end if
       end if
@@ -1300,6 +1337,8 @@ sub retryError(title, error, action)
 end sub
 
 sub resolveError()
+  m.taskRunning = false
+  m.loadingText.visible = False
   m.videoGrid.setFocus(false)
   m.videoGrid.visible = False
   m.errorText.text = "Error: Could Not Resolve Claim"
@@ -1312,6 +1351,8 @@ sub resolveError()
 end sub
 
 sub malformedVideoError()
+  m.taskRunning = false
+  m.loadingText.visible = False
   m.videoGrid.setFocus(false)
   m.videoGrid.visible = False
   m.errorText.text = "Error: Video is corrupt/malformed."
@@ -1359,6 +1400,7 @@ sub backToKeyboard()
   'VGM02
   showCategorySelector()
   resetVideoGrid()
+  m.taskRunning = false
   m.searchKeyboard.visible = True
   m.searchKeyboardDialog.visible = True
   m.searchKeyboardGrid.visible = True
@@ -1697,41 +1739,41 @@ sub playResolvedVideo(msg as object)
 end sub
 
 function getvideoLength(length)
-    timeConverter = CreateObject("roDateTime")
-    timeConverter.FromSeconds(length)
-    days = timeConverter.GetDayOfMonth().ToStr()
-    hours = timeConverter.GetHours().ToStr()
-    minutes = timeConverter.GetMinutes().ToStr()
-    seconds = timeConverter.GetSeconds().ToStr()
-    result = ""
-    if timeConverter.GetDayOfMonth() < 10
-      days = "0" + timeConverter.GetDayOfMonth().ToStr()
-    end if
-    if timeConverter.GetHours() < 10
-      hours = "0" + timeConverter.GetHours().ToStr()
-    end if
-    if timeConverter.GetMinutes() < 10
-      minutes = "0" + timeConverter.GetMinutes().ToStr()
-    end if
-    if timeConverter.GetSeconds() < 10
-      seconds = "0" + timeConverter.GetSeconds().ToStr()
-    end if
-    if length < 3600
-      'use minute format
-      result = minutes + ":" + seconds
-    end if
-    if length >= 3600 and length < 86400
-      result = hours + ":" + minutes + ":" + seconds
-    end if
-    if length >= 86400 'TODO: make videos above month length display proper length
-      result = days + ":" + hours + ":" + minutes + ":" + seconds
-    end if
-    timeConverter = invalid
-    days = invalid
-    hours = invalid
-    minutes = invalid
-    seconds = invalid
-    return result
+  timeConverter = CreateObject("roDateTime")
+  timeConverter.FromSeconds(length)
+  days = timeConverter.GetDayOfMonth().ToStr()
+  hours = timeConverter.GetHours().ToStr()
+  minutes = timeConverter.GetMinutes().ToStr()
+  seconds = timeConverter.GetSeconds().ToStr()
+  result = ""
+  if timeConverter.GetDayOfMonth() < 10
+    days = "0" + timeConverter.GetDayOfMonth().ToStr()
+  end if
+  if timeConverter.GetHours() < 10
+    hours = "0" + timeConverter.GetHours().ToStr()
+  end if
+  if timeConverter.GetMinutes() < 10
+    minutes = "0" + timeConverter.GetMinutes().ToStr()
+  end if
+  if timeConverter.GetSeconds() < 10
+    seconds = "0" + timeConverter.GetSeconds().ToStr()
+  end if
+  if length < 3600
+    'use minute format
+    result = minutes + ":" + seconds
+  end if
+  if length >= 3600 and length < 86400
+    result = hours + ":" + minutes + ":" + seconds
+  end if
+  if length >= 86400 'TODO: make videos above month length display proper length
+    result = days + ":" + hours + ":" + minutes + ":" + seconds
+  end if
+  timeConverter = invalid
+  days = invalid
+  hours = invalid
+  minutes = invalid
+  seconds = invalid
+  return result
 end function
 
 function onVideoStateChanged(msg as object)
@@ -2376,6 +2418,38 @@ sub gotUserPrefs()
   oldpreferences = invalid
   newpreferences = invalid
   m.preferences = m.getpreferencesTask.preferences
+end sub
+
+
+sub gotCategoryRefresh(msg as object)
+  if type(msg) = "roSGNodeEvent"
+    thread = msg.getRoSGNode()
+    ? thread
+    if thread.error
+      thread.control = "STOP"
+    else
+      m.categories.addReplace(thread.rawname, thread.output.content)
+      thread.unObserveField("output")
+      thread.control = "STOP"
+      m.favoritesUIFlag = true
+      m.favoritesLoaded = true
+      ?m.focusedItem
+      ?m.categorySelector.itemFocused
+      if m.focusedItem = 1 and m.uiLayer = 0 or m.focusedItem = 2 and m.uiLayer = 0
+        m.oauthHeader.visible = false
+        m.oauthCode.visible = false
+        m.oauthFooter.visible = false
+        m.loadingText.visible = false
+        m.videoGrid.content = m.categories[thread.rawname]
+        m.videoGrid.visible = true
+        m.videoGrid.setFocus(true)
+        m.focusedItem = 2
+        m.oauthLogoutButton.visible = true
+      else if m.focusedItem = 7 and m.uiLayer = 0 'update under video
+        m.videoGrid.content = m.categories[thread.rawname]
+      end if
+    end if
+  end if
 end sub
 
 sub gotFavorites(msg as object)
