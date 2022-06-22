@@ -26,25 +26,39 @@ function resolve(lbry_url)
 end function
 
 function siteMethod(lbry_url)
-    ?"Attempting secondary resolution method (slower!)"
     getRequestJSON = FormatJson({ "jsonrpc": "2.0", "method": "get", "params": { "uri": lbry_url, "save_file": false } })
     getRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=get"
     getRequestOutput = postJSON(getRequestJSON, getRequestURL, invalid)
     vurl = getRequestOutput["result"]["streaming_url"]
-
     'Video length is needed for more than just metadata, since our custom UI uses it as well.
     'Disabling statistics still disables sending it.
     resolveRequestJSON = FormatJson({ "jsonrpc": "2.0", "method": "resolve", "params": { "urls": [lbry_url], "include_purchase_receipt": false, "include_is_my_output": false } })
     resolveRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=resolve"
     resolveRequestOutput = postJSON(resolveRequestJSON, resolveRequestURL, invalid)
+    if m.global.constants.enableStatistics and isValid(m.top.accessToken)
+        if m.top.accessToken <> ""
+            vTXID = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["txid"]
+            vNOUT = resolverequestoutput["result"][resolveRequestOutput["result"].Keys()[0]]["nout"]
+            vCLAIMID = resolverequestoutput["result"][resolveRequestOutput["result"].Keys()[0]]["claim_id"]
+            outpoint = vTXID + ":" + vNOUT.ToStr()
+            fileViewURL = m.top.constants["ROOT_API"] + "/file/view"
+            'uri: lbryURL
+            'outpoint: resolve TXID+":"+resolve NOUT
+            'claim_id: claimID
+            reqData = {uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID}
+            reqHeaders = { "Authorization": "Bearer " + m.top.accessToken }
+            fileViewRequest = getURLEncoded(reqData, fileViewURL, reqHeaders)
+            ? FormatJson(fileViewRequest)
+        end if
+    end if
     vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
     vresolvedRedirectURL = resolveRedirect(vurl.EncodeUri())
     vresSplit = vresolvedRedirectURL.split("/")
     vresDone = []
     for each suburl in vresSplit
         if suburl <> ""
-            if Instr(0, suburl, "http:") > -1 AND suburl.split("").Count() = 5 OR Instr(0, suburl, "https:") > -1 AND suburl.split("").Count() = 6
-                vresDone.push(suburl+"/") 'single slash since we'll be joining with /
+            if Instr(0, suburl, "http:") > -1 and suburl.split("").Count() = 5 or Instr(0, suburl, "https:") > -1 and suburl.split("").Count() = 6
+                vresDone.push(suburl + "/") 'single slash since we'll be joining with /
             else
                 replaced = suburl.EncodeUriComponent()
                 vResDone.push(replaced)

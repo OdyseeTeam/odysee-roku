@@ -139,6 +139,9 @@ function getURLEncoded(data, url, headers) as Object
     currenturl = url+urlencode(data)
     ? currenturl
     http = httpPreSetup(currenturl)
+    if IsValid(headers)
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
         if Type(event) = "roUrlEvent" Then

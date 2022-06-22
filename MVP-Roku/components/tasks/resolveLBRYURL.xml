@@ -4,6 +4,8 @@
     <interface>
             <!--Universal (determined) constants-->
             <field id="constants" type="assocarray"/>
+            <!--accessToken from authTask-->
+            <field id="accessToken" type="String"/>
             <!--URL to resolve-->
             <field id="url" type="String"/>
             <!--Passthrough Item Title-->

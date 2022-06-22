@@ -1554,7 +1554,7 @@ sub resolveVideo(url = invalid)
     end if
   else if type(url) = "roString"
     ?"Resolving a Video (deeplink direct)"
-    m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies })
     m.urlResolver.observeField("output", "playResolvedVideo")
     m.urlResolver.control = "RUN"
     m.taskRunning = True
@@ -1597,7 +1597,11 @@ sub resolveEvaluatedVideo(curItem)
     m.videoButtons.animateToItem = 2
     regenerateNormalButtonRefs()
   end if
-  m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+  if m.wasLoggedIn
+    m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: m.accessToken, cookies: m.cookies })
+  else
+    m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: "", cookies: m.cookies })
+  end if
   m.urlResolver.observeField("output", "playResolvedVideo")
   m.urlResolver.control = "RUN"
   m.taskRunning = True
