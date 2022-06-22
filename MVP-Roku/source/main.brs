@@ -14,7 +14,6 @@ sub Main(args)
     else
         constants.enableStatistics = true 'allows user preference, easy location of related code, and quick debugging if stats cause problems indev.
     end if
-    constants.enableStatistics = true
     constants.rokuModel = m.di.GetModel()
     constants.rokuType = m.di.GetModelType()
     constants.APIConstantsURL = "https://raw.githubusercontent.com/OdyseeTeam/odysee-frontend/master/.env.defaults"
