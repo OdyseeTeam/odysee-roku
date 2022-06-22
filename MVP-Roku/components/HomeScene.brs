@@ -919,7 +919,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "replay"
         if m.focusedItem = 2 '[video grid]
-          if m.categorySelector.itemFocused > 0
+          if m.categorySelector.itemFocused > 0 AND m.uiLayer = 0
             ? "CATEGORY REFRESH"
             if m.categorySelector.itemFocused = 1 and m.wasLoggedIn 'update favorites
               m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
@@ -964,6 +964,37 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               'catData = invalid 'save memory
               'catOrder = invalid
               'excludedChannelIds = invalid
+            end if
+
+          'This does the same thing as the Back button, so extract the subcomponents for moving up a layer for a regular category and search if this ever needs to be fixed.
+          else if m.uiLayer > 0
+            ?"popping layer"
+            if m.uiLayers.Count() > 0 'is there more than one UI layer?
+              if m.categorySelector.itemFocused = 1 'are favorites in focus?
+                m.uiLayer = 0
+                m.uiLayers = []
+                m.videoGrid.content = m.categories["FAVORITES"]
+                showCategorySelector()
+              else 'go back a UI layer
+                m.uiLayers.pop()
+                m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
+                if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+                  if m.videoGrid.content.getChildren(1, 0)[0].getChildren(1, 0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
+                    downsizeVideoGrid()
+                  end if
+                end if
+                m.uiLayer -= 1
+                if m.uiLayer = 0 AND m.categorySelector.itemFocused = 0
+                  showCategorySelector()
+                  backToKeyboard()
+                else if m.uiLayer = 0 AND m.categorySelector.itemFocused > 0
+                  showCategorySelector()
+                  trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
+                  m.videoGrid.content = m.categories[trueName]
+                  m.videoGrid.visible = true
+                end if
+                ?"went back to", m.uiLayer
+              end if
             end if
           end if
         end if
@@ -2394,6 +2425,10 @@ sub regenerateLiveButtonRefs()
       m[m.liveVideoButtonNameTable[child.itemID]] = child
     end if
   end for
+end sub
+
+sub backButtonCode()
+
 end sub
 
 sub gotSync(msg as object)
