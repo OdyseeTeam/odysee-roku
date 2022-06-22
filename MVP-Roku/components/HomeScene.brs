@@ -522,18 +522,18 @@ sub threadDone(msg as object)
         thread.control = "RUN"
         m.runningthreads.Push(thread)
       else
-        ?m.categories
-        ?m.categories[m.categories.Keys()[0]]
-        ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
-        m.videoGrid.content = m.categories[m.categories.Keys()[0]]
-        m.loadingText.visible = false
-        m.loadingBackground.visible = false
-        m.loadingText.translation = "[800,0]"
-        m.loadingText.vertAlign = "center"
-        m.loadingText.horizAlign = "left"
-        if m.authTask.authPhase > 0
+        if m.authTask.authPhase > 0 AND m.runningThreads.count() = 0
+          ?m.categories
+          ?m.categories[m.categories.Keys()[0]]
+          ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+          m.videoGrid.content = m.categories[m.categories.Keys()[0]]
+          m.loadingText.visible = false
+          m.loadingBackground.visible = false
+          m.loadingText.translation = "[800,0]"
+          m.loadingText.vertAlign = "center"
+          m.loadingText.horizAlign = "left"
           finishInit()
-        else
+        else if m.runningThreads.count() = 0
           retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail help@odysee.com.", "retryConstants")
         end if
       end if
@@ -2516,7 +2516,6 @@ sub gotCategoryRefresh(msg as object)
         m.videoGrid.visible = true
         m.videoGrid.setFocus(true)
         m.focusedItem = 2
-        m.oauthLogoutButton.visible = true
       else if m.focusedItem = 7 and m.uiLayer = 0 'update under video
         m.videoGrid.content = m.categories[thread.rawname]
       end if
