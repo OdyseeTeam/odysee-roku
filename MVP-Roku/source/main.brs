@@ -8,12 +8,7 @@ sub Main(args)
     m.global = screen.getGlobalNode()
     constants = {}
     m.di = CreateObject("roDeviceInfo")
-    m.trackingDenied = m.di.IsRIDADisabled()
-    if m.trackingDenied
-        constants.enableStatistics = false
-    else
-        constants.enableStatistics = true 'allows user preference, easy location of related code, and quick debugging if stats cause problems indev.
-    end if
+    constants.enableStatistics = true 'allows user preference, easy location of related code, and quick debugging if stats cause problems indev
     constants.rokuModel = m.di.GetModel()
     constants.rokuType = m.di.GetModelType()
     constants.APIConstantsURL = "https://raw.githubusercontent.com/OdyseeTeam/odysee-frontend/master/.env.defaults"
