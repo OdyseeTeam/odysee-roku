@@ -65,7 +65,6 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         'for each claim in currentPage
         '    ? claim
         'end for
-        'STOP
         for each claim in currentPage
             pv = parseVideo(claim)
             if pv.Count() > 0
@@ -119,7 +118,8 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     '?type(content)
     ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"
     if (content.getChildCount() * 4) = 0
-        stop
+        m.top.error = true
+        return { error: true }
     end if
     '?"manufacturing finished for key: "+subkey
     m.top.error = false

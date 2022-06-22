@@ -211,7 +211,6 @@ function getChat(channelID, streamClaim)
     messageHeights = []
     totalMesgHeight = 0
     chatResponse.result.items.Reverse()
-    'STOP
     for i = chatResponse.result.items.Count() - 1 to 0 step -1
         '970px is the max height, we don't need any more messages after.
         curcomment = chatResponse.result.items[i]

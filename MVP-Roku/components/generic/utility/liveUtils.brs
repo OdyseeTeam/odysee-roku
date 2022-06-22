@@ -101,6 +101,5 @@ function parseLiveData(channel, liveData, liveClaim)
     item.streamFormat = "hls"
     item.source = "odysee"
     item.itemType = "livestream"
-    'STOP
     return item
 end function

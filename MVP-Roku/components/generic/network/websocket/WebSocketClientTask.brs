@@ -83,7 +83,6 @@ function runtask() as void
                     message_supported = false
                 end try
                 'TODO: fix message support/superchat endpoint
-                'stop
                 if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1 and message_supported and isValid(m.blocked[superchatitem["channel_id"]]) = false
                     if superChatLength > 4
                         exit for

@@ -31,6 +31,7 @@ function ChannelToVideoGrid(channel)
         end if
         if retries > 5
             m.top.error = true
+            return { error: true }
         end if
     end while
     if m.top.error = false 'Stage 1: Parse content
@@ -141,7 +142,8 @@ function ChannelToVideoGrid(channel)
         '? type(content)
         ? "exported" + Str(content.getChildCount() * 4) + " items from Odysee"
         if content.getChildCount() = 0
-            STOP
+            m.top.error = true
+            return { error: true }
         end if
         '? "manufacturing finished for key: "+subkey
         return { contentarray: result: content: content } 'Returns the array
