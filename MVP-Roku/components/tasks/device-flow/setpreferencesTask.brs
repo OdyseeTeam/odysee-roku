@@ -106,7 +106,7 @@ function set_prefs()
                                 else
                                     'legacy: we will need to look up this channel
                                     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                                    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                                    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
                                     response = postJSON(queryJSON, queryURL, invalid)
                                     try
                                         for each blockeduser in blocked
@@ -160,7 +160,7 @@ function set_prefs()
                                     else
                                         'legacy: we will need to look up this channel
                                         queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                                        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                                        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
                                         response = postJSON(queryJSON, queryURL, invalid)
                                         'try
                                             for each followeduser in following
@@ -214,7 +214,7 @@ function set_prefs()
                                     else
                                         'legacy: we will need to look up this channel
                                         queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                                        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                                        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
                                         response = postJSON(queryJSON, queryURL, invalid)
                                         try
                                             for each followeduser in following
@@ -227,7 +227,8 @@ function set_prefs()
                                             end if
                                         catch e
                                             ?e
-                                            stop
+                                            m.top.error = true
+                                            m.top.syncTimer.control = "stop"
                                         end try
                                     end if
                                 end if
@@ -267,6 +268,8 @@ function set_prefs()
                                     catch e
                                         ?"Modification Error:"
                                         ?e
+                                        m.top.error = true
+                                        m.top.syncTimer.control = "stop"
                                     end try
                                     for i = 0 to preferences.result.shared.value.following.Count() - 1
                                         if isValid(preferences.result.shared.value.following[i])
@@ -316,6 +319,8 @@ function set_prefs()
                                     catch e
                                         ?"Modification Error:"
                                         ?e
+                                        m.top.error = true
+                                        m.top.syncTimer.control = "stop"
                                     end try
                                     'TODO: Add collections to this (requires timestamp manip.)
                                 end if
@@ -356,6 +361,7 @@ function set_prefs()
             ?"Failed to sync data (APIs do NOT MATCH)"
             m.top.error = true
             m.inSync = false
+            m.top.syncTimer.control = "stop"
         end if
         if m.top.error = true
             return 2

@@ -75,7 +75,7 @@ function getVideoPage(pageNum)
     curTime = m.time.AsSeconds()
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
     'orderBy support temporarily removed for this implementation
-    queryJSON = { "jsonrpc": "2.0", "method": "claim_search", "params": { "channel_ids": m.top.channels, "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"],"release_time": "<"+curTime.toStr() }, "id": m.top.uid }
+    queryJSON = { "jsonrpc": "2.0", "method": "claim_search", "params": { "channel_ids": m.top.channels, "fee_amount": "<=0", "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"],"release_time": "<"+curTime.toStr() }, "id": m.top.uid }
     query = FormatJson(queryJSON)
     response = postJSON(query, queryURL, invalid)
     retries = 0

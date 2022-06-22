@@ -232,12 +232,13 @@ sub gotConstants()
   m.constantsTask.unobserveField("constants")
   m.constantsTask.control = "STOP"
   if m.constantsTask.error
-    retryError("Error getting constants from Github", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
+    retryError("Error getting constants from Github", "Please e-mail help@odysee.com.", "retryConstants")
   else
     m.constants = m.constantsTask.constants
     m.authTask.setField("constants", m.constants)
     m.getpreferencesTask.setField("constants", m.constants)
     m.setpreferencesTask.setField("constants", m.constants)
+    m.setpreferencesTask.observeField("error", "setPreferencesError")
     m.setreactionTask.setField("constants", m.constants)
     m.syncLoop.setField("constants", m.constants)
     ?"Constants are done, running auth"
@@ -333,7 +334,7 @@ sub authDone()
   end if
   m.authTask.unobserveField("output")
   if m.authTask.error
-    retryError("Error authenticating with Odysee", "Please e-mail rokusupport@halitesoftware.com.", "retryAuth")
+    retryError("Error authenticating with Odysee", "Please e-mail help@odysee.com.", "retryAuth")
   else
     m.legacyAuthenticated = True
     ?m.authTask.output
@@ -369,7 +370,7 @@ sub gotCIDS()
   m.cidsTask.control = "STOP"
   m.cidsTask.unobserveField("channelids")
   if m.cidsTask.error
-    retryError("Error getting frontpage channel IDs", "Please e-mail rokusupport@halitesoftware.com.", "retryCIDS")
+    retryError("Error getting frontpage channel IDs", "Please e-mail help@odysee.com.", "retryCIDS")
   else
     m.channelIDs = m.cidsTask.channelids
     m.categorySelectordata = m.cidsTask.categoryselectordata
@@ -520,7 +521,7 @@ sub threadDone(msg as object)
         if m.authTask.authPhase > 0
           finishInit()
         else
-          retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail rokusupport@halitesoftware.com.", "retryConstants")
+          retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail help@odysee.com.", "retryConstants")
         end if
       end if
     end if
@@ -1342,12 +1343,30 @@ sub resolveError()
   m.videoGrid.setFocus(false)
   m.videoGrid.visible = False
   m.errorText.text = "Error: Could Not Resolve Claim"
-  m.errorSubtext.text = "Please e-mail rokusupport@halitesoftware.com."
+  m.errorSubtext.text = "Please e-mail help@odysee.com."
   m.errorText.visible = true
   m.errorSubtext.visible = true
   m.errorButton.visible = true
   m.errorButton.observeField("buttonSelected", "resolveerrorDismissed")
   m.errorButton.setFocus(true)
+end sub
+
+sub userPrefsError()
+  m.taskRunning = false
+  m.getpreferencesTask.unobserveField("preferences")
+  m.getpreferencesTask.unobserveField("error")
+  m.getpreferencesTask.control = "STOP"
+  Logout()
+  Error("Cannot get/parse preferences", "Please e-mail help@odysee.com.")
+end sub
+
+sub setPreferencesError()
+  m.taskRunning = false
+  m.setpreferencesTask.unobserveField("preferences")
+  m.setpreferencesTask.unobserveField("error")
+  m.setpreferencesTask.control = "STOP"
+  Logout()
+  Error("Cannot set/parse preferences", "Please e-mail help@odysee.com.")
 end sub
 
 sub malformedVideoError()
@@ -2374,6 +2393,7 @@ sub getUserPrefs()
   ?"attempting to get user preferences"
   m.getpreferencesTask.setFields({ "accessToken": m.accessToken: uid: m.syncLoop.uid })
   m.getpreferencesTask.observeField("preferences", "gotUserPrefs")
+  m.getpreferencesTask.observeField("error", "userPrefsError")
   m.getpreferencesTask.control = "RUN"
 end sub
 

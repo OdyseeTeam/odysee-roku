@@ -326,7 +326,7 @@ function legacyIsLivestreaming(channel) 'This is a placeholder until the new API
                 success = true
                 'The stream exists, so we need to resolve the stream claim (for chat)
                 lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "claim_type": "stream", "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": [channel], "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": true, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": false } })
+                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": "stream", "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": [channel], "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": true, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": false } })
                 livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
                 while true
                     if IsValid(livestreamClaimQuery.error)
@@ -398,7 +398,7 @@ function resolveStreamIDLegacy(channel)
                 success = true
                 'The stream exists, so we need to resolve the stream claim (for chat)
                 lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "claim_type": "stream", "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": [channel], "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": true, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": false } })
+                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": "stream", "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": [channel], "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": true, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": false } })
                 livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
                 retries = 0
 

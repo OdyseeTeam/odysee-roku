@@ -279,7 +279,7 @@ function getThumbnail(channelIdentifier)
     else
         try
             cqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            cqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page": 1, "page_size": 1, "channel_ids": [channelIdentifier], "claim_type": ["stream"], "no_totals": true, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false } })
+            cqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page": 1, "fee_amount": "<=0", "page_size": 1, "channel_ids": [channelIdentifier], "claim_type": ["stream"], "no_totals": true, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false } })
             channelQuery = postJSON(cqueryJSON, cqueryURL, invalid)
             currentChannel = channelQuery.result.items[0]["signing_channel"]
             channelCache[channelIdentifier] = m.top.constants["THUMBNAIL_PROCESSOR"]+currentChannel.value.thumbnail.url

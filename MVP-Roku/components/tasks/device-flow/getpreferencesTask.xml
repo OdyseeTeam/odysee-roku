@@ -10,6 +10,7 @@
             <field id="walletData" type="String"/>
             <field id="uid" type="int"/>
             <field id="cookies" type="roArray"/>
+            <field id="error" type="Bool"/>
             <!--"Legacy" Auth Scope (still used for all searches/etc)-->
             <field id="authtoken" type="String"/>
             <!--Odysee preferences-->
