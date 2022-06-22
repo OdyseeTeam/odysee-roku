@@ -7,7 +7,15 @@ sub Main(args)
     scene = screen.CreateScene("HomeScene")  'Create HomeScene
     m.global = screen.getGlobalNode()
     constants = {}
-    constants.enableStatistics = true 'allows user preference, easy location of related code, and quick debugging if stats cause problems indev. will be added to user settings later.
+    m.di = CreateObject("roDeviceInfo")
+    m.trackingDenied = m.di.IsRIDADisabled()
+    if m.trackingDenied
+        constants.enableStatistics = false
+    else
+        constants.enableStatistics = true 'allows user preference, easy location of related code, and quick debugging if stats cause problems indev.
+    end if
+    constants.rokuModel = m.di.GetModel()
+    constants.rokuType = m.di.GetModelType()
     constants.APIConstantsURL = "https://raw.githubusercontent.com/OdyseeTeam/odysee-frontend/master/.env.defaults"
     constants.livestreamConstantsURL = "https://raw.githubusercontent.com/OdyseeTeam/odysee-frontend/master/ui/constants/livestream.js"
     constants.userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36" 'Used in all HTTP/s requests.

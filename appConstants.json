@@ -19,5 +19,6 @@
         "origin": "https://odysee.com",
         "referer": "https://roku.odysee.com/",
         "Access-Control-Allow-Origin": "https://odysee.com/"
-    }
+    },
+    "KNOWN_MAX_THREADS": {"3930X": 5}
 }

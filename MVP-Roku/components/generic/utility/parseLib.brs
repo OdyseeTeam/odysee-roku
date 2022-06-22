@@ -12,7 +12,11 @@ function parseVideo(itemIn)
         try
             item.reposted_by = itemIn.signing_channel.value.title
         catch e
-            item.reposted_by = itemIn.signing_channel.name
+            try
+                item.reposted_by = itemIn.signing_channel.name
+            catch e
+                item.reposted_by = "Anonymous"
+            end try
         end try
     else
         curItem = itemIn

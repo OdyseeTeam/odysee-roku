@@ -235,6 +235,19 @@ sub gotConstants()
     retryError("Error getting constants from Github", "Please e-mail help@odysee.com.", "retryConstants")
   else
     m.constants = m.constantsTask.constants
+    
+    if isValid(m.constants["KNOWN_MAX_THREADS"])
+      if isValid(m.constants["KNOWN_MAX_THREADS"][m.global.constants.rokuModel])
+        m.maxThreads = m.constants["KNOWN_MAX_THREADS"][m.global.constants.rokuModel]
+      end if
+    else if m.global.constants.rokuType <> "TV"
+      'Its NOT a TV, so we can try to push it a little.
+      m.maxThreads = 4
+    else
+      'the Roku TV is a mixed bag of hardware, even if it makes the app slower I have to play it safe.
+      m.maxThreads = 2
+    end if
+    ? "current thread count is"+Str(m.maxThreads)
     m.authTask.setField("constants", m.constants)
     m.getpreferencesTask.setField("constants", m.constants)
     m.setpreferencesTask.setField("constants", m.constants)
