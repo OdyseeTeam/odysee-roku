@@ -46,7 +46,7 @@ sub master()
         'https://sso.odysee.com/auth/realms/Users/protocol/openid-connect/token
         ?"authphase is 1: begin new auth"
         accountRoot = m.top.constants["ROOT_SSO"] + ""
-        json = { response_type: "device_code": client_id: "odysee-roku-unofficial" }
+        json = { response_type: "device_code": client_id: "odysee-roku" }
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/auth/device", {})
         m.top.verifyURL = authreq.verification_uri
         m.top.deviceCode = authreq.device_code
@@ -66,7 +66,7 @@ sub master()
     end if
     if m.top.authPhase = 2
         accountRoot = m.top.constants["ROOT_SSO"] + ""
-        json = { grant_type: "urn:ietf:params:oauth:grant-type:device_code": client_id: "odysee-roku-unofficial": device_code: m.top.deviceCode }
+        json = { grant_type: "urn:ietf:params:oauth:grant-type:device_code": client_id: "odysee-roku": device_code: m.top.deviceCode }
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
         ?FormatJson(authreq)
         if isValid(authreq.error)
@@ -113,7 +113,7 @@ sub master()
     end if
     if m.top.authPhase = 10 'User wants to log out.
         'https://stackoverflow.com/a/46769801 really helped me out with this
-        json = { refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial" }
+        json = { refresh_token: m.top.refreshToken: client_id: "odysee-roku" }
         accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/logout", { "Authorization": "Bearer " + m.top.accessToken })
         ? json
@@ -131,7 +131,7 @@ sub checkRefresh()
     if curUnixTime > m.top.accessTokenExpiration
         ?"token expired, renew"
         m.top.output = { authorized: false, state: "PENDING", debug: {} }
-        json = { grant_type: "refresh_token": refresh_token: m.top.refreshToken: client_id: "odysee-roku-unofficial" }
+        json = { grant_type: "refresh_token": refresh_token: m.top.refreshToken: client_id: "odysee-roku" }
         accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
         try
