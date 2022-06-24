@@ -13,7 +13,7 @@
         <Rectangle
         id="ibackground"
         color="0x1f1f1f" />
-        <Poster id="poster" loadDisplayMode="limitSize" loadWidth="320" loadHeight="180" translation="[10,10]">
+        <Poster id="poster" loadDisplayMode="scaleToZoom" loadWidth="320" loadHeight="180" translation="[10,10]">
         </Poster>
         <Poster id="liveIcon" uri = "pkg:/images/liveIcon.png" visible="false">
         </Poster>
