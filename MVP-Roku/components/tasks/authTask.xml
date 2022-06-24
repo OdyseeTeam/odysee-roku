@@ -3,14 +3,16 @@
 <component name="authTask" extends="Task">
     <interface>
             <!--Auth Variables-->
-            <field id="authPhase" type="int"/> <!--tracks auth phase-->
+            <field id="authPhase" type="Float"/> <!--tracks auth phase-->
             <!--Auth Phases:
            -1: Error (not SlowDown)
             0: Init
             1: Legacy Done
+            1.5: SSO_DENIED
             2: Pending (error: authorization_pending)
             3: slowDown (add 1 to refreshInterval)
             4: Authorized/Refresh-->
+            <field id="badSSO" type="bool"/>
             <field id="deviceCode" type="String"/>
             <field id="userCode" type="String"/>
             <field id="authCode" type="String"/>

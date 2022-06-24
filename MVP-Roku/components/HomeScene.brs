@@ -311,6 +311,21 @@ sub authPhaseChanged(msg as object)
         m.authTimerObserved = true
       end if
     end if
+    if data = 1.5 'BAD SSO.
+      if m.syncTimerObserved = true
+        m.syncLoop.control = "STOP"
+        m.syncLoopTimer.unobserveField("fire")
+        m.syncTimerObserved = false
+      end if
+      m.oauthHeader.translation = "[550,500]"
+      m.oauthHeader.text = "Cannot properly connect to SSO"
+      m.oauthCode.text = "SSO-DOWN"
+      m.oauthFooter.translation = "[650,670]"
+      m.oauthFooter.text = "Contact help@odysee.com"
+      m.wasLoggedIn = false 'better to pretend we're not logged in, the SSO server is not cooperating.
+      m.authTask.control = "RUN"
+      ?"Task Restarted"
+    end if
     if data = 1
       ?"Phase 1 (Legacy Authenticated)"
       if m.syncTimerObserved = true

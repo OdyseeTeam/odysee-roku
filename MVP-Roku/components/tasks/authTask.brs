@@ -46,57 +46,73 @@ sub master()
         'https://sso.odysee.com/auth/realms/Users/protocol/openid-connect/token
         ?"authphase is 1: begin new auth"
         accountRoot = m.top.constants["ROOT_SSO"] + ""
-        json = { response_type: "device_code": client_id: "odysee-roku" }
+        json = { response_type: "device_code": client_id: m.top.constants["SSO_CLIENT"] }
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/auth/device", {})
-        m.top.verifyURL = authreq.verification_uri
-        m.top.deviceCode = authreq.device_code
-        m.top.userCode = authreq.user_code
-        ?authreq.expires_in
-        ?"Interval is (TIMER/authtask):"
-        ?authreq.interval
-        m.authTimer.duration = authreq.interval + 1
-        m.authTimer.control = "start"
-        ?authreq.verification_uri_complete
-        m.top.authPhase = 2
+        if isValid(authreq.error)
+            'BAD SSO.
+            'If we can't grab a device code, don't bother with further authentication.
+            m.top.authPhase = 1.5
+        else
+            m.top.verifyURL = authreq.verification_uri
+            m.top.deviceCode = authreq.device_code
+            m.top.userCode = authreq.user_code
+            ?authreq.expires_in
+            ?"Interval is (TIMER/authtask):"
+            ?authreq.interval
+            m.authTimer.duration = authreq.interval + 1
+            m.authTimer.control = "start"
+            ?authreq.verification_uri_complete
+            m.top.authPhase = 2
+        end if
     else if m.top.authPhase = 1 and m.top.refreshToken <> ""
         ?"got a valid Refresh Token from Registry"
         m.authTimer.duration = 10
         m.authTimer.control = "start"
         checkRefresh()
     end if
+    if m.top.authPhase = 1.5 'SSO has denied the application. Continue running anyway.
+        m.top.badSSO = true
+        m.top.authPhase = 2
+    end if
     if m.top.authPhase = 2
-        accountRoot = m.top.constants["ROOT_SSO"] + ""
-        json = { grant_type: "urn:ietf:params:oauth:grant-type:device_code": client_id: "odysee-roku": device_code: m.top.deviceCode }
-        authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
-        ?FormatJson(authreq)
-        if isValid(authreq.error)
-            if authreq.error = "slow_down"
-                m.authTimer.duration = m.authTimer.duration + 1
-            else if authreq.error = "authorization_pending"
-                m.top.output = { authorized: false, state: "PENDING", debug: authreq }
-            else if authreq.error = "invalid_grant"
-                m.top.authPhase = 1
-                m.top.output = { authorized: false, state: "INVALID", debug: authreq }
-            else
-                m.top.output = authreq
+        if m.top.badSSO = false
+            accountRoot = m.top.constants["ROOT_SSO"] + ""
+            json = { grant_type: "urn:ietf:params:oauth:grant-type:device_code": client_id: m.top.constants["SSO_CLIENT"]: device_code: m.top.deviceCode }
+            authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
+            ?FormatJson(authreq)
+            if isValid(authreq.error)
+                if authreq.error = "slow_down"
+                    m.authTimer.duration = m.authTimer.duration + 1
+                else if authreq.error = "authorization_pending"
+                    m.top.output = { authorized: false, state: "PENDING", debug: authreq }
+                else if authreq.error = "invalid_grant" or authreq.error = "expired_token" 'https://datatracker.ietf.org/doc/html/draft-ietf-oauth-device-flow-15#section-3.5
+                    m.top.authPhase = 1
+                    m.top.output = { authorized: false, state: "INVALID", debug: authreq }
+                else
+                    m.top.output = authreq
+                end if
             end if
-        end if
-        if isValid(authreq.access_token)
-            m.top.accessToken = authreq.access_token
-            m.top.refreshToken = authreq.refresh_token
-            'authreq.expires_in
-            'authreq.refresh_expires_in
-            curUnixTime = CreateObject("roDateTime").AsSeconds()
-            m.top.accessTokenExpiration = curUnixTime + authreq.expires_in
-            m.top.refreshTokenExpiration = curUnixTime + authreq.refresh_expires_in
-            ?"Access Expires At:"
-            ?m.top.accessTokenExpiration
-            ?"Refresh Expires At:"
-            ?m.top.refreshTokenExpiration
-            curUnixTime = invalid
-            m.authTimer.duration = 10
-            m.top.authPhase = 3
-            m.top.output = { authorized: true, state: "OK", debug: authreq }
+            if isValid(authreq.access_token)
+                m.top.accessToken = authreq.access_token
+                m.top.refreshToken = authreq.refresh_token
+                'authreq.expires_in
+                'authreq.refresh_expires_in
+                curUnixTime = CreateObject("roDateTime").AsSeconds()
+                m.top.accessTokenExpiration = curUnixTime + authreq.expires_in
+                m.top.refreshTokenExpiration = curUnixTime + authreq.refresh_expires_in
+                ?"Access Expires At:"
+                ?m.top.accessTokenExpiration
+                ?"Refresh Expires At:"
+                ?m.top.refreshTokenExpiration
+                curUnixTime = invalid
+                m.authTimer.duration = 10
+                m.top.authPhase = 3
+                m.top.output = { authorized: true, state: "OK", debug: authreq }
+            end if
+        else
+            m.top.verifyURL = "none"
+            m.top.deviceCode = "NO-AUTH-SERVER"
+            m.top.output = { authorized: true, state: "OK", debug: { "bad-sso": true } }
         end if
     end if
     if m.top.authPhase = 3
@@ -113,7 +129,7 @@ sub master()
     end if
     if m.top.authPhase = 10 'User wants to log out.
         'https://stackoverflow.com/a/46769801 really helped me out with this
-        json = { refresh_token: m.top.refreshToken: client_id: "odysee-roku" }
+        json = { refresh_token: m.top.refreshToken: client_id: m.top.constants["SSO_CLIENT"] }
         accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/logout", { "Authorization": "Bearer " + m.top.accessToken })
         ? json
@@ -131,16 +147,21 @@ sub checkRefresh()
     if curUnixTime > m.top.accessTokenExpiration
         ?"token expired, renew"
         m.top.output = { authorized: false, state: "PENDING", debug: {} }
-        json = { grant_type: "refresh_token": refresh_token: m.top.refreshToken: client_id: "odysee-roku" }
+        json = { grant_type: "refresh_token": refresh_token: m.top.refreshToken: client_id: m.top.constants["SSO_CLIENT"] }
         accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/token", {})
         try
             if isValid(authreq.error)
-                m.top.authPhase = 4
-                m.top.accessToken = ""
-                m.top.refreshToken = ""
-                m.top.authPhase = 1
-                m.top.output = { authorized: false, state: "INVALID", debug: authreq }
+                if authreq.error = "invalid_client"
+                    'BAD SSO.
+                    m.top.authPhase = 1.5
+                else
+                    m.top.authPhase = 4
+                    m.top.accessToken = ""
+                    m.top.refreshToken = ""
+                    m.top.authPhase = 1
+                    m.top.output = { authorized: false, state: "INVALID", debug: authreq }
+                end if
             end if
             if isValid(authreq.access_token)
                 m.top.accessToken = authreq.access_token

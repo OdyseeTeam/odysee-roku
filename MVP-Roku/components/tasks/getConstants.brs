@@ -14,6 +14,9 @@ sub master()
     if isValid(globalAPIConstants["ROOT_SSO"]) = false
         globalAPIConstants["ROOT_SSO"] = "https://sso.odysee.com" 'SSO is used for device flow authentication+getting credentials for setting+getting the user's wallet
     end if
+    if isValid(globalAPIConstants["SSO_CLIENT"]) = false
+        globalAPIConstants["SSO_CLIENT"] = "odysee-roku" 'SSO is used for device flow authentication+getting credentials for setting+getting the user's wallet
+    end if
     if isValid(globalAPIConstants["ROOT_SDK"]) = false
         globalAPIConstants["ROOT_SDK"] = "https://api.na-backend.odysee.com" 'SDK is used for changing wallet (follow/unfollow/etc.)
     end if
