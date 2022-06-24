@@ -42,14 +42,11 @@ function ChannelsToVideoGrid(channels, blockedChannels)
                 end if
             end for
         else
-            'We need to do something entirely different here: resolve ALL livestreams that are valid.
-            channels = getLivestreamChannelList(blockedChannels)
-            for each channel in channels
-                streamStatus = getLivestream(channel)
-                if streamStatus.success = true
-                    result.push(streamStatus.liveItem)
-                end if
-            end for
+            liveData = getLivestreamChannelList(blockedChannels)
+            allStreams = getLivestreamsBatch(liveData.claimIDs, liveData.liveData, liveData.liveIDs)
+            if allStreams.Count() > 0
+                result.Append(allStreams)
+            end if
         end if
     end if
     ? "GetSinglePage,"+threadname+",livestreams," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()

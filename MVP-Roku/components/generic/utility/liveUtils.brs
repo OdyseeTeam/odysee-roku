@@ -21,48 +21,79 @@ function getLivestream(channel)
     end try
 end function
 
+function getLivestreamsBatch(claimIDs, liveData, liveIDs)
+    livestreams = []
+    try
+        if isValid(claimIDs) and isValid(liveData) and isValid(liveIDs)
+            if claimIDs.Count() = liveData.Count() and liveIDs.Count() = claimIDs.Count()
+                lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_ids": claimIDs } })
+                livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
+                ? formatJson(livestreamClaimQuery)
+                liveClaims = livestreamclaimquery["result"]["items"]
+                if liveIDs.Count() = liveClaims.Count()
+                    for i = 0 to liveIDs.Count() - 1
+                        livestreams.push(parseLiveData(liveIDs[i], liveData[i], liveClaims[i]))
+                    end for
+                end if
+            end if
+        end if
+    catch e
+        return []
+    end try
+    return livestreams
+end function
+
 function getLivestreamChannelList(excluded_cids) 'creates a preformatted+sorted channel IDs list from the livestream endpoint
-    cidMap = {}
-    if excluded_cids.Count() > 0
-        for each channelID in excluded_cids
-            cidMap.addReplace(channelID, true)
-        end for
-    end if
-    'https://api.odysee.live/livestream/all
-    livestreamData = getJSON(m.top.constants["NEW_LIVE_API"]+"/all")
-    livestreamIDs = []
-    if isValid(livestreamData["data"])
-        if livestreamData["data"].Count() > 0
-            livestreamData["data"].sortBy("ViewerCount", "r")
-            numLiveItems = 0
-            i = 0
-            while true
-                if isValid(livestreamData["data"][i])
-                    CCID = livestreamData["data"][i]["ChannelClaimID"]
-                    if isValid(cidMap[CCID]) = false
-                        livestreamIDs.push(CCID)
-                        numLiveItems+=1
-                    end if
-                    CCID = invalid
-                    if numLiveItems = 8
+    try
+        cidMap = {}
+        if excluded_cids.Count() > 0
+            for each channelID in excluded_cids
+                cidMap.addReplace(channelID, true)
+            end for
+        end if
+        'https://api.odysee.live/livestream/all
+        livestreamData = getJSON(m.top.constants["NEW_LIVE_API"] + "/all")
+        livestreamIDs = []
+        livestreamClaims = []
+        rawLivestreamData = []
+        if isValid(livestreamData["data"])
+            if livestreamData["data"].Count() > 0
+                livestreamData["data"].sortBy("ViewerCount", "r")
+                numLiveItems = 0
+                i = 0
+                while true
+                    if isValid(livestreamData["data"][i])
+                        CCID = livestreamData["data"][i]["ChannelClaimID"]
+                        if isValid(cidMap[CCID]) = false
+                            livestreamIDs.push(CCID)
+                            livestreamClaims.push(livestreamData["data"][i]["ActiveClaim"]["ClaimID"])
+                            rawLivestreamData.push(livestreamData["data"][i])
+                            numLiveItems += 1
+                        end if
+                        CCID = invalid
+                        if numLiveItems = 8
+                            exit while
+                        end if
+                        i += 1
+                    else
                         exit while
                     end if
-                    i+=1
-                else
-                    exit while
-                end if
-            end while
-            cidMap = invalid
-            livestreamData = invalid
-            numLiveItems = invalid
-            i = invalid
-            return livestreamIDs
+                end while
+                cidMap = invalid
+                livestreamData = invalid
+                numLiveItems = invalid
+                i = invalid
+                return { liveIDs: livestreamIDs, liveData: rawLivestreamData, claimIDs: livestreamClaims }
+            else
+                return false
+            end if
         else
             return false
         end if
-    else
+    catch e
         return false
-    end if
+    end try
 end function
 
 function parseLiveData(channel, liveData, liveClaim)
