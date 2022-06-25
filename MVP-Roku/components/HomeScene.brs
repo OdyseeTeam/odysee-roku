@@ -1577,9 +1577,9 @@ sub resolveVideo(url = invalid)
           "superchat": "on_superchat" })
           if isValid(m.preferences)
             if isValid(m.preferences.blocked)
-              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
+              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {} })
             else
-              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": [] })
+              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {} })
             end if
           end if
           ? m.ws.open

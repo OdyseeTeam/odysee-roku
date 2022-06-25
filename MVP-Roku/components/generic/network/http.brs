@@ -1,7 +1,9 @@
 function postJSON(json, url, headers) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
-    http.SetHeaders(headers) 'in some cases, this is actually needed!
+    if headers.Count() > 0
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
   end if
   http.AddHeader("Content-Type", "application/json")
   http.AddHeader("Accept", "application/json")
@@ -50,7 +52,9 @@ end function
 function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: {header: headerdata}
   http = httpPreSetup(url)
   if IsValid(headers)
-    http.SetHeaders(headers) 'in some cases, this is actually needed!
+    if headers.Count() > 0
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
   end if
   http.AddHeader("Content-Type", "application/json")
   http.AddHeader("Accept", "application/json")
@@ -72,13 +76,14 @@ end function
 function postURLEncoded(data, url, headers) as Object
   http = httpPreSetup(url)
   if IsValid(headers)
-    http.SetHeaders(headers) 'in some cases, this is actually needed!
+    if headers.Count() > 0
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
   end if
   http.AddHeader("Accept", "application/json")
   response=""
   lastresponsecode = ""
   lastresponsefailurereason = ""
-  responseheaders = []
   if http.AsyncPostFromString(posturlencode(data)) then
     event = Wait(5000, http.GetPort())
       if Type(event) = "roUrlEvent" Then
@@ -140,7 +145,9 @@ function getURLEncoded(data, url, headers) as Object
     ? currenturl
     http = httpPreSetup(currenturl)
     if IsValid(headers)
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
+      if headers.Count() > 0
+        http.SetHeaders(headers) 'in some cases, this is actually needed!
+      end if
     end if
     if http.AsyncGetToString() then
       event = Wait(5000, http.GetPort())
@@ -202,7 +209,9 @@ end function
 function getJSONAuthenticated(url, headers = invalid) as Object
   http = httpPreSetup(url)
   if IsValid(headers)
+    if headers.Count() > 0
       http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
   end if
   if http.AsyncGetToString() then
     event = Wait(5000, http.GetPort())
@@ -329,7 +338,9 @@ end function
 function getRawTextAuthenticated(url, headers) as Object
   http = httpPreSetup(url)
   if IsValid(headers)
-    http.SetHeaders(headers) 'in some cases, this is actually needed!
+    if headers.Count() > 0
+      http.SetHeaders(headers) 'in some cases, this is actually needed!
+    end if
   end if
   if http.AsyncGetToString() then
     event = Wait(5000, http.GetPort())
