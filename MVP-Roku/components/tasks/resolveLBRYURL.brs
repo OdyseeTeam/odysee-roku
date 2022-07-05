@@ -57,7 +57,7 @@ function siteMethod(lbry_url)
     vresDone = []
     for each suburl in vresSplit
         if suburl <> ""
-            if Instr(0, suburl, "http:") > -1 and suburl.split("").Count() = 5 or Instr(0, suburl, "https:") > -1 and suburl.split("").Count() = 6
+            if suburl.instr("http:") > -1 and suburl.split("").Count() = 5 or suburl.instr("https:") > -1 and suburl.split("").Count() = 6
                 vresDone.push(suburl + "/") 'single slash since we'll be joining with /
             else
                 replaced = suburl.EncodeUriComponent()
