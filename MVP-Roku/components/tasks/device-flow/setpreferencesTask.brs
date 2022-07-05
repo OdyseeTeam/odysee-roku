@@ -24,17 +24,17 @@ sub master()
     end if
 end sub
 
-function prenotify_delete_follow(follow)
+function prenotify_delete_follow(channelclaim, channelname)
     ?"Prenotifying ROOT API (/subscription/delete)"
     notifyURL = m.top.constants["ROOT_API"] + "/subscription/delete"
-    notifyQuery = { claim_id: follow }
+    notifyQuery = { claim_id: channelclaim, channel_name: channelname, notifications_disabled: "true" }
     postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
 end function
 
-function prenotify_new_follow(follow)
+function prenotify_new_follow(channelclaim, channelname)
     ?"Prenotifying ROOT API (/subscription/new)"
     notifyURL = m.top.constants["ROOT_API"] + "/subscription/new"
-    notifyQuery = { claim_id: follow, notifications_disabled: "true" }
+    notifyQuery = { claim_id: channelclaim, channel_name: channelname, notifications_disabled: "true" }
     postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
 end function
 
@@ -45,296 +45,178 @@ function set_prefs()
     m.top.oldHash = m.top.newHash
     m.inSync = true
     ? "RUNNING setPreferencesTask"
-    ? "Step 2: Preference Get (for modification)"
-    'Step 2: Preference Get (for modification)
 
     'moving between # and ; in walletfiles (iOS), so replace ; with #
     'save as # by default
 
     if m.inSync
+        ? "Step 1: Preference Get (for modification)"
+        'Step 1: Preference Get (for modification)
         ? "Getting preferences(SDK)"
-        preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_get", "params": { "key": "shared" }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
-        ? formatJSON(preferences)
-        'Step 3: Modification
-        ?"Step 3: Modification"
-        if isValid(preferences.result)
-            if IsValid(preferences.result.shared)
-                if isValid(preferences.result.shared.value)
-                    preferences.result.shared.value = preferences.result.shared.value
-                    if m.top.changeType = "append"
-                        'Code from getpreferencesTask, used only on append to prevent duplication.
-                        blocked = []
-                        following = []
-                        followingaa = {}
-                        userPreferences = preferences.result.shared.value
-                        ?formatJson(userPreferences)
-                        if isValid(userPreferences.blocked)
-                            for each user in userPreferences.blocked
-                                blocked.push(user.replace("#", ":").split(":").Pop())
-                            end for
-                        end if
-                        if isValid(userPreferences.following)
-                            for each user in userPreferences.following
-                                if Type(user) <> "roString"
-                                    followingaa.addReplace(user.uri.replace("#", ":").split(":").Pop(), "a") '(for Following page)
-                                end if
-                            end for
-                        end if
-                        if isValid(userPreferences.subscriptions)
-                            for each subscription in userPreferences.subscriptions
-                                followingaa.addReplace(subscription.replace("#", ":").split(":").Pop(), "a") '(abuse AssociativeArray addReplace to remove duplicates)
-                            end for
-                        end if
-                        following.append(followingaa.Keys()) 'get output (no duplicates)
-                        followingaa = invalid
+        allPrefs = get_prefs() 'the cool part about this is that invalid datastructures will cause it to throw an error, so we don't need to do any error handling from here except for APIs.
+        rawPrefs = allPrefs["raw"]
+        blocked = allPrefs["blocked"]
+        following = allPrefs["following"]
 
-                        'm.top.preferences = { blocked: blocked: following: following: collections: collections }
-                        if isValid(preferences.result.shared.value.blocked) and isValid(m.top.preferences.blocked)
-                            try
-                                for each subclaim in m.top.preferences.blocked
-                                    curSubclaim = subclaim.replace("#", ":")
-                                    isDuplicate = false
-                                    if curSubclaim.split(":").Count() > 1
-                                        for each blockeduser in blocked
-                                            if curSubclaim.split(":").Pop() = blockeduser
-                                                isDuplicate = true
-                                            end if
-                                        end for
-                                        'assume that we are in non-legacy format inside legacy datastructure
-                                        if isDuplicate = false
-                                            preferences.result.shared.value.blocked.push(curSubclaim)
-                                        end if
-                                    else
-                                        'legacy: we will need to look up this channel
-                                        queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                                        queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
-                                        response = postJSON(queryJSON, queryURL, invalid)
-                                        for each blockeduser in blocked
-                                            if response.result.items[0]["permanent_url"].split("#").Pop() = blockeduser 'legacy, contains # on purpose.
-                                                isDuplicate = true
-                                            end if
-                                        end for
-                                        if isDuplicate = false
-                                            preferences.result.shared.value.blocked.push(response.result.items[0]["permanent_url"].replace("#", ":")) 'should replace it after though.
-                                        end if
-                                    end if
-                                    curSubclaim = invalid
-                                end for
-                            catch e
-                                ?e
-                                m.top.error = true
-                                m.top.syncTimer.control = "stop"
-                            end try
-                        end if
-                        if isValid(preferences.result.shared.value.following) and isValid(m.top.preferences.following)
-                            'support both current and raw claim format
-                            try
-                                for each subclaim in m.top.preferences.following
-                                    isDuplicate = false
-                                    if Type(subclaim) <> "roString" 'already in non-raw format, no need for additional parsing
-                                        if isValid(subclaim.uri) and isValid(subclaim["notificationsDisabled"])
-                                            for each followeduser in following
-                                                curSubclaim = subclaim.uri.replace("#", ":")
-                                                if curSubclaim.split(":").Pop() = followeduser.replace("#", ":")
-                                                    isDuplicate = true
-                                                end if
-                                            end for
-                                            if isDuplicate = false
-                                                preferences.result.shared.value.following.append([subclaim.replace("#", ":").replace("#", ":")])
-                                                prenotify_new_follow(curSubclaim.split(":").Pop())
-                                            end if
-                                        end if
-                                        curSubclaim = invalid
-                                    else 'in raw claim format: needs additional data
-                                        curSubclaim = subclaim.replace("#", ":")
-                                        if curSubclaim.split(":").Count() > 1
-                                            for each followeduser in following
-                                                if curSubclaim.split(":").Pop() = followeduser
-                                                    isDuplicate = true
-                                                end if
-                                            end for
-                                            'assume that we are in non-legacy format inside legacy datastructure
-                                            if isDuplicate = false
-                                                preferences.result.shared.value.following.append([{ uri: curSubclaim.replace("#", ":"), "notificationsDisabled": "true" }])
-                                                prenotify_new_follow(curSubclaim.split(":").Pop())
-                                            end if
-                                            curSubclaim = invalid
-                                        else
-                                            'legacy: we will need to look up this channel
-                                            queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                                            queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
-                                            response = postJSON(queryJSON, queryURL, invalid)
-                                            for each followeduser in following
-                                                if response.result.items[0]["permanent_url"].split("#").Pop() = followeduser 'legacy, contains # on purpose.
-                                                    isDuplicate = true
-                                                end if
-                                            end for
-                                            if isDuplicate = false
-                                                preferences.result.shared.value.following.append([{ uri: response.result.items[0]["permanent_url"].replace("#", ":"), "notificationsDisabled": "true" }])
-                                                prenotify_new_follow(subclaim)
-                                            end if
-                                        end if
-                                    end if
-                                end for
-                            catch e
-                                ?e
-                                m.top.error = true
-                                m.top.syncTimer.control = "stop"
-                            end try
-                        end if
-                        if isValid(preferences.result.shared.value.subscriptions) and isValid(m.top.preferences.following)
-                            try
-                                subsToPush = []
-                                'convert from following format to legacy subscription format (keep consistency for desktop client/other implimentations)
-                                for each subclaim in m.top.preferences.following
-                                    isDuplicate = false
-                                    if Type(subclaim) <> "roString" 'already in non-raw format, no need for additional parsing
-                                        if isValid(subclaim.uri) and isValid(subclaim["notificationsDisabled"])
-                                            curSubclaim = subclaim.uri.replace("#", ":")
-                                            for each followeduser in following
-                                                if curSubclaim.split(":").Pop() = followeduser
-                                                    isDuplicate = true
-                                                end if
-                                            end for
-                                            if isDuplicate = false
-                                                preferences.result.shared.value.subscriptions.push(curSubclaim.replace("#", ":"))
-                                            end if
-                                        end if
-                                        curSubclaim = invalid
-                                    else 'in raw claim format: needs additional data
-                                        curSubclaim = subclaim.replace("#", ":")
-                                        if curSubclaim.split(":").Count() > 1
-                                            'assume that we are in non-legacy format inside legacy datastructure
-                                            for each followeduser in following
-                                                if subclaim.split(":").Pop() = followeduser
-                                                    isDuplicate = true
-                                                end if
-                                            end for
-                                            if isDuplicate = false
-                                                preferences.result.shared.value.subscriptions.push(curSubclaim)
-                                            end if
-                                            curSubclaim = invalid
-                                        else
-                                            'legacy: we will need to look up this channel
-                                            queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                                            queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 1, "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": [subclaim], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
-                                            response = postJSON(queryJSON, queryURL, invalid)
-                                            for each followeduser in following
-                                                if response.result.items[0]["permanent_url"].split("#").Pop() = followeduser 'legacy, contains # on purpose.
-                                                    isDuplicate = true
-                                                end if
-                                            end for
-                                            if isDuplicate = false
-                                                preferences.result.shared.value.subscriptions.push(response.result.items[0]["permanent_url"].replace("#", ":"))
-                                            end if
-                                        end if
-                                    end if
-                                end for
-                            catch e
-                                ?e
-                                m.top.error = true
-                                m.top.syncTimer.control = "stop"
-                            end try
-                        end if
-                        'TODO: Add collections to this (requires timestamp manip.)
-                    else if m.top.changeType = "remove"
-                        try
-                            if isValid(preferences.result)
-                                if IsValid(preferences.result.shared)
-                                    if isValid(preferences.result.shared.value)
-                                        for i = 0 to preferences.result.shared.value.blocked.Count() - 1
-                                            if isValid(preferences.result.shared.value.blocked[i])
-                                                if isValid(preferences.result.shared.value.blocked[i]["uri"])
-                                                    curBlocked = preferences.result.shared.value.following[i]["uri"].replace("#", ":")
-                                                else
-                                                    curBlocked = preferences.result.shared.value.blocked[i].replace("#", ":")
-                                                end if
-                                                ? curBlocked
-                                                for each change in m.top.preferences.blocked
-                                                    curChange = change.replace("#", ":")
-                                                    if curChange.split(":").Count() > 1
-                                                        if curBlocked = curChange
-                                                            preferences.result.shared.value.blocked.Delete(i)
-                                                        end if
-                                                    else
-                                                        if curChange.split(":").Pop() = change
-                                                            preferences.result.shared.value.blocked.Delete(i)
-                                                        end if
-                                                    end if
-                                                end for
-                                            end if
-                                        end for
-                                        curBlocked = invalid
-                                        curChange = invalid
-                                        i = invalid
-                                        for i = 0 to preferences.result.shared.value.following.Count() - 1
-                                            if isValid(preferences.result.shared.value.following[i])
-                                                if isValid(preferences.result.shared.value.following[i]["uri"])
-                                                    curFollowing = preferences.result.shared.value.following[i]["uri"].replace("#", ":")
-                                                else
-                                                    curFollowing = preferences.result.shared.value.following[i].replace("#", ":")
-                                                end if
-                                                for each change in m.top.preferences.following
-                                                    curChange = change.replace("#", ":")
-                                                    if curChange.split(":").Count() > 1
-                                                        if curFollowing = curChange
-                                                            preferences.result.shared.value.following.Delete(i)
-                                                            prenotify_delete_follow(curChange.split(":").Pop())
-                                                        end if
-                                                    else
-                                                        if curChange.split(":").Pop() = change
-                                                            preferences.result.shared.value.following.Delete(i)
-                                                            prenotify_delete_follow(change)
-                                                        end if
-                                                    end if
-                                                end for
-                                            end if
-                                        end for
-                                        curBlocked = invalid
-                                        curChange = invalid
-                                        i = invalid
-                                        for i = 0 to preferences.result.shared.value.subscriptions.Count() - 1
-                                            if isValid(preferences.result.shared.value.subscriptions[i])
-                                                curSubscriptions = preferences.result.shared.value.subscriptions[i].replace("#", ":")
-                                                for each change in m.top.preferences.following
-                                                    curChange = change.replace("#", ":")
-                                                    if curChange.split(":").Count() > 1
-                                                        if preferences.result.shared.value.subscriptions[i] = curChange
-                                                            preferences.result.shared.value.subscriptions.Delete(i)
-                                                        end if
-                                                    else
-                                                        if preferences.result.shared.value.subscriptions[i].split(":").Pop() = change
-                                                            preferences.result.shared.value.subscriptions.Delete(i)
-                                                        end if
-                                                    end if
-                                                end for
-                                            end if
-                                        end for
-                                        i = invalid
-                                        'TODO: Add collections to this (requires timestamp manip.)
-                                    end if
+        'Step 2: Get Data: Part 1
+        ? "Step 2: Get Data: Part 1"
+        'We need to get additional data before we can gut the existing Datastructure.
+        'Search for all (valid) channels here.
+
+        claimSearchURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+        'this may introduce a bug later over 50 items.
+        'TODO: create chainedQuery for infinite length queries.
+        'Multi-Channel accounts might also create issues depending on if the API pulls more than one with a single channelID.
+        followingQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": following.Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": following, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+        blockedQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": blocked.Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": blocked, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+
+        followingData = postJSON(followingQueryJSON, claimSearchURL, invalid)
+        blockedData = postJSON(blockedQueryJSON, claimSearchURL, invalid)
+
+        'Step 3: Gut raw preferences for alteration
+        ? "Step 3: Gut raw preferences for alteration"
+        rawprefs["result"]["shared"]["value"]["following"].Clear() 'roArray
+        rawprefs["result"]["shared"]["value"]["subscriptions"].Clear() 'roArray
+        rawprefs["result"]["shared"]["value"]["blocked"].Clear() 'roArray
+
+        'Step 4: Get additional data (p2)+create base (manipulate data)
+        ? "Step 4: Get additional data (p2)+create base (manipulate data)"
+        'Depending on what we need to do, we might not need to run queries at all. However, we will still have to parse followingData and blockedData at the end.
+        'This ensures we have a stable base to append additional data to preferences.
+        change = m.top.preferences
+        ? formatJson(change)
+        if m.top.changeType = "append"
+            if isValid(change) and following.Count() = followingData.result.items.Count() and blocked.Count() = blockedData.result.items.Count()
+                'Append following
+                if isValid(change["following"])
+                    if change["following"].Count() > 0
+                        'example following JSON:
+                        '"following": [
+                        '    {
+                        '      "notificationsDisabled": "true",
+                        '      "uri": "lbry://@FrameWork:39065ea36ccf9789327aab73ea88f182c8b77bd3"
+                        '    }
+                        '  ]
+                        'We need to grab the channels to add here as well since we need to notify Odysee about what we are going to do.
+                        'Current implimentation plan is to append all results of blocked/following queries together, parse after.
+                        'Optimization will be added in the future after setPreferencesTask is fixed.
+                        newfollowingQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": change["following"].Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": change["following"], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                        newfollowingData = postJSON(newfollowingQueryJSON, claimSearchURL, invalid)
+                        if isValid(newfollowingData.result)
+                            if isValid(newfollowingdata["result"]["items"])
+                                if newfollowingdata["result"]["items"].Count() > 0
+                                    for each channel in newfollowingdata["result"]["items"]
+                                        followingdata["result"]["items"].Push(channel)
+                                        prenotify_new_follow(channel["claim_id"], channel["name"])
+                                    end for
                                 end if
                             end if
-                        catch e
-                            ?e
-                            m.top.error = true
-                            m.top.syncTimer.control = "stop"
-                        end try
+                        end if
                     end if
-                    ? "MODIFIED:"
-                    ?formatJson(preferences.result.shared.value)
+                end if
+                if isValid(change["blocked"])
+                    if change["blocked"].Count() > 0
+                        'example blocked/subscriptions JSON:
+                        '["lbry://@Chronicles_of_Bod:772a859c56a72f12284240b66a3d3bbc6fd9e1d0"]
+                        'We need to grab the channels to add here as well since we need to notify Odysee about what we are going to do.
+                        newblockedQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": change["blocked"].Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": change["blocked"], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                        newblockedData = postJSON(newblockedQueryJSON, claimSearchURL, invalid)
+                        ? formatJson(newBlockedData)
+                        if isValid(newblockedData.result)
+                            if isValid(newblockeddata["result"]["items"])
+                                if newblockeddata["result"]["items"].Count() > 0
+                                    for each channel in newblockeddata["result"]["items"]
+                                        blockeddata["result"]["items"].Push(channel)
+                                        'put prenotification of block here: we have all the data for it already.
+                                    end for
+                                end if
+                            end if
+                        end if
+                    end if
+                end if
+            end if
+        else if m.top.changeType = "remove"
+            ? "remove"
+            if isValid(change) and following.Count() = followingData.result.items.Count() and blocked.Count() = blockedData.result.items.Count()
+                if isValid(change["following"])
+                    if change["following"].Count() > 0
+                        followingAA = {} 'Following Reference AA
+                        for each changeItem in change["following"]
+                            followingaa.addreplace(changeItem, true)
+                        end for
+                        for i = 0 to followingdata["result"]["items"].Count() - 1
+                            if i > followingdata["result"]["items"].Count() - 1
+                                exit for
+                            else
+                                if isValid(followingAA[followingdata["result"]["items"][i]["claim_id"]])
+                                    channel = followingdata["result"]["items"][i]
+                                    prenotify_delete_follow(channel["claim_id"], channel["name"])
+                                    followingdata["result"]["items"].Delete(i)
+                                    channel = invalid
+                                    'put prenotification of unfollow here: we have all the data for it already.
+                                end if
+                            end if
+                        end for
+                    end if
+                    followingAA = invalid
+                    frange = invalid
+                end if
+                if isValid(change["blocked"])
+                    if change["blocked"].Count() > 0
+                        blockedAA = {}
+                        for each changeItem in change["blocked"]
+                            blockedaa.addreplace(changeItem, true)
+                        end for
+                        for i = 0 to blockeddata["result"]["items"].Count() - 1
+                            if i > blockeddata["result"]["items"].Count() - 1
+                                exit for
+                            end if
+                            if isValid(blockedAA[blockeddata["result"]["items"][i]["claim_id"]])
+                                blockeddata["result"]["items"].Delete(i)
+                                'put prenotification of unblock here: we have all the data for it already.
+                            end if
+                        end for
+                        frange = invalid
+                        followingAA = invalid
+                    end if
                 end if
             end if
         end if
-        'Step 4: preference_set (set what we altered)
-        ?"Step 4: preference_set (set what we altered) TO SDK"
-        preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_set", "params": { "key": "shared", "value": formatJson(preferences.result.shared) }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
+        ? formatJson(blockeddata)
+        ? formatJson(followingdata)
+        'rawprefs["result"]["shared"]["value"]["following"].Clear() 'roArray
+        'rawprefs["result"]["shared"]["value"]["subscriptions"].Clear() 'roArray
+        'rawprefs["result"]["shared"]["value"]["blocked"].Clear() 'roArray
+
+        'example following JSON:
+        '"following": [
+        '    {
+        '      "notificationsDisabled": "true",
+        '      "uri": "lbry://@FrameWork:39065ea36ccf9789327aab73ea88f182c8b77bd3"
+        '    }
+        '  ]
+        'example blocked/subscriptions JSON:
+        '["lbry://@Chronicles_of_Bod:772a859c56a72f12284240b66a3d3bbc6fd9e1d0"]
+
+        'Step 5: Create preferences from data.
+        ?"Step 5: Create preferences from data."
+        for each claim in followingdata["result"]["items"]
+            rawprefs["result"]["shared"]["value"]["following"].Push({"notificationsDisabled": "true", "uri": claim["permanent_url"].replace("#", ":")})
+            rawprefs["result"]["shared"]["value"]["subscriptions"].Push(claim["permanent_url"].replace("#", ":"))
+        end for
+        for each claim in blockedData["result"]["items"]
+            rawprefs["result"]["shared"]["value"]["blocked"].Push(claim["permanent_url"].replace("#", ":"))
+        end for
+        'Step 6: preference_set (set what we altered)
+        ?"Step 6: preference_set (set what we altered) TO SDK"
+        preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_set", "params": { "key": "shared", "value": formatJson(rawprefs["result"]["shared"]) }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
         ?FormatJson(preferences)
         if isValid(preferences.result) = false
             needs_resync = true
         end if
-        'Step 5: Sync Apply (to SDK)
-        ?"Step 5: Sync Apply (to SDK)"
+        ? formatJson(preferences)
+        'Step 7: Sync Apply (to SDK)
+        ?"Step 7: Sync Apply (to SDK)"
         syncapply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "": "blocking": true }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
         ?FormatJson(syncapply)
         if isValid(syncapply.data)
@@ -343,8 +225,9 @@ function set_prefs()
                 m.top.walletData = syncapply.result.data
             end if
         end if
-        'Step 6: Sync Set (to API)
-        ?"Step 6: Sync Set (to API)"
+        ? formatJson(syncapply)
+        'Step 8: Sync Set (to API)
+        ?"Step 8: Sync Set (to API)"
         syncset = postURLEncoded({ old_hash: m.top.oldHash, new_hash: "" + syncapply.result.hash: data: "" + syncapply.result.data }, m.top.constants["ROOT_API"] + "/sync/set", { "Authorization": "Bearer " + m.top.accessToken })
         ?formatJson(syncset)
         if syncset.success = true

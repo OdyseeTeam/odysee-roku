@@ -15,11 +15,27 @@ sub master()
         existing = userAPI + "/me"
         currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, [])
         ?currentUserStatus
-        if currentUserStatus.success
-            ?"SUCCESS."
-            m.top.uid = currentUserStatus.data.id
-            m.top.legacyAuthorized = true
-            m.top.authPhase = 1
+        if isValid(currentUserStatis)
+            if currentUserStatus.success
+                ?"SUCCESS."
+                m.top.uid = currentUserStatus.data.id
+                m.top.legacyAuthorized = true
+                m.top.authPhase = 1
+            else
+                ?"FAILURE!"
+                newUserData = parseJSON(getRawText(new))
+                currentUserStatus = getURLEncoded({ auth_token: newUserData.data.auth_token.Trim() }, existing, [])
+                if currentUserStatus.success = false
+                    m.top.error = true
+                    m.top.legacyAuthorized = false
+                    m.top.output = { authorized: false, state: "CRITICAL", debug: "Failed Phase 0" }
+                else
+                    m.top.uid = newUserData.data.id
+                    m.top.authtoken = newUserData.data.auth_token
+                    m.top.legacyAuthorized = true
+                    m.top.authPhase = 1
+                end if
+            end if
         else
             ?"FAILURE!"
             newUserData = parseJSON(getRawText(new))

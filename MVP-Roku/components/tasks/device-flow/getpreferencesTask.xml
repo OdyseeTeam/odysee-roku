@@ -22,6 +22,7 @@
         <Timer id="syncTimer" repeat="true" duration="5"/>
     </children>
     <script type="text/brightscript" uri="pkg:/components/tasks/device-flow/getpreferencesTask.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/preferenceLib.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
 </component>

@@ -30,6 +30,5 @@ sub master()
             "Access-Control-Allow-Origin": "https://odysee.com/"
         }
     end if
-    'globalAPIConstants["QUERY_API"] = "http://192.168.1.16:8080"
     m.top.constants = globalAPIConstants
 end sub

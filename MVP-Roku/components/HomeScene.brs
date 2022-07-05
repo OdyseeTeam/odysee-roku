@@ -2656,6 +2656,7 @@ sub follow(channelID)
 end sub
 
 sub unFollow(channelID)
+  ? "attempting to unfollow "+channelID
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
