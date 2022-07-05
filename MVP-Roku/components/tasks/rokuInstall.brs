@@ -22,7 +22,6 @@ Function installRoku()
     deviceInfo = CreateObject("roDeviceInfo")
     deviceVersionArray = deviceInfo.GetOSVersion()
     deviceModel = deviceInfo.GetModel()
-    installID = Left(deviceInfo.GetChannelClientId().replace("-", ""), 64)
     deviceVersion = deviceVersionArray.major+"."+deviceVersionArray.minor+"."+deviceVersionArray.revision+"."+deviceVersionArray.build
     deviceInfo = invalid
     appInfo = invalid
@@ -40,7 +39,7 @@ Function installRoku()
         return {installed: false, error: true}
     end try
 
-    installQuery = {"auth_token": m.top.authToken, "app_version": appVersion, "domain": "odysee.com", "app_id": installID, "node_id": "", "daemon_version": daemon_version, "operating_system": "roku", "platform": fullPlatform}
+    installQuery = {"auth_token": m.top.authToken, "app_version": appVersion, "domain": "odysee.com", "app_id": "rokueecom692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542V", "node_id": "", "daemon_version": daemon_version, "operating_system": "roku", "platform": fullPlatform}
     ?"[rokuInstall]:"
     ?installQuery
     getInstall = getURLEncoded(installQuery, userAPI, [])

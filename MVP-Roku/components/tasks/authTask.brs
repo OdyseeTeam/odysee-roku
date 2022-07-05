@@ -13,9 +13,9 @@ sub master()
         userAPI = m.top.constants["ROOT_API"] + "/user"
         new = userAPI + "/new"
         existing = userAPI + "/me"
-        currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, [])
+        currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, { "Authorization": "Bearer " + m.top.accessToken })
         ?currentUserStatus
-        if isValid(currentUserStatis)
+        if isValid(currentUserStatus)
             if currentUserStatus.success
                 ?"SUCCESS."
                 m.top.uid = currentUserStatus.data.id
