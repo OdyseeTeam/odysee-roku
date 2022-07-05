@@ -26,7 +26,6 @@ Function installRoku()
     deviceInfo = invalid
     appInfo = invalid
     fullPlatform = "roku-"+deviceVersion+"-"+deviceModel
-    userAPI = m.top.constants["ROOT_API"]+"/user/me"
     installAPI = m.top.constants["ROOT_API"]+"/install/new"
     versionAPI = m.top.constants["QUERY_API"]+"/api/v1/proxy?m=version"
     versionRequestJSON = FormatJson({"jsonrpc":"2.0","method":"version","params":{}})
@@ -42,6 +41,7 @@ Function installRoku()
     installQuery = {"auth_token": m.top.authToken, "app_version": appVersion, "domain": "odysee.com", "app_id": "rokueecom692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542V", "node_id": "", "daemon_version": daemon_version, "operating_system": "roku", "platform": fullPlatform}
     ?"[rokuInstall]:"
     ?installQuery
-    getInstall = getURLEncoded(installQuery, userAPI, [])
+    getInstall = getURLEncoded(installQuery, installAPI, { "Authorization": "Bearer " + m.top.accessToken })
+    ? formatJson(getInstall)
     return {installed: getInstall["success"]}
 End Function

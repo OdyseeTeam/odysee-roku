@@ -196,7 +196,7 @@ sub init()
     m.accessToken = GetRegistry("deviceFlowRegistry", "accessToken")
   end if
   if isValid(GetRegistry("deviceFlowRegistry", "accessTokenExpiration"))
-    m.accessToken = GetRegistry("deviceFlowRegistry", "accessTokenExpiration")
+    m.accessTokenExpiration = GetRegistry("deviceFlowRegistry", "accessTokenExpiration")
   end if
   if isValid(GetRegistry("deviceFlowRegistry", "refreshToken"))
     m.refreshToken = GetRegistry("deviceFlowRegistry", "refreshToken")
@@ -360,7 +360,7 @@ sub authDone()
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
 
     if m.global.constants.enableStatistics
-      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authTask.authtoken, cookies: m.cookies, accesstoken: m.accessToken })
       m.rokuInstall.control = "RUN"
     end if
 
