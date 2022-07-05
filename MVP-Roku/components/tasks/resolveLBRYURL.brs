@@ -48,7 +48,7 @@ function siteMethod(lbry_url)
             reqData = {uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID}
             reqHeaders = { "Authorization": "Bearer " + m.top.accessToken }
             fileViewRequest = getURLEncoded(reqData, fileViewURL, reqHeaders)
-            ? FormatJson(fileViewRequest)
+            '? FormatJson(fileViewRequest)
         end if
     end if
     vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]

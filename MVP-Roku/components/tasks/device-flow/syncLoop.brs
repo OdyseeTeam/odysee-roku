@@ -84,8 +84,14 @@ sub master()
                     end if
 
                 else
-                    ? "currently in sync"
+                    ? "currently in sync (wallet-wise)"
                     inSync = true
+                    if m.top.oldHash <> prodHash
+                        ? "change between production+current"
+                        m.top.preferencesChanged = true
+                    else
+                        m.top.preferencesChanged = false
+                    end if
                 end if
             end if
         end if

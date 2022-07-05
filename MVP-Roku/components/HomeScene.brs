@@ -131,7 +131,7 @@ sub init()
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
   observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID": "authtoken": "gotAuth": "cookies": "gotCookies" })
-  observeFields("syncLoop", { "inSync": "gotSync": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
+  observeFields("syncLoop", { "inSync": "gotSync":"preferencesChanged":"preferencesChanged":"oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
   m.preferences = {} ' user preferences (blocked, following, collections)
@@ -2434,16 +2434,19 @@ sub regenerateLiveButtonRefs()
   end for
 end sub
 
-sub backButtonCode()
-
-end sub
-
 sub gotSync(msg as object)
   data = msg.getData()
   m.syncLoop.control = "STOP"
   ?"GOTSyncDebug"
   if m.preferences.Count() = 0 or m.favoritesLoaded = false
     getUserPrefs()
+  end if
+end sub
+
+sub preferencesChanged()
+  if m["syncloop"]["inSync"] AND m["syncloop"]["preferencesChanged"]
+    getUserPrefs()
+    m["syncloop"]["preferencesChanged"] = false
   end if
 end sub
 
