@@ -8,6 +8,9 @@ sub Init()
     m.Creator = m.top.findNode("creator")
     m.videoLength = m.top.findNode("videoLength")
     m.videoLengthBackground = m.top.findNode("lbackground")
+    m.repostIcon = m.top.findNode("repostIcon")
+    m.repostedBy = m.top.findNode("repostedBy")
+    m.repostedBackground = m.top.findNode("rbackground")
 end sub
 sub itemContentChanged()
     m.Poster.uri = m.top.itemContent.HDPOSTERURL
@@ -28,6 +31,18 @@ sub itemContentChanged()
             m.liveIcon.visible = false
             m.videoLength.visible = false
             m.videoLengthBackground.visible = false
+        end if
+    end if
+    if isValid(m.top.itemContent.reposted) AND isValid(m.top.itemContent.repostedBy)
+        if m.top.itemContent.reposted
+            m.repostIcon.visible = true
+            m.repostedBy.visible = true
+            m.repostedBackground.visible = true
+            m.repostedBy.text = m.top.itemContent.repostedBy
+        else
+            m.repostIcon.visible = false
+            m.repostedBy.visible = false
+            m.repostedBackground.visible = false
         end if
     end if
     if isValid(m.top.itemContent.videolength) AND isValid(m.top.itemContent.ITEMTYPE)

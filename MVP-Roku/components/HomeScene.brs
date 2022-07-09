@@ -88,6 +88,7 @@ sub init()
   m.video.observeField("state", "onVideoStateChanged")
   m.categorySelector.observeField("itemFocused", "categorySelectorFocusChanged")
   m.videoGrid.observeField("rowItemSelected", "resolveVideo")
+  'm.videoGrid.observeField("rowItemFocused", "gotvGridPosition")
   m.searchHistoryBox.observeField("itemSelected", "historySearch")
   m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
   m.searchKeyboardDialog.observeField("itemSelected", "search")
@@ -96,6 +97,7 @@ sub init()
   'Tasks
   if m.global.constants.enableStatistics
     m.vStatsTimer = CreateObject("roTimeSpan")
+
     m.watchman = createObject("roSGNode", "watchman") 'analytics (video)
 
     observeFields("watchman", { "output": "watchmanRan",
@@ -1502,6 +1504,15 @@ sub vgridContentChanged(msg as object)
     m.videoGrid.content = msg.getData()
   end if
 end sub
+
+'sub gotvGridPosition(iEvent)
+'  ? "vGrid Position Changed"
+'  incomingData = iEvent.getData()
+'  if incomingData.Count() > 1
+'    m.currentVideoPosition = incomingData
+'    ? m.currentVideoPosition
+'  end if
+'end sub
 
 sub resolveVideo(url = invalid)
   ?type(url)

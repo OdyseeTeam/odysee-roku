@@ -43,5 +43,17 @@
         <Label id="videoLength" width="120" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[10,182]" horizAlign="center" vertAlign="center" numLines = "1" text="00:00:00:00">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
+
+        <Rectangle
+        id="rbackground"
+        color="0x000000aa"
+        width="280"
+        height="29"
+        translation="[10,15]" 
+        visible="false"/>
+        <Poster id="repostIcon" uri = "pkg:/images/png/Icon-Repeat.png" translation="[10,14]" width="29" height="29" visible="false"/>
+        <Label id="repostedBy" width="250" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[40,12]" horizAlign="center" vertAlign="center" numLines = "1" text="user" visible="false">
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="20"/>
+        </Label>
     </children>
 </component>
