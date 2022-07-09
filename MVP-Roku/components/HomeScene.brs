@@ -24,6 +24,9 @@ sub init()
   m.uiLayers = [] 'directly correlates with m.uiLayer-1. Layer 0 is managed by the sidebar/categorySelector.
   m.reinitialize = true
   m.videoButtonSelected = "none"
+  m.searchKeyboardCanTransition = false 'searchKeyboard can transition after confirmation if true
+  m.moveAttemptsRow = 0 'searchKeyboard double press confirmation
+
   'UI Items
   m.errorText = m.top.findNode("warningtext")
   m.errorSubtext = m.top.findNode("warningsubtext")
@@ -47,7 +50,7 @@ sub init()
   m.vjschars = { "play": Chr(61697), "play-circle": Chr(61698), "pause": Chr(61699), "volume-mute": Chr(61700), "volume-low": Chr(61701), "volume-mid": Chr(61702), "volume-high": Chr(61703), "fullscreen-enter": Chr(61704), "fullscreen-exit": Chr(61705), "square": Chr(61706), "spinner": Chr(61707), "subtitles": Chr(61708), "captions": Chr(61709), "chapters": Chr(61710), "share": Chr(61711), "cog": Chr(61712), "circle": Chr(61713), "circle-outline": Chr(61714), "circle-inner-circle": Chr(61715), "hd": Chr(61716), "cancel": Chr(61717), "replay": Chr(61718), "facebook": Chr(61719), "gplus": Chr(61720), "linkedin": Chr(61721), "twitter": Chr(61722), "tumblr": Chr(61723), "pinterest": Chr(61724), "audio-description": Chr(61725), "audio": Chr(61726), "next-item": Chr(61727), "previous-item": Chr(61728), "picture-in-picture-enter": Chr(61729), "picture-in-picture-exit": Chr(61730) }
   m.searchKeyboardDialog = m.searchkeyboard.findNode("searchKeyboardDialog")
   m.searchKeyboardDialog.itemSize = [280, 65]
-  m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Channels", "Search Videos"], m.searchKeyboardDialog.itemSize)
+  m.searchKeyboardDialog.content = createBothItems(m.searchKeyboardDialog, ["Search Videos", "Search Channels"], m.searchKeyboardDialog.itemSize)
   m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
   m.ffrwTimer = m.top.findNode("ffrwTimer")
   m.videoUITimer = m.top.findNode("videoUITimer")
@@ -1088,15 +1091,24 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         end if
 
         if m.focusedItem = 3 '[search keyboard]  OR m.focusedItem = 4 '[confirm search]  'Exit (Keyboard/Search Button -> Bar)
-          ErrorDismissed() 'quick fix
-          m.searchKeyboard.setFocus(false)
-          m.searchKeyboardDialog.setFocus(false)
-          m.searchHistoryBox.setFocus(false)
-          m.searchHistoryDialog.setFocus(false)
-          m.categorySelector.jumpToItem = 0
-          m.categorySelector.setFocus(true)
-          m.focusedItem = 1 '[selector]
+          row = Int(m.searchKeyboardGrid.currFocusRow)+1
+          if row = m.moveAttemptsRow
+            ErrorDismissed()
+            m.searchKeyboard.setFocus(false)
+            m.searchKeyboardDialog.setFocus(false)
+            m.searchHistoryBox.setFocus(false)
+            m.searchHistoryDialog.setFocus(false)
+            m.categorySelector.jumpToItem = 0
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1 '[selector]
+          end if
+          if m.focusedItem = 1
+            m.moveAttemptsRow = 0
+          else
+            m.moveAttemptsRow = row
+          end if
         end if
+
         if m.focusedItem = 5 and m.errorText.visible = false 'History - Keyboard '[search history list]
           switchRow = m.searchHistoryBox.itemFocused
           if m.searchHistoryBox.itemFocused > 6
@@ -1968,10 +1980,10 @@ sub search()
     end if
     ?"======SEARCH======"
     SetRegistry("searchHistoryRegistry", "searchHistory", FormatJSON(m.searchHistoryItems))
-    if m.searchKeyboardDialog.itemSelected = 1
+    if m.searchKeyboardDialog.itemSelected = 0
       ?"video search"
       m.searchType = "video"
-    else if m.searchKeyboardDialog.itemSelected = 0 or m.searchKeyboardDialog.itemSelected = -1
+    else if m.searchKeyboardDialog.itemSelected = 1 or m.searchKeyboardDialog.itemSelected = -1
       ?"channel search"
       m.searchType = "channel"
     end if
