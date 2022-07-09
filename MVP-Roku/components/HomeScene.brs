@@ -929,7 +929,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           if m.categorySelector.itemFocused > 0 AND m.uiLayer = 0
             ? "CATEGORY REFRESH"
             if m.categorySelector.itemFocused = 1 and m.wasLoggedIn 'update favorites
-              m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+              m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
               m.favoritesThread.observeField("output", "gotFavorites")
               m.favoritesThread.control = "RUN"
             else

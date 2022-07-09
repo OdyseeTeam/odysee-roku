@@ -32,9 +32,15 @@ function getLivestreamsBatch(claimIDs, liveData, liveIDs)
                 ? formatJson(livestreamClaimQuery)
                 liveClaims = livestreamclaimquery["result"]["items"]
                 if liveIDs.Count() = liveClaims.Count()
-                    for i = 0 to liveIDs.Count() - 1
-                        livestreams.push(parseLiveData(liveIDs[i], liveData[i], liveClaims[i]))
+                    liveClaimsIndexed = {}
+                    for each claim in liveclaims
+                        liveClaimsIndexed.addReplace(claim.claim_id, claim)
                     end for
+                    for each claim in livedata
+                        livestreams.push(parseLiveData(claim["ChannelClaimID"],claim,liveClaimsIndexed[claim["ActiveClaim"]["ClaimID"]]))
+                    end for
+                    liveClaimsIndexed = invalid
+                    claim = invalid
                 end if
             end if
         end if
