@@ -144,17 +144,26 @@ sub master()
         m.top.output = { authorized: false, state: "INVALID", debug: authreq }
     end if
     if m.top.authPhase = 10 'User wants to log out.
-        'https://stackoverflow.com/a/46769801 really helped me out with this
-        json = { refresh_token: m.top.refreshToken: client_id: m.top.constants["SSO_CLIENT"] }
         accountRoot = m.top.constants["ROOT_SSO"] + ""
-        authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/logout", { "Authorization": "Bearer " + m.top.accessToken })
-        ? json
+        revokeRefreshReq = postURLEncoded({token:m.top.refreshToken:token_type_hint:"refresh_token":client_id:m.top.constants["SSO_CLIENT"]}, accountRoot + "/auth/realms/Users/protocol/openid-connect/revoke", { "Authorization": "Bearer " + m.top.accessToken })
+        revokeAccessReq = postURLEncoded({token:m.top.accessToken:token_type_hint:"access_token":client_id:m.top.constants["SSO_CLIENT"]}, accountRoot + "/auth/realms/Users/protocol/openid-connect/revoke", { "Authorization": "Bearer " + m.top.accessToken })
         ? accountRoot
-        ? formatJson(authreq)
-        m.top.accessToken = ""
-        m.top.refreshToken = ""
-        m.top.authPhase = 1
-        m.top.output = { authorized: false, state: "LOGOUT", debug: authreq }
+        ? formatJson(revokeRefreshReq)
+        ? formatJson(revokeAccessReq)
+        logOutSuccess = false
+        if isValid(revokeAccessReq.error)
+            if revokeAccessReq.error = "invalid_token"
+                m.top.accessToken = ""
+                m.top.refreshToken = ""
+                m.top.authPhase = 1
+                logOutSuccess = true
+                m.top.output = { authorized: false, state: "LOGOUT", debug: {refresh:revokeRefreshReq:access:revokeAccessReq} }
+            end if
+        end if
+        if logOutSuccess = false
+            'assume SSO is being bad (non-rfc7009 compliant), so don't bother using it anymore.
+            m.top.authPhase = 1.5 'BAD_SSO
+        end if
     end if
 end sub
 
