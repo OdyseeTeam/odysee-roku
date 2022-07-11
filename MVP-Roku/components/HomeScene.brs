@@ -136,7 +136,7 @@ sub init()
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
   observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID": "authtoken": "gotAuth": "cookies": "gotCookies" })
-  observeFields("syncLoop", { "inSync": "gotSync":"preferencesChanged":"preferencesChanged":"oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
+  observeFields("syncLoop", { "inSync": "gotSync": "preferencesChanged": "preferencesChanged": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
   m.preferences = {} ' user preferences (blocked, following, collections)
@@ -418,6 +418,8 @@ sub gotCIDS()
           thread.observeField("output", "threadDone")
           m.threads.push(thread)
           m.favoritesLoaded = true 'favorites were loaded because user is logged in
+        else
+          m.favoritesLoaded = false
         end if
       end if
     end if
@@ -534,7 +536,7 @@ sub threadDone(msg as object)
         thread.control = "RUN"
         m.runningthreads.Push(thread)
       else
-        if m.authTask.authPhase > 0 AND m.runningThreads.count() = 0
+        if m.authTask.authPhase > 0 and m.runningThreads.count() = 0
           ?m.categories
           ?m.categories[m.categories.Keys()[0]]
           ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
@@ -561,6 +563,9 @@ sub finishInit()
   m.sidebarBackground.visible = true
   m.odyseeLogo.visible = true
   m.videoGrid.visible = true
+  m.loadingText.translation = "[150,0]"
+  m.loadingText.vertAlign = "center"
+  m.loadingText.horizAlign = "center"
   if m.favoritesLoaded
     m.categorySelector.jumpToItem = 1
   else
@@ -931,12 +936,14 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "replay"
         if m.focusedItem = 2 '[video grid]
-          if m.categorySelector.itemFocused > 0 AND m.uiLayer = 0
+          if m.categorySelector.itemFocused > 0 and m.uiLayer = 0
             ? "CATEGORY REFRESH"
             if m.categorySelector.itemFocused = 1 and m.wasLoggedIn 'update favorites
-              m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
-              m.favoritesThread.observeField("output", "gotFavorites")
-              m.favoritesThread.control = "RUN"
+              if m.preferences.following.Count() > 0
+                m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+                m.favoritesThread.observeField("output", "gotFavorites")
+                m.favoritesThread.control = "RUN"
+              end if
             else
               trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
               ? "would refresh " + trueName
@@ -978,7 +985,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               'excludedChannelIds = invalid
             end if
 
-          'This does the same thing as the Back button, so extract the subcomponents for moving up a layer for a regular category and search if this ever needs to be fixed.
+            'This does the same thing as the Back button, so extract the subcomponents for moving up a layer for a regular category and search if this ever needs to be fixed.
           else if m.uiLayer > 0
             ?"popping layer"
             if m.uiLayers.Count() > 0 'is there more than one UI layer?
@@ -996,10 +1003,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                   end if
                 end if
                 m.uiLayer -= 1
-                if m.uiLayer = 0 AND m.categorySelector.itemFocused = 0
+                if m.uiLayer = 0 and m.categorySelector.itemFocused = 0
                   showCategorySelector()
                   backToKeyboard()
-                else if m.uiLayer = 0 AND m.categorySelector.itemFocused > 0
+                else if m.uiLayer = 0 and m.categorySelector.itemFocused > 0
                   showCategorySelector()
                   trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
                   m.videoGrid.content = m.categories[trueName]
@@ -1064,6 +1071,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.oauthLogoutButton.setFocus(false)
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
+          else if m.categorySelector.itemFocused = 1
+            m.oauthLogoutButton.setFocus(false)
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1 '[selector]
           end if
         end if
       end if
@@ -1093,7 +1104,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         end if
 
         if m.focusedItem = 3 '[search keyboard]  OR m.focusedItem = 4 '[confirm search]  'Exit (Keyboard/Search Button -> Bar)
-          row = Int(m.searchKeyboardGrid.currFocusRow)+1
+          row = Int(m.searchKeyboardGrid.currFocusRow) + 1
           if row = m.moveAttemptsRow
             ErrorDismissed()
             m.searchKeyboard.setFocus(false)
@@ -1137,6 +1148,12 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchKeyboardDialog.setFocus(true)
           m.focusedItem = 4 '[confirm search]
         end if
+
+        if m.focusedItem = 8 and m.favoritesLoaded = false and m.categorySelector.itemFocused = 1
+          m.oauthLogoutButton.setFocus(false)
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+        end if
       end if
 
       if key = "right"
@@ -1152,6 +1169,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.categorySelector.setFocus(false)
           m.videoGrid.setFocus(true)
           m.focusedItem = 2 '[video grid]
+        else if m.categorySelector.itemFocused = 1 and m.oauthLogoutButton.visible = true
+          m.videoGrid.setFocus(false)
+          m.oauthLogoutButton.setFocus(true)
+          m.focusedItem = 8 '[oauth logout button]
         else if m.categorySelector.itemFocused > 1 and m.focusedItem <> 7
           m.categorySelector.setFocus(false)
           m.videoGrid.setFocus(true)
@@ -1247,6 +1268,9 @@ sub categorySelectorFocusChanged(msg)
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
       if m.authTask.authPhase = 3
+        if m.preferences.following.Count() = 0
+          m.favoritesLoaded = false
+        end if
         if m.favoritesLoaded
           if m.favoritesUIFlag = false
             m.videoGrid.visible = false
@@ -1258,6 +1282,11 @@ sub categorySelectorFocusChanged(msg)
             m.loadingText.visible = false
             m.oauthLogoutButton.visible = true
           end if
+        else
+          m.videoGrid.visible = false
+          m.loadingText.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
+          m.loadingText.visible = true
+          m.oauthLogoutButton.visible = true
         end if
       else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
         m.videoGrid.visible = false
@@ -2366,6 +2395,7 @@ sub Logout()
   m.wasLoggedIn = false
   m.favoritesUIFlag = false
   m.favoritesLoaded = false
+  m.loadingText.visible = false
   m.syncLoop.control = "STOP"
   m.syncLoopTimer.unobserveField("fire")
   m.syncTimerObserved = false
@@ -2467,7 +2497,7 @@ sub gotSync(msg as object)
 end sub
 
 sub preferencesChanged()
-  if m["syncloop"]["inSync"] AND m["syncloop"]["preferencesChanged"]
+  if m["syncloop"]["inSync"] and m["syncloop"]["preferencesChanged"]
     getUserPrefs()
     m["syncloop"]["preferencesChanged"] = false
   end if
@@ -2514,7 +2544,7 @@ sub gotUserPrefs()
       end if
     end for
   end if
-  if m.favoritesThread.state = "init" and favoritesChanged or m.favoritesThread.state = "stop" and favoritesChanged
+  if m.favoritesThread.state = "init" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0 or m.favoritesThread.state = "stop" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0
     m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
@@ -2682,19 +2712,21 @@ sub follow(channelID)
 end sub
 
 sub unFollow(channelID)
-  ? "attempting to unfollow "+channelID
+  ? "attempting to unfollow " + channelID
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
-  for i = 0 to m.preferences.following.Count() - 1
-    if m.preferences.following[i] = channelID
-      m.preferences.following.Delete(i)
-    end if
-  end for
-  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
-  m.favoritesThread.observeField("output", "gotFavorites")
-  m.favoritesThread.control = "RUN"
+  if m.preferences.following.Count() > 0
+    for i = 0 to m.preferences.following.Count() - 1
+      if m.preferences.following[i] = channelID
+        m.preferences.following.Delete(i)
+      end if
+    end for
+    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
+    m.favoritesThread.observeField("output", "gotFavorites")
+    m.favoritesThread.control = "RUN"
+  end if
 end sub
 
 sub setPrefStateChanged()
