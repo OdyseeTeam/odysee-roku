@@ -61,32 +61,15 @@ sub master()
         ' Then you poll the token endpoint with the returned device_code to get an access token.
         'https://sso.odysee.com/auth/realms/Users/protocol/openid-connect/token
         ?"authphase is 1: begin new auth"
-        accountRoot = m.top.constants["ROOT_SSO"] + ""
-        json = { response_type: "device_code": client_id: m.top.constants["SSO_CLIENT"] }
-        authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/auth/device", {})
-        if isValid(authreq.error)
-            'BAD SSO.
-            'If we can't grab a device code, don't bother with further authentication.
-            m.top.authPhase = 1.5
-        else if authreq.user_code <> ""
-            m.top.verifyURL = authreq.verification_uri
-            m.top.deviceCode = authreq.device_code
-            m.top.userCode = authreq.user_code
-            ?authreq.expires_in
-            ?"Interval is (TIMER/authtask):"
-            ?authreq.interval
-            m.authTimer.duration = authreq.interval + 1
-            m.authTimer.control = "start"
-            ?authreq.verification_uri_complete
-            m.top.authPhase = 2
-        else
-            STOP 'something went wrong!
-        end if
+        initOAuthTokenBase()
     else if m.top.authPhase = 1 and m.top.refreshToken <> ""
         ?"got a valid Refresh Token from Registry"
         m.authTimer.duration = 10
         m.authTimer.control = "start"
         checkRefresh()
+    end if
+    if m.top.authPhase = 1.4 'Post-Logout Token Init
+        initOAuthTokenBase()
     end if
     if m.top.authPhase = 1.5 'SSO has denied the application. Continue running anyway.
         m.top.badSSO = true
@@ -104,7 +87,7 @@ sub master()
                 else if authreq.error = "authorization_pending"
                     m.top.output = { authorized: false, state: "PENDING", debug: authreq }
                 else if authreq.error = "invalid_grant" or authreq.error = "expired_token" 'https://datatracker.ietf.org/doc/html/draft-ietf-oauth-device-flow-15#section-3.5
-                    m.top.authPhase = 1
+                    m.top.authPhase = 1.4
                     m.top.output = { authorized: false, state: "INVALID", debug: authreq }
                 else
                     m.top.output = authreq
@@ -142,13 +125,13 @@ sub master()
         ?"Inside forced logout phase"
         m.top.accessToken = ""
         m.top.refreshToken = ""
-        m.top.authPhase = 1
+        m.top.authPhase = 1.4
         m.top.output = { authorized: false, state: "INVALID", debug: authreq }
     end if
     if m.top.authPhase = 10 'User wants to log out.
         accountRoot = m.top.constants["ROOT_SSO"] + ""
-        revokeRefreshReq = postURLEncoded({token:m.top.refreshToken:token_type_hint:"refresh_token":client_id:m.top.constants["SSO_CLIENT"]}, accountRoot + "/auth/realms/Users/protocol/openid-connect/revoke", { "Authorization": "Bearer " + m.top.accessToken })
-        revokeAccessReq = postURLEncoded({token:m.top.accessToken:token_type_hint:"access_token":client_id:m.top.constants["SSO_CLIENT"]}, accountRoot + "/auth/realms/Users/protocol/openid-connect/revoke", { "Authorization": "Bearer " + m.top.accessToken })
+        revokeRefreshReq = postURLEncoded({ token: m.top.refreshToken: token_type_hint: "refresh_token": client_id: m.top.constants["SSO_CLIENT"] }, accountRoot + "/auth/realms/Users/protocol/openid-connect/revoke", { "Authorization": "Bearer " + m.top.accessToken })
+        revokeAccessReq = postURLEncoded({ token: m.top.accessToken: token_type_hint: "access_token": client_id: m.top.constants["SSO_CLIENT"] }, accountRoot + "/auth/realms/Users/protocol/openid-connect/revoke", { "Authorization": "Bearer " + m.top.accessToken })
         ? accountRoot
         ? formatJson(revokeRefreshReq)
         ? formatJson(revokeAccessReq)
@@ -157,15 +140,37 @@ sub master()
             if revokeAccessReq.error = "invalid_token"
                 m.top.accessToken = ""
                 m.top.refreshToken = ""
-                m.top.authPhase = 1
+                m.top.authPhase = 1.4
                 logOutSuccess = true
-                m.top.output = { authorized: false, state: "LOGOUT", debug: {refresh:revokeRefreshReq:access:revokeAccessReq} }
+                m.top.output = { authorized: false, state: "LOGOUT", debug: { refresh: revokeRefreshReq: access: revokeAccessReq } }
             end if
         end if
         if logOutSuccess = false
             'assume SSO is being bad (non-rfc7009 compliant), so don't bother using it anymore.
             m.top.authPhase = 1.5 'BAD_SSO
         end if
+    end if
+end sub
+
+sub initOAuthTokenBase()
+    accountRoot = m.top.constants["ROOT_SSO"] + ""
+    json = { response_type: "device_code": client_id: m.top.constants["SSO_CLIENT"] }
+    authreq = postURLEncoded(json, accountRoot + "/auth/realms/Users/protocol/openid-connect/auth/device", {})
+    if isValid(authreq.error)
+        'BAD SSO.
+        'If we can't grab a device code, don't bother with further authentication.
+        m.top.authPhase = 1.5
+    else if authreq.user_code <> ""
+        m.top.verifyURL = authreq.verification_uri
+        m.top.deviceCode = authreq.device_code
+        m.top.userCode = authreq.user_code
+        ?authreq.expires_in
+        ?"Interval is (TIMER/authtask):"
+        ?authreq.interval
+        m.authTimer.duration = authreq.interval + 1
+        m.authTimer.control = "start"
+        ?authreq.verification_uri_complete
+        m.top.authPhase = 2
     end if
 end sub
 
@@ -186,7 +191,6 @@ sub checkRefresh()
                     m.top.authPhase = 4
                     m.top.accessToken = ""
                     m.top.refreshToken = ""
-                    m.top.authPhase = 1
                     m.top.output = { authorized: false, state: "INVALID", debug: authreq }
                 end if
             end if
@@ -210,7 +214,6 @@ sub checkRefresh()
             m.top.authPhase = 4
             m.top.accessToken = ""
             m.top.refreshToken = ""
-            m.top.authPhase = 1
             m.top.output = { authorized: false, state: "INVALID", debug: authreq }
         end try
     else

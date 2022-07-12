@@ -317,6 +317,10 @@ sub authPhaseChanged(msg as object)
       m.authTask.control = "RUN"
       ?"Task Restarted"
     end if
+    if data = 1.4
+      ?"Phase 1.4 (Post forced-logout)"
+      m.authTask.control = "RUN"
+    end if
     if data = 1
       ?"Phase 1 (Legacy Authenticated)"
       if m.syncTimerObserved = true
@@ -1267,7 +1271,7 @@ sub categorySelectorFocusChanged(msg)
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
       if m.authTask.authPhase = 3
-        if m.preferences.following.Count() = 0
+        if m.preferences.Count() = 0 AND m.wasLoggedIn OR isValid(m.preferences.following) AND m.preferences.following.Count() = 0 AND m.wasLoggedIn
           m.favoritesLoaded = false
         end if
         if m.favoritesLoaded
@@ -1287,8 +1291,14 @@ sub categorySelectorFocusChanged(msg)
           m.loadingText.visible = true
           m.oauthLogoutButton.visible = true
         end if
+      else if m.preferences.Count() = 0 AND m.wasLoggedIn
+        m.videoGrid.visible = false
+        m.loadingText.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
+        m.loadingText.visible = true
+        m.oauthLogoutButton.visible = true
       else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
         m.videoGrid.visible = false
+        m.loadingText.visible = false
         m.oauthLogoutButton.visible = false
         m.oauthHeader.visible = true
         m.oauthCode.visible = true
@@ -2568,7 +2578,9 @@ sub gotCategoryRefresh(msg as object)
       thread.unObserveField("output")
       thread.control = "STOP"
       m.favoritesUIFlag = true
-      m.favoritesLoaded = true
+      if thread.rawname = "FAVORITES"
+        m.favoritesLoaded = true
+      end if
       ?m.focusedItem
       ?m.categorySelector.itemFocused
       if m.focusedItem = 1 and m.uiLayer = 0 or m.focusedItem = 2 and m.uiLayer = 0
