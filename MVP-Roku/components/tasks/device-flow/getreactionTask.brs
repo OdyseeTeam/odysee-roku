@@ -15,19 +15,7 @@ sub master()
     '7. set w/preferences_get+new data
     '8. call sync_apply
     '9. then call sync_set+new data from sync_apply
-    if isValid(m.top.accessToken)
-        if Type(m.top.accessToken) = "roString"
-            if m.top.accessToken <> ""
-                m.top.reactions = get_reactions()
-            end if
-        end if
-    else if isValid(m.top.authToken)
-        if Type(m.top.authToken) = "roString"
-            if m.top.authToken <> ""
-                m.top.reactions = get_reactions()
-            end if
-        end if
-    end if
+    m.top.reactions = get_reactions()
 end sub
 
 function get_reactions()
@@ -56,46 +44,28 @@ function get_reactions()
     '      }
     '    }
     '  }
-    if isValid(m.top.accessToken) ' logged in
-        if Type(m.top.accessToken) = "roString"
-            if m.top.accessToken <> ""
-                rawreactions = postURLEncoded({"claim_ids": m.top.claimID},m.top.constants["ROOT_API"]+"/reaction/list", { "Authorization": "Bearer " + m.top.accessToken })
-                mylikes = rawreactions.data.my_reactions[m.top.claimID]["like"]
-                mydislikes = rawreactions.data.my_reactions[m.top.claimID]["dislike"]
-                otherlikes = rawreactions.data.others_reactions[m.top.claimID]["like"]
-                otherdislikes = rawreactions.data.others_reactions[m.top.claimID]["dislike"]
-                return {mine: {likes: mylikes, dislikes: mydislikes}, total: {likes: otherlikes, dislikes: otherdislikes}}
-            end if
-        end if
-    else if isValid(m.top.authToken) ' not logged in
-        if Type(m.top.authToken) = "roString"
-            if m.top.authToken <> ""
-                rawreactions = postURLEncoded({"claim_ids": m.top.claimID, "auth_token": m.top.authToken},m.top.constants["ROOT_API"]+"/reaction/list", {})
-                otherlikes = rawreactions.data.others_reactions[m.top.claimID]["like"]
-                otherdislikes = rawreactions.data.others_reactions[m.top.claimID]["dislike"]
-                return {mine: {likes: 0, dislikes: 0}, total: {likes: otherlikes, dislikes: otherdislikes}}
-            end if
-        end if
+    reactionHeaders = {}
+    reactionQuery = {}
+    if m.top.accessToken <> ""
+        reactionHeaders = { "Authorization": "Bearer " + m.top.accessToken }
+        reactionQuery = { "claim_ids": m.top.claimID }
+    else if m.top.authToken <> ""
+        rawreactions = postURLEncoded({ "claim_ids": m.top.claimID, "auth_token": m.top.authToken }, m.top.constants["ROOT_API"] + "/reaction/list", {})
+        reactionHeaders = {}
+        reactionQuery = { "claim_ids": m.top.claimID, "auth_token": m.top.authToken }
     end if
-end function
-
-function string_deduplicate(array)
-    if Type(array) <> "roArray"
-        ?"ERROR: must be roArray"
-        return ["error"]
+    if reactionHeaders.Count() = 0 and reactionQuery.Count() = 0
+        return { mine: { likes: 0, dislikes: 0 }, total: { likes: 0, dislikes: 0 } } 'default to no data instead of crashing
+    end if
+    rawreactions = postURLEncoded(reactionQuery, m.top.constants["ROOT_API"] + "/reaction/list", reactionHeaders)
+    otherlikes = rawreactions.data.others_reactions[m.top.claimID]["like"]
+    otherdislikes = rawreactions.data.others_reactions[m.top.claimID]["dislike"]
+    if isValid(rawreactions.data.my_reactions)
+        mylikes = rawreactions.data.my_reactions[m.top.claimID]["like"]
+        mydislikes = rawreactions.data.my_reactions[m.top.claimID]["dislike"]
     else
-        deduper = {}
-        deduparray = []
-        for each item in array
-            if type(item) <> "roString"
-                ?"ERROR: must be an array of roStrings"
-                return ["error"]
-            else
-                deduper.addReplace(item, "")
-            end if
-        end for
-        deduparray.append(deduper.Keys())
-        deduper = invalid
-        return deduparray
+        mylikes = 0
+        mydislikes = 0
     end if
+    return { mine: { likes: mylikes, dislikes: mydislikes }, total: { likes: otherlikes, dislikes: otherdislikes } }
 end function

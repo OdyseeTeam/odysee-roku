@@ -164,12 +164,11 @@ sub init()
   m.searchHistoryRegistry = CreateObject("roRegistrySection", "searchHistory") 'Search History
 
   'Get current (older non-token) auth
-  if IsValid(GetRegistry("authRegistry", "uid")) and IsValid(GetRegistry("authRegistry", "authtoken")) and IsValid(GetRegistry("authRegistry", "cookies"))
+  if IsValid(GetRegistry("authRegistry", "uid")) and IsValid(GetRegistry("authRegistry", "authtoken"))
     ?"found current account with UID" + GetRegistry("authRegistry", "uid")
     m.uid = StrToI(GetRegistry("authRegistry", "uid"))
     m.authToken = GetRegistry("authRegistry", "authtoken")
-    m.cookies = ParseJSON(GetRegistry("authRegistry", "cookies"))
-    m.authTask.setFields({ uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.authTask.setFields({ uid: m.uid, authtoken: m.authtoken})
   end if
   if IsValid(GetRegistry("preferencesRegistry", "loggedIn")) and IsValid(GetRegistry("preferencesRegistry", "preferences")) 'Get user preferences (if they exist)
     ?"found preferences" + GetRegistry("preferencesRegistry", "preferences")
@@ -2288,7 +2287,7 @@ sub hideCategorySelector()
 end sub
 
 sub showCategorySelector()
-  if isValid(m.categorySelector.content)
+  if isValid(m.categorySelector.content) AND m.loadingBackground.visible = false
     m.videoGrid.translation = [210, 120]
     m.categorySelector.visible = true
     m.sidebarTrim.visible = true

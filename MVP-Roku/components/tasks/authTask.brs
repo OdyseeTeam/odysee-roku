@@ -13,7 +13,7 @@ sub master()
         userAPI = m.top.constants["ROOT_API"] + "/user"
         new = userAPI + "/new"
         existing = userAPI + "/me"
-        currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, { "Authorization": "Bearer " + m.top.accessToken })
+        currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, {})
         ?currentUserStatus
         if isValid(currentUserStatus)
             if currentUserStatus.success
@@ -22,7 +22,7 @@ sub master()
                 m.top.legacyAuthorized = true
                 m.top.authPhase = 1
             else
-                ?"FAILURE!"
+                ?"FAILURE! (no legacy accessToken stored!)"
                 newUserData = parseJSON(getRawText(new))
                 currentUserStatus = getURLEncoded({ auth_token: newUserData.data.auth_token.Trim() }, existing, [])
                 if currentUserStatus.success = false
@@ -68,7 +68,7 @@ sub master()
             'BAD SSO.
             'If we can't grab a device code, don't bother with further authentication.
             m.top.authPhase = 1.5
-        else
+        else if authreq.user_code <> ""
             m.top.verifyURL = authreq.verification_uri
             m.top.deviceCode = authreq.device_code
             m.top.userCode = authreq.user_code
@@ -79,6 +79,8 @@ sub master()
             m.authTimer.control = "start"
             ?authreq.verification_uri_complete
             m.top.authPhase = 2
+        else
+            STOP 'something went wrong!
         end if
     else if m.top.authPhase = 1 and m.top.refreshToken <> ""
         ?"got a valid Refresh Token from Registry"

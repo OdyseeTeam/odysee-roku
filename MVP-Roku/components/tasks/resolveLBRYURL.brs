@@ -35,21 +35,25 @@ function siteMethod(lbry_url)
     resolveRequestJSON = FormatJson({ "jsonrpc": "2.0", "method": "resolve", "params": { "urls": [lbry_url], "include_purchase_receipt": false, "include_is_my_output": false } })
     resolveRequestURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=resolve"
     resolveRequestOutput = postJSON(resolveRequestJSON, resolveRequestURL, invalid)
-    if m.global.constants.enableStatistics and isValid(m.top.accessToken)
+    if m.global.constants.enableStatistics
+        vTXID = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["txid"]
+        vNOUT = resolverequestoutput["result"][resolveRequestOutput["result"].Keys()[0]]["nout"]
+        vCLAIMID = resolverequestoutput["result"][resolveRequestOutput["result"].Keys()[0]]["claim_id"]
+        outpoint = vTXID + ":" + vNOUT.ToStr()
+        fileViewURL = m.top.constants["ROOT_API"] + "/file/view"
+
+        'uri: lbryURL
+        'outpoint: resolve TXID+":"+resolve NOUT
+        'claim_id: claimID
         if m.top.accessToken <> ""
-            vTXID = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["txid"]
-            vNOUT = resolverequestoutput["result"][resolveRequestOutput["result"].Keys()[0]]["nout"]
-            vCLAIMID = resolverequestoutput["result"][resolveRequestOutput["result"].Keys()[0]]["claim_id"]
-            outpoint = vTXID + ":" + vNOUT.ToStr()
-            fileViewURL = m.top.constants["ROOT_API"] + "/file/view"
-            'uri: lbryURL
-            'outpoint: resolve TXID+":"+resolve NOUT
-            'claim_id: claimID
             reqData = {uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID}
             reqHeaders = { "Authorization": "Bearer " + m.top.accessToken }
-            fileViewRequest = getURLEncoded(reqData, fileViewURL, reqHeaders)
-            '? FormatJson(fileViewRequest)
+        else if m.top.authToken <> ""
+            reqData = {uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID, "auth_token": m.top.authToken}
+            reqHeaders = {}
         end if
+        fileViewRequest = getURLEncoded(reqData, fileViewURL, reqHeaders)
+        
     end if
     vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
     vresolvedRedirectURL = resolveRedirect(vurl.EncodeUri())
