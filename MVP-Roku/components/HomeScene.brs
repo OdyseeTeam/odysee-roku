@@ -239,6 +239,7 @@ sub gotConstants()
     retryError("Error getting constants from Github", "Please e-mail help@odysee.com.", "retryConstants")
   else
     m.constants = m.constantsTask.constants
+    m.oauthFooter.text = "at "+m.constants["SSO_ACT_URL"]
     m.authTask.setField("constants", m.constants)
     m.getpreferencesTask.setField("constants", m.constants)
     m.setpreferencesTask.setField("constants", m.constants)

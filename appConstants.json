@@ -13,6 +13,7 @@
     "VIDEO_API": "https://cdn.lbryplayer.xyz",
     "WATCHMAN": "https://watchman.na-backend.odysee.com",
     "ROOT_SSO": "https://sso.odysee.com",
+    "SSO_ACT_URL": "activate.odysee.com",
     "SSO_CLIENT": "odysee-roku",
     "ROOT_SDK": "https://api.na-backend.odysee.com",
     "FRONTPAGE_URL": "https://kp.odysee.com/$/api/content/v2/get?format=roku",

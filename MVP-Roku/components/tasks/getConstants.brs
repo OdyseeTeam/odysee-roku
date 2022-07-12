@@ -30,5 +30,8 @@ sub master()
             "Access-Control-Allow-Origin": "https://odysee.com/"
         }
     end if
+    if isValid(globalAPIConstants["SSO_ACT_URL"]) = false
+        globalAPIConstants["SSO_ACT_URL"] = "activate.odysee.com"
+    end if
     m.top.constants = globalAPIConstants
 end sub
