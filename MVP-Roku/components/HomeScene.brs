@@ -2288,14 +2288,16 @@ sub hideCategorySelector()
 end sub
 
 sub showCategorySelector()
-  m.videoGrid.translation = [210, 120]
-  m.categorySelector.visible = true
-  m.sidebarTrim.visible = true
-  m.sidebarBackground.visible = true
-  if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
-    m.categorySelectorEndIndicator.visible = true
-  else
-    m.categorySelectorEndIndicator.visible = false
+  if isValid(m.categorySelector.content)
+    m.videoGrid.translation = [210, 120]
+    m.categorySelector.visible = true
+    m.sidebarTrim.visible = true
+    m.sidebarBackground.visible = true
+    if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
+      m.categorySelectorEndIndicator.visible = true
+    else
+      m.categorySelectorEndIndicator.visible = false
+    end if
   end if
 end sub
 
