@@ -23,24 +23,3 @@ sub master()
         end if
     end if
 end sub
-
-function string_deduplicate(array)
-    if Type(array) <> "roArray"
-        ?"ERROR: must be roArray"
-        return ["error"]
-    else
-        deduper = {}
-        deduparray = []
-        for each item in array
-            if type(item) <> "roString"
-                ?"ERROR: must be an array of roStrings"
-                return ["error"]
-            else
-                deduper.addReplace(item, "")
-            end if
-        end for
-        deduparray.append(deduper.Keys())
-        deduper = invalid
-        return deduparray
-    end if
-end function
