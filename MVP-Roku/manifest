@@ -1,7 +1,7 @@
 title=Odysee
 major_version=1
 minor_version=0
-build_version=4
+build_version=5
 mm_icon_focus_hd=pkg:/images/channel-poster-current-hd.png
 mm_icon_focus_sd=pkg:/images/channel-poster-current-sd.png
 splash_screen_hd=pkg:/images/channel-splash-hd.png
