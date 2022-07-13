@@ -50,6 +50,58 @@ function getLivestreamsBatch(claimIDs, liveData, liveIDs)
     return livestreams
 end function
 
+function getLiveDataFromCIDS(included_cids)
+    try
+        cidMap = {}
+        if included_cids.Count() > 0
+            for each channelID in included_cids
+                cidMap.addReplace(channelID, true)
+            end for
+        end if
+        'https://api.odysee.live/livestream/all
+        livestreamData = getJSON(m.top.constants["NEW_LIVE_API"] + "/all")
+        livestreamIDs = []
+        livestreamClaims = []
+        rawLivestreamData = []
+        if isValid(livestreamData["data"])
+            if livestreamData["data"].Count() > 0
+                livestreamData["data"].sortBy("ViewerCount", "r")
+                numLiveItems = 0
+                i = 0
+                while true
+                    if isValid(livestreamData["data"][i])
+                        CCID = livestreamData["data"][i]["ChannelClaimID"]
+                        if isValid(cidMap[CCID])
+                            livestreamIDs.push(CCID)
+                            livestreamClaims.push(livestreamData["data"][i]["ActiveClaim"]["ClaimID"])
+                            rawLivestreamData.push(livestreamData["data"][i])
+                            numLiveItems += 1
+                        end if
+                        CCID = invalid
+                        'if numLiveItems = 8
+                        '    exit while
+                        'end if
+                        i += 1
+                    else
+                        exit while
+                    end if
+                end while
+                cidMap = invalid
+                livestreamData = invalid
+                numLiveItems = invalid
+                i = invalid
+                return { liveIDs: livestreamIDs, liveData: rawLivestreamData, claimIDs: livestreamClaims }
+            else
+                return false
+            end if
+        else
+            return false
+        end if
+    catch e
+        return false
+    end try
+end function
+
 function getLivestreamChannelList(excluded_cids) 'creates a preformatted+sorted channel IDs list from the livestream endpoint
     try
         cidMap = {}

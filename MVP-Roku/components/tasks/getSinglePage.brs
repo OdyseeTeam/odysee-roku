@@ -35,12 +35,11 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     potentiallyLiveUsers = channels
     if m.top.resolveLivestreams 'we have to resolve livestreams now, apparently.
         if isValid(potentiallyLiveUsers)
-            for each channel in potentiallyLiveUsers
-                streamStatus = getLivestream(channel)
-                if streamStatus.success = true
-                    result.push(streamStatus.liveItem)
-                end if
-            end for
+            liveData = getLiveDataFromCIDS(potentiallyLiveUsers)
+            allStreams = getLivestreamsBatch(liveData.claimIDs, liveData.liveData, liveData.liveIDs)
+            if allStreams.Count() > 0
+                result.Append(allStreams)
+            end if
         else
             liveData = getLivestreamChannelList(blockedChannels)
             allStreams = getLivestreamsBatch(liveData.claimIDs, liveData.liveData, liveData.liveIDs)
