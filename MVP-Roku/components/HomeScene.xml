@@ -92,7 +92,7 @@
 
 	<Button id="warningbutton" textcolor="#ffffff" minwidth="300" height="64" text="OK" showFocusFootprint="true" translation="[300,286]" visible="false"/>
     
-    <Label id="oauth-header" font="font:Inter-Emoji" color="#ffffff" width="1920" height="80" text="Enter" horizAlign = "center" vertAlign = "center" translation="[100,460]" visible="false">
+    <Label id="oauth-header" font="font:Inter-Emoji" color="#ffffff" width="1920" height="400" text="Enter" wrap="true" horizAlign = "center" vertAlign = "top" translation="[100,460]" visible="false">
 			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
 	</Label>
 

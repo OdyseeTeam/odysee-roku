@@ -292,8 +292,7 @@ sub authPhaseChanged(msg as object)
       end if
     end if
     if data = 2
-      m.loadingText.visible = false
-      m.loadingText.text = ""
+      m.oauthHeader.text = "Enter"
       ?"Phase 2"
       if m.legacyAuthenticated = false
         m.wasLoggedIn = false
@@ -358,6 +357,7 @@ sub authDone()
   if m.authTask.authPhase = 1
     m.authTask.control = "STOP"
   end if
+  m.loadingText.text = "Legacy Auth complete..."
   m.authTask.unobserveField("output")
   if m.authTask.error
     retryError("Error authenticating with Odysee", "Please e-mail help@odysee.com.", "retryAuth")
@@ -378,6 +378,7 @@ sub authDone()
     m.video.EnableCookies()
     m.video.SetHeaders(m.constants["ACCESS_HEADERS"])
     m.video.AddCookies(m.cookies)
+    m.loadingText.text = "Legacy Auth complete..."
     m.cidsTask.setField("constants", m.constants)
     m.cidsTask.control = "RUN"
   end if
@@ -523,6 +524,7 @@ sub threadDone(msg as object)
       end if
     else
       ?thread.rawname
+      m.loadingText.text = "Loading."+Str(m.runningThreads.Count())+" categories remain..."
       m.categories.addReplace(thread.rawname, thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"
@@ -562,6 +564,7 @@ sub threadDone(msg as object)
 end sub
 
 sub finishInit()
+  m.loadingText.text = "Loading...."
   m.InputTask.control = "RUN" 'run input task, since user input is now needed (UI)
   ?"init finished."
   m.header.visible = true
@@ -1274,13 +1277,12 @@ sub categorySelectorFocusChanged(msg)
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
       if m.authTask.authPhase = 3
-        if m.preferences.Count() = 0 AND m.wasLoggedIn OR isValid(m.preferences.following) AND m.preferences.following.Count() = 0 AND m.wasLoggedIn
+        if isValid(m.preferences.following) AND m.preferences.following.Count() = 0 AND m.wasLoggedIn
           m.favoritesLoaded = false
         end if
         if m.favoritesLoaded
           if m.favoritesUIFlag = false
             m.videoGrid.visible = false
-            m.loadingText.visible = true
             m.oauthLogoutButton.visible = true
           else
             m.videoGrid.content = m.categories["FAVORITES"]
@@ -1290,16 +1292,12 @@ sub categorySelectorFocusChanged(msg)
           end if
         else
           m.videoGrid.visible = false
-          m.loadingText.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
-          m.loadingText.visible = true
+          m.oauthHeader.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
+          m.oauthHeader.visible = true
           m.oauthLogoutButton.visible = true
         end if
-      else if m.preferences.Count() = 0 AND m.wasLoggedIn
-        m.videoGrid.visible = false
-        m.loadingText.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
-        m.loadingText.visible = true
-        m.oauthLogoutButton.visible = true
       else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
+        m.oauthHeader.text = "Enter"
         m.videoGrid.visible = false
         m.loadingText.visible = false
         m.oauthLogoutButton.visible = false
@@ -2033,10 +2031,10 @@ sub search()
     end if
     ?"======SEARCH======"
     SetRegistry("searchHistoryRegistry", "searchHistory", FormatJSON(m.searchHistoryItems))
-    if m.searchKeyboardDialog.itemSelected = 0
+    if m.searchKeyboardDialog.itemSelected = 0 or m.searchKeyboardDialog.itemSelected = -1
       ?"video search"
       m.searchType = "video"
-    else if m.searchKeyboardDialog.itemSelected = 1 or m.searchKeyboardDialog.itemSelected = -1
+    else if m.searchKeyboardDialog.itemSelected = 1
       ?"channel search"
       m.searchType = "channel"
     end if
@@ -2270,10 +2268,10 @@ end function
 sub historySearch()
   ?"======HISTORY SEARCH======"
   ?m.searchKeyboardDialog.itemFocused
-  if m.searchKeyboardDialog.itemFocused = 1
+  if m.searchKeyboardDialog.itemFocused = 0 or m.searchKeyboardDialog.itemFocused = -1
     ?"video search"
     m.searchType = "video"
-  else if m.searchKeyboardDialog.itemFocused = 0 or m.searchKeyboardDialog.itemFocused = -1
+  else if m.searchKeyboardDialog.itemFocused = 1
     ?"channel search"
     m.searchType = "channel"
   end if
@@ -2537,7 +2535,9 @@ sub gotUserPrefs()
     m.categorySelector.setFocus(true)
     m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
     m.videoGrid.visible = false
+    m.loadingText.text = "Loading following..."
     m.loadingText.visible = true
+    m.oauthHeader.visible = false
   end if
   setRegistry("preferencesRegistry", "preferences", FormatJson(m.getpreferencesTask.preferences))
   if m.legacyAuthenticated = false
@@ -2564,9 +2564,17 @@ sub gotUserPrefs()
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if
+  if isValid(m.getpreferencesTask.preferences.following)
+    if m.getpreferencesTask.preferences.following.Count() = 0 AND m.loadingBackground.visible = false
+      m.loadingText.visible = false
+      m.oauthHeader.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
+      m.oauthHeader.visible = true
+    end if
+  end if  
   favoritesChanged = invalid
   oldpreferences = invalid
   newpreferences = invalid
+  m.loadingText.text = "Loading..."
   m.preferences = m.getpreferencesTask.preferences
 end sub
 
