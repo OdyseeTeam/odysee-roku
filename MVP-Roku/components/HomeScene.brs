@@ -292,6 +292,8 @@ sub authPhaseChanged(msg as object)
       end if
     end if
     if data = 2
+      m.loadingText.visible = false
+      m.loadingText.text = ""
       ?"Phase 2"
       if m.legacyAuthenticated = false
         m.wasLoggedIn = false
@@ -1700,7 +1702,7 @@ sub resolveEvaluatedVideo(curItem)
   if m.wasLoggedIn
     m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: m.accessToken, cookies: m.cookies })
   else
-    m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: "", cookies: m.cookies })
+    m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: "", authToken: m.authToken, cookies: m.cookies })
   end if
   m.urlResolver.observeField("output", "playResolvedVideo")
   m.urlResolver.control = "RUN"
@@ -1709,6 +1711,7 @@ sub resolveEvaluatedVideo(curItem)
   m.videoGrid.visible = false
   m.loadingText.visible = true
   m.loadingText.text = "Resolving Video..."
+  ? "made it here"
 end sub
 
 sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
