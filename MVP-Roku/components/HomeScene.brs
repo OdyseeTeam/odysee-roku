@@ -1984,6 +1984,11 @@ function returnToUIPage()
   m.ws.unobserveField("thumbnailCache")
   m.ws.unobserveField("messageHeights")
   m.ws.unobserveField("superchat")
+  if m.videoContent.streamFormat = "hls"
+    m.reinitialize = false
+    m.ws.close = [1000, "livestreamStopped"]
+    m.ws.control = "STOP"
+  end if
   m.superChatBox.visible = false
   m.superChatBackground.visible = false
   m.chatBox.visible = false
@@ -1991,11 +1996,6 @@ function returnToUIPage()
   m.chatBox.text = ""
   m.superChatArray = []
   m.superChatBox.text = ""
-  if m.videoContent.streamFormat = "hls"
-    m.reinitialize = false
-    m.ws.close = [1000, "livestreamStopped"]
-    m.ws.control = "STOP"
-  end if
   m.videoOverlayGroup.visible = false
   m.videoUITimer.control = "stop"
   m.videoUITimer.unobserveField("fire")
@@ -2600,7 +2600,11 @@ sub gotCategoryRefresh(msg as object)
         m.oauthCode.visible = false
         m.oauthFooter.visible = false
         m.loadingText.visible = false
-        m.videoGrid.content = m.categories[thread.rawname]
+        truename = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
+        if thread.rawname = truename
+          m.videoGrid.content = m.categories[thread.rawname]
+        end if
+        truename = invalid
         m.videoGrid.visible = true
         m.videoGrid.setFocus(true)
         m.focusedItem = 2
@@ -2629,7 +2633,11 @@ sub gotFavorites(msg as object)
         m.oauthCode.visible = false
         m.oauthFooter.visible = false
         m.loadingText.visible = false
-        m.videoGrid.content = m.categories["FAVORITES"]
+        truename = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
+        if thread.rawname = truename
+          m.videoGrid.content = m.categories[thread.rawname]
+        end if
+        truename = invalid
         m.videoGrid.visible = true
         m.videoGrid.setFocus(true)
         m.focusedItem = 2

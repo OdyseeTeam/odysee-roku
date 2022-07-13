@@ -51,13 +51,13 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     ? "GetSinglePage,"+threadname+",livestreams," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     m.parseTimer.Mark()
     'STAGE 2: mass parse
+    currentPage = getVideoPage(curPage)
     while gotEnough = false
         if currentParsedAmount = lastParsedAmount AND curPage <> 1 OR currentParsedAmount >= max 'got no more/got enough
             gotEnough = true
             exit while
         end if
         lastParsedAmount = currentParsedAmount
-        currentPage = getVideoPage(curPage)
         'for each claim in currentPage
         '    ? claim
         'end for

@@ -29,6 +29,7 @@ sub master()
         dataItem = categorySelectordata.CreateChild("catselectordata")
         dataItem.posterUrl = "pkg:/images/png/Heart.png"
         dataItem.labelText = "Following"
+        dataItem.trueName = "FAVORITES"
         ?"Creating categories"
         legacyFormatFrontpageCIDS = {} 'until I change HomeScene.
         for each category in frontpageCIDS 'create categories for selector
