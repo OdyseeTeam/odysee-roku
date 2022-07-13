@@ -1,8 +1,4 @@
 <h1 align="center">Odysee Roku App DEVICE-FLOW BRANCH</h1>
-<div align="center">
-  <strong>THIS IS HIGHLY EXPERIMENTAL AND MAY BREAK YOUR ODYSEE WALLET, USE AT YOUR OWN RISK!</strong>
-  <strong>ENCRYPTION SUPPORT IS NOT IMPLEMENTED.</strong>
-</div>
 
 <div align="center">
  <a href="https://odysee.com">

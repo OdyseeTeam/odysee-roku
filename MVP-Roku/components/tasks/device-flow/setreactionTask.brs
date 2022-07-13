@@ -29,10 +29,15 @@ function set_reactions(action)
     '8081 sdk
     '8082 api
     success = false
+    clearTypes = "dislike"
     if action = "like" OR action = "dislike"
-        reaction = postURLEncoded({"claim_ids": m.top.claimID, "type": action, "clear_types": "dislike"},m.top.constants["ROOT_API"]+"/reaction/react", { "Authorization": "Bearer " + m.top.accessToken })
+        if action = "dislike"
+            clearTypes = "like"
+        end if
+        reaction = postURLEncoded({"claim_ids": m.top.claimID, "type": action, "clear_types": clearTypes},m.top.constants["ROOT_API"]+"/reaction/react", { "Authorization": "Bearer " + m.top.accessToken })
         ?FormatJson(reaction)
         success = reaction.success
+        clearTypes = invalid
     end if
     if action = "negate" 'negate: neither like nor dislike
         reaction1 = postURLEncoded({"claim_ids": m.top.claimID, "type": "like", "remove": "true"},m.top.constants["ROOT_API"]+"/reaction/react", { "Authorization": "Bearer " + m.top.accessToken })

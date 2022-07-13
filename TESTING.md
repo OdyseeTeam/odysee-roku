@@ -1,6 +1,6 @@
 # Testing:
 
-1. Pull the latest dev release from the [device-flow](https://github.com/lbryio/odysee-roku/tree/device-flow) branch and run it using the Brightscript extension for VSCodium/Code.
+1. Pull the latest dev release from the [device-flow](https://github.com/lbryio/odysee-roku/tree/device-flow) branch and [run it using the Brightscript extension for VSCodium/Code](INSTALL.md).
 1. Use/abuse it as normal.
 1. If it crashes, send me a bug report.
 
