@@ -1654,7 +1654,40 @@ sub resolveVideo(url = invalid)
     end if
   else if type(url) = "roString"
     ?"Resolving a Video (deeplink direct)"
-    m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies })
+    if m.wasLoggedIn
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
+      m.videoButtons.itemSpacing = "[20, 20]"
+      m.videoButtons.columnSpacings = "[0, 200, 0, 0, 200, 0]"
+      getReactions(curItem.guid)
+      m.videoButtons.animateToItem = 3
+      if m.preferences.Count() > 0 and isValid(m.preferences.following)
+        if m.preferences.following.Count() > 0
+          for each claimID in m.preferences.following
+            if claimID = m.currentVideoChannelID
+              ? "This user is being followed."
+              isFollowed = true
+            end if
+          end for
+        end if
+      end if
+      regenerateNormalButtonRefs()
+      if isFollowed
+        m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+      else
+        m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+      end if
+    else
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
+      m.videoButtons.itemSpacing = "[20, 20]"
+      m.videoButtons.columnSpacings = "[328, 0, 0]"
+      m.videoButtons.animateToItem = 2
+      regenerateNormalButtonRefs()
+    end if
+    if m.wasLoggedIn
+      m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies, accesstoken: m.accessToken })
+    else
+      m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies, authtoken: m.authToken })
+    end if
     m.urlResolver.observeField("output", "playResolvedVideo")
     m.urlResolver.control = "RUN"
     m.taskRunning = True

@@ -53,7 +53,6 @@ function siteMethod(lbry_url)
             reqHeaders = {}
         end if
         fileViewRequest = getURLEncoded(reqData, fileViewURL, reqHeaders)
-        
     end if
     vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
     vresolvedRedirectURL = resolveRedirect(vurl.EncodeUri())
