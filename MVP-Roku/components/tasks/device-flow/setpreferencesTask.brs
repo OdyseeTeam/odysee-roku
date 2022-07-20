@@ -64,16 +64,8 @@ function set_prefs()
             'We need to get additional data before we can gut the existing Datastructure.
             'Search for all (valid) channels here.
 
-            claimSearchURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            'this may introduce a bug later over 50 items.
-            'TODO: create chainedQuery for infinite length queries.
-            'Multi-Channel accounts might also create issues depending on if the API pulls more than one with a single channelID.
-            followingQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": following.Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": following, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
-            blockedQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": blocked.Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": blocked, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
-
-            followingData = postJSON(followingQueryJSON, claimSearchURL, invalid)
-            blockedData = postJSON(blockedQueryJSON, claimSearchURL, invalid)
-
+            followingData = getBulkPageData(following)
+            blockedData = getBulkPageData(blocked)
             'Step 3: Gut raw preferences for alteration
             ? "Step 3: Gut raw preferences for alteration"
             rawprefs["result"]["shared"]["value"]["following"].Clear() 'roArray
@@ -101,8 +93,7 @@ function set_prefs()
                             'We need to grab the channels to add here as well since we need to notify Odysee about what we are going to do.
                             'Current implimentation plan is to append all results of blocked/following queries together, parse after.
                             'Optimization will be added in the future after setPreferencesTask is fixed.
-                            newfollowingQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": change["following"].Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": change["following"], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
-                            newfollowingData = postJSON(newfollowingQueryJSON, claimSearchURL, invalid)
+                            newfollowingData = getBulkPageData(change["following"])
                             if isValid(newfollowingData.result)
                                 if isValid(newfollowingdata["result"]["items"])
                                     if newfollowingdata["result"]["items"].Count() > 0
@@ -120,8 +111,7 @@ function set_prefs()
                             'example blocked/subscriptions JSON:
                             '["lbry://@Chronicles_of_Bod:772a859c56a72f12284240b66a3d3bbc6fd9e1d0"]
                             'We need to grab the channels to add here as well since we need to notify Odysee about what we are going to do.
-                            newblockedQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": change["blocked"].Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": change["blocked"], "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
-                            newblockedData = postJSON(newblockedQueryJSON, claimSearchURL, invalid)
+                            newblockedData = getBulkPageData(blocked)
                             ? formatJson(newBlockedData)
                             if isValid(newblockedData.result)
                                 if isValid(newblockeddata["result"]["items"])
@@ -249,4 +239,42 @@ function set_prefs()
     catch e
         m.top.error = "true"
     end try
+end function
+
+function getBulkPageData(claimIDs)
+    emptyData = {
+        "id": 0,
+        "jsonrpc": "2.0",
+        "result": {
+            "blocked": {
+                "channels": [],
+                "total": 0
+            },
+            "items": [],
+            "page": 1,
+            "page_size": 0,
+            "total_items": 0,
+            "total_pages": 0
+        }
+    }
+    if claimIDs.Count() = 0
+        return emptyData
+    end if
+    claimSearchURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+    if claimIDs.Count() > 45
+        dataQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 45, "order_by": "release_time", "fee_amount": "<=0", "claim_type": ["channel"], "any_tags": [], "claim_ids": claimIDs, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+        bulkData = postJSON(dataQueryJSON, claimSearchURL, invalid)
+        totalDataPages = bulkData["result"]["total_pages"]
+        if totalDataPages > 1
+            for curPage = 2 to totalDataPages
+                dataQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 45, "order_by": "release_time", "page": curPage, "fee_amount": "<=0", "claim_type": ["channel"], "any_tags": [], "claim_ids": claimIDs, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                dataQueryPage = postJSON(dataQueryJSON, claimSearchURL, invalid)
+                bulkData["result"]["items"].Append(dataQueryPage["result"]["items"])
+            end for
+        end if
+    else
+        dataQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": claimIDs.Count(), "fee_amount": "<=0", "claim_type": ["channel"], "no_totals": true, "any_tags": [], "claim_ids": claimIDs, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+        bulkData = postJSON(dataQueryJSON, claimSearchURL, invalid)
+    end if
+    return bulkData
 end function
