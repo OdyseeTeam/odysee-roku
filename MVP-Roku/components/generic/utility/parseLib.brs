@@ -79,7 +79,28 @@ function getVideoPage(pageNum)
     curTime = m.time.AsSeconds()
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
     'orderBy support temporarily removed for this implementation
-    queryJSON = { "jsonrpc": "2.0", "method": "claim_search", "params": { "channel_ids": m.top.channels, "fee_amount": "<=0", "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"],"release_time": "<"+curTime.toStr() }, "id": m.top.uid }
+    rawChannels = []
+    if isValid(m.top.channels)
+        rawChannels.Append(m.top.channels)
+    end if
+    if rawChannels.Count() >= 2048
+        'would normally split into blocks, but iscroll requires that I rewrite this entirely.
+        rawChannels.Reverse()
+        channels = []
+        numChannels = 0
+        for each channel in rawChannels
+            if numChannels = 2048 'get most recent 2048
+                exit for
+            end if
+            channels.Push(channel)
+            numChannels+=1
+        end for
+    else
+        channels = m.top.channels
+    end if
+    rawChannels = invalid
+    
+    queryJSON = { "jsonrpc": "2.0", "method": "claim_search", "params": { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"],"release_time": "<"+curTime.toStr() }, "id": m.top.uid }
     query = FormatJson(queryJSON)
     response = postJSON(query, queryURL, invalid)
     retries = 0

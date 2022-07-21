@@ -1218,6 +1218,27 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           itemFocused = invalid
         end if
       end if
+    else if key = "A"
+      returnToUIPage()
+      m.categorySelector.jumpToItem = 0
+      m.categorySelector.setFocus(true)
+      m.focusedItem = 1 '[selector]
+      return true
+    else if key = "B"
+      returnToUIPage()
+      if m.wasLoggedIn
+        m.categorySelector.jumpToItem = 1
+        m.categorySelector.setFocus(true)
+        m.focusedItem = 1 '[selector]
+      else
+        m.categorySelector.jumpToItem = 2
+        m.categorySelector.setFocus(true)
+        m.focusedItem = 1 '[selector]
+      end if
+      return true
+      'below used in dev
+      '? "oh no."
+      'massFollow(return_tremendous_data())
     else
       return true
     end if
@@ -2766,6 +2787,16 @@ sub unBlock(channelID)
   m.setpreferencesTask.control = "RUN"
 end sub
 
+sub massFollow(channelIDs)
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": channelIDs }: changeType: "append" })
+  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.control = "RUN"
+  m.preferences.following.Append(channelIDs)
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
+  m.favoritesThread.observeField("output", "gotFavorites")
+  m.favoritesThread.control = "RUN"
+end sub
+
 sub follow(channelID)
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
@@ -2884,4 +2915,21 @@ function deleteReg(section = "" as string) as void 'belltown Roku Development fo
     r.Delete (section)
   end if
   r.Flush ()
+end function
+
+'used to beat the hell out of setPreferencesTask
+function return_tremendous_data()
+  tremendous_data = []
+  for each category in m.channelIDs
+      catData = m.channelIDs[category]
+      if isValid(catData)
+        if isValid(catData["channelIds"])
+          tremendous_data.Append(catData["channelIds"])
+          if tremendous_data.Count() > 1000
+            exit for
+          end if
+        end if
+      end if
+  end for
+  return tremendous_data
 end function
