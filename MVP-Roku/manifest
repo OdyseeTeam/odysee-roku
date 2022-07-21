@@ -1,3 +1,8 @@
+bsprof_enable=1
+bsprof_enable_lines=1
+bsprof_enable_mem=1
+bsprof_data_dest=local
+bsprof_sample_ratio=1
 title=Odysee
 major_version=1
 minor_version=0

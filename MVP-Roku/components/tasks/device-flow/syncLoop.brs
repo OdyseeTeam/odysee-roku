@@ -58,8 +58,7 @@ sub master()
                 ? sdkHash
                 ? prodHash
 
-                if sdkHash <> prodHash
-                    
+                if sdkHash <> prodHash OR inSync = false
                     sdkSyncApply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "", "data": prodWalletData, "blocking": false }, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
                     ? formatJson(sdkSyncApply)
                     if isValid(sdkSyncApply.result)

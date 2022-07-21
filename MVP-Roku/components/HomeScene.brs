@@ -1392,7 +1392,7 @@ end sub
 
 sub downsizeVideoGrid()
   m.videoGrid.itemSize = [1920, 305]
-  m.videoGrid.rowitemSize = [[380, 250]]
+  m.videoGrid.rowitemSize = [[380, 280]]
 end sub
 
 sub failedSearch()

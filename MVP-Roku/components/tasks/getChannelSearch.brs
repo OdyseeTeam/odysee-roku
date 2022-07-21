@@ -55,6 +55,7 @@ function ClaimsToChannelGrid(claims)
     urlList = []
     channelList = []
     validChannels = []
+    subCountsAA = {}
     for each claim in claims
         urlList.push("lbry://" + claim.name + "#" + claim.claimId)
         channelList.push(claim.claimId)
@@ -62,6 +63,31 @@ function ClaimsToChannelGrid(claims)
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
     queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 50, "fee_amount": "<=0", "claim_type": "stream", "stream_types": ["video"], "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channelList, "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true, "limit_claims_per_channel": 1 } })
     cresponse = postJSON(queryJSON, queryURL, invalid)
+    subCountsURL = m.top.constants["ROOT_API"]+"/subscription/sub_count?auth_token="+m.top.authToken+"&claim_id="+channelList.Join(",")
+    subCountsRawData = getRawText(subCountsURL).replace(Chr(10),"").replace(" ","")
+    subCountsData = subCountsRawData.split("[")[1].split("]")[0].split(",")
+    for i = 0 to channelList.Count()-1
+            numFollowers = Val(subCountsData[i])
+            if numFollowers = 1
+                followers = Left(numFollowers.ToStr(), 3)+" Follower"
+            end if
+            if numFollowers >= 0 AND numFollowers < 999
+                followers = Left(numFollowers.ToStr(), 3)+" Followers"
+            end if
+            if numFollowers >= 1000 AND numFollowers < 999999
+                followers = Left((numFollowers/1000).ToStr(), 3)+"K Followers"
+            end if
+            if numFollowers >= 1000000 AND numFollowers < 999999999
+                followers = Left((numFollowers/1000000).ToStr(), 3)+"M Followers"
+            end if
+            if numFollowers >= 1000000000 AND numFollowers < 999999999999
+                followers = Left((numFollowers/1000000000).ToStr(), 3)+"B Followers"
+            end if
+            if numFollowers >= 1000000000000 AND numFollowers < 999999999999
+                followers = Left((numFollowers/1000000000000).ToStr(), 3)+"T Followers"
+            end if 
+        subCountsAA.addReplace(channelList[i], followers)
+    end for
     ?cresponse
     retries = 0
     while true
@@ -105,6 +131,9 @@ function ClaimsToChannelGrid(claims)
             item.Description = ""
             item.Channel = channel.claim_id
             item.guid = channel.claim_id
+            if isValid(subCountsAA[channel.claim_id])
+                item.Followers = subCountsAA[channel.claim_id]
+            end if
             try
                 thumbnail = m.top.constants["IMAGE_PROCESSOR"] + channel.value.thumbnail.url
             catch e
@@ -122,7 +151,7 @@ function ClaimsToChannelGrid(claims)
                     currow = createObject("RoSGNode", "ContentNode")
                 end if
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" })
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", Followers: "0 Followers" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 if i = validChannels.Count() - 1 'misalignment fix, will need to implement this better later.
@@ -135,7 +164,7 @@ function ClaimsToChannelGrid(claims)
                 currow = invalid
                 currow = createObject("RoSGNode", "ContentNode")
                 curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", lbc: "", Channel: "" })
+                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", Followers: "0 Followers" })
                 curitem.setFields(item)
                 currow.appendChild(curitem)
                 counter = 1

@@ -31,6 +31,7 @@ sub itemContentChanged()
             m.liveIcon.visible = false
             m.videoLength.visible = false
             m.videoLengthBackground.visible = false
+            m.Published.text = m.top.itemContent.FOLLOWERS
         end if
     end if
     if isValid(m.top.itemContent.reposted) AND isValid(m.top.itemContent.repostedBy)
@@ -57,7 +58,9 @@ sub updateLayout()
     if m.top.height > 0 and m.top.width > 0 then
         if m.top.height > 349
             m.Title.wrap = true
+            m.Published.translation=[10,277]
         else
+            m.Published.translation=[10,240]
             m.Title.wrap = false
             m.liveIcon.visible = false
             m.videoLength.visible = false
