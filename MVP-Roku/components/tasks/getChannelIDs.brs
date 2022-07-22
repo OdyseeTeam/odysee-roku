@@ -9,13 +9,13 @@ sub master()
     ?"[CIDSTask]: Current locale is:"
     ?locale
     try
-        fpURL = m.top.constants.frontpageURL
-        fpURL = "https://kp.odysee.com/$/api/content/v2/get?format=roku"
-        if IsValid(getJSON(fpURL).data[locale]) 'Use Locale (if exists) (odysee logic diagram)
-            frontpageCIDS = getJSON(fpURL).data[locale].categories
+        fpData = getJSON(m["top"]["constants"]["FRONTPAGE_URL"])
+        if IsValid(fpData.data[locale]) 'Use Locale (if exists) (odysee logic diagram)
+            frontpageCIDS = fpData.data[locale].categories
         else
-            frontpageCIDS = getJSON(fpURL).data["en"].categories 'default to english if all else fails
+            frontpageCIDS = fpData.data["en"].categories 'default to english if all else fails
         end if
+        fpData = invalid
         'For each key:
         'channelIds = channelids
         'icon = icon

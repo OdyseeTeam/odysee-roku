@@ -1,7 +1,6 @@
 function parseVideo(itemIn)
     'check repost/item has source
     'check repost/item source has valid media_type
-    'TODO: replace all isValid checks with try/catch
     item = {reposted:false:"repostedBy":"none":"Creator":"none":"Title":"none":"rawCreator":"none":"Channel":"none":"videoLength":0:"channelIcon":"none":"HDPosterURL":"none":url:"none":source:"none":"itemType":"none"}
     m.timeConverter = CreateObject("roDateTime")
     m.time = CreateObject("roDateTime")
@@ -33,9 +32,11 @@ function parseVideo(itemIn)
             end try
             item.rawCreator = curItem.signing_channel.name
             item.Channel = curItem.signing_channel.claim_id
-            if isValid(curItem["value"]["video"]["duration"])
+            try
                 item.videoLength = getvideoLength(curItem["value"]["video"]["duration"])
-            end if
+            catch e
+                item.videoLength = "0:00"
+            end try
             try
                 item.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + curItem.signing_channel.value.thumbnail.url
             catch e

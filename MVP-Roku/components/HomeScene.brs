@@ -123,6 +123,7 @@ sub init()
   m.channelResolver = createObject("roSGNode", "getSingleChannel")
   m.videoSearch = createObject("roSGNode", "getVideoSearch")
   m.channelSearch = createObject("roSGNode", "getChannelSearch")
+  m.channelPage = CreateObject("roSGNode", "getChannelPage")
   m.InputTask = createObject("roSgNode", "inputTask")
   m.InputTask.observefield("inputData", "handleInputEvent")
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
@@ -472,15 +473,8 @@ sub gotCIDS()
     m.categorySelector.content = m.categorySelectordata
     ?m.categorySelectordata
     ?m.categorySelector.content
-    if m.maxThreads > m.threads.Count()
-      m.maxThreads = m.threads.Count()
-    end if
-    for runvar = 0 to m.maxThreads - 1
-      if isValid(m.threads[runvar])
-        m.runningthreads.Push(m.threads[runvar])
-        m.threads.delete(runvar)
-      end if
-    end for
+    m.runningThreads = m.threads
+    m.threads = []
     for each thread in m.runningthreads
       thread.control = "RUN" 'start threading
     end for
@@ -867,7 +861,6 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
         end if
       end if
-      'TODO: add jumpAmount to changeVideoPosition, since 1 second granularity should be only used on 1x
       if key = "rewind"
         ?m.video.visible
         ?m.ffrwTimer.control

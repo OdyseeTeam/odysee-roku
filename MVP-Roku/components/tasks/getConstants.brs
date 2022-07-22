@@ -6,7 +6,7 @@ sub master()
     'globalAPIConstants = getJSON("http://192.168.1.16/appConstants.json") 'used internally for testing appConstants before pushing to Github
     globalAPIConstants = getJSON("https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/device-flow/appConstants.json")
     if isValid(globalAPIConstants["FRONTPAGE_URL"]) = false
-        globalAPIConstants["FRONTPAGE_URL"] = "https://odysee.com/$/api/content/v2/get"
+        globalAPIConstants["FRONTPAGE_URL"] = "https://kp.odysee.com/$/api/content/v2/get?format=roku"
     end if
     if isValid(globalAPIConstants["ROOT_API"]) = false
         globalAPIConstants["ROOT_API"] = "https://api.odysee.com" 'API is used for reacting to claims and setting the wallet on Odysee

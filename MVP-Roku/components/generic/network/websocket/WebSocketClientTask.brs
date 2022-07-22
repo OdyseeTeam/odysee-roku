@@ -23,7 +23,6 @@ end function
 function runtask() as void
     if isValid(m.top.streamClaim)
         if m.top.streamClaim <> "" and m.top.streamClaim <> "none"
-            'TODO: hide blocked users in chat/superchat
             'if isValid(m.top.blocked)
             '    if m.top.blocked.Count() > 0
             '    end if
@@ -82,7 +81,6 @@ function runtask() as void
                 catch e
                     message_supported = false
                 end try
-                'TODO: fix message support/superchat endpoint
                 if m.chatRegex.Replace(superchatitem["comment"].Trim(), "") <> "" and superchatitem["comment"].Trim().instr("![") = -1 and superchatitem["comment"].Trim().instr("](") = -1 and message_supported and isValid(m.blocked[superchatitem["channel_id"]]) = false
                     if superChatLength > 4
                         exit for

@@ -14,6 +14,7 @@ end sub
 
 function ChannelsToVideoGrid(channels, blockedChannels)
     m.parseTimer = CreateObject("roTimespan")
+    m.parseLibTimer = CreateObject("roTimespan")
     result = [] 'This is an array of associativeArrays that can be used to set a ContentNode
     lastParsedAmount = 0
     currentParsedAmount = 0
@@ -24,7 +25,6 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     'start building first query
     date = CreateObject("roDateTime")
     date.Mark()
-    curTime = date.AsSeconds()
     curPage = 1 'current query page
     threadName = m.top.rawname
     'Grab 15 items, loop until valid max items reached.
@@ -49,9 +49,11 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         end if
     end if
     ? "GetSinglePage,"+threadname+",livestreams," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
-    m.parseTimer.Mark()
+    'm.parseTimer.Mark()
     'STAGE 2: mass parse
+    m.parseLibTimer.Mark()
     currentPage = getVideoPage(curPage)
+    ? "GetSinglePage,"+threadname+",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
     while gotEnough = false
         if currentParsedAmount = lastParsedAmount AND curPage <> 1 OR currentParsedAmount >= max 'got no more/got enough
             gotEnough = true
@@ -61,6 +63,9 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         'for each claim in currentPage
         '    ? claim
         'end for
+        m.timeConverter = CreateObject("roDateTime")
+        m.time = CreateObject("roDateTime")
+        m.parseLibTimer.Mark()
         for each claim in currentPage
             pv = parseVideo(claim)
             if pv.Count() > 0
@@ -72,13 +77,16 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             end if
             pv = invalid
         end for
+        ? "GetSinglePage,"+threadname+",parsing," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
         if currentParsedAmount >= max
             exit while
         end if
         curPage+=1
+        m.parseLibTimer.Mark()
         currentPage = getVideoPage(curPage)
+        ? "GetSinglePage,"+threadname+",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
     end while
-    ? "GetSinglePage,"+threadname+",massParse," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
+    '? "GetSinglePage,"+threadname+",get," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     m.parseTimer.Mark()
     'Stage 3: Format Content (content -> row -> item) from "result"/preparsed.
     content = createObject("RoSGNode", "ContentNode")
