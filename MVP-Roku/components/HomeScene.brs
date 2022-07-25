@@ -2048,7 +2048,7 @@ sub returnToUIPage()
   m.video.visible = false 'Hide video
   m.video.control = "stop" 'Stop video from playing
   deleteSpinner()
-  if m.preferences.following.Count() > 0 AND m.focusedItem = 7
+  if m.wasLoggedIn and isValid(m.preferences) AND isValid(m.preferences.following) AND m.preferences.following.Count() > 0 AND m.focusedItem = 7
     m.videoEndingTimeSet = false
     m.video.unObserveField("position")
     m.videoGrid.setFocus(true)
