@@ -6,7 +6,6 @@
             <field id="accessToken" type="String"/>
             <!--needed for sync_apply/preference_set-->
             <field id="oldHash" type="String"/>
-            <field id="newHash" type="String"/>
             <field id="walletData" type="String"/>
             <field id="uid" type="int"/>
             <field id="cookies" type="roArray"/>

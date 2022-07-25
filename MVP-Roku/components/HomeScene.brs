@@ -137,7 +137,7 @@ sub init()
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
   observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID": "authtoken": "gotAuth": "cookies": "gotCookies" })
-  observeFields("syncLoop", { "inSync": "gotSync": "preferencesChanged": "preferencesChanged": "oldHash": "walletChanged": "newHash": "walletChanged": "walletData": "walletChanged" })
+  observeFields("syncLoop", { "inSync": "gotSync": "preferencesChanged": "preferencesChanged": "oldHash": "walletChanged": "walletData": "walletChanged" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
   m.preferences = {} ' user preferences (blocked, following, collections)
@@ -183,13 +183,10 @@ sub init()
     m.oldpreferences = ParseJSON(GetRegistry("preferencesRegistry", "preferences"))
   end if
 
-  m.wallet = { "oldHash": "asdf", "newHash": "asdf", "walletData": "asdf" } 'create template wallet object
+  m.wallet = { "oldHash": "asdf", "walletData": "asdf" } 'create template wallet object
   'begin populating template
   if isValid(GetRegistry("deviceFlowRegistry", "walletOldHash"))
     m.wallet.oldHash = GetRegistry("deviceFlowRegistry", "walletOldHash")
-  end if
-  if isValid(GetRegistry("deviceFlowRegistry", "walletNewHash"))
-    m.wallet.newHash = GetRegistry("deviceFlowRegistry", "walletNewHash")
   end if
   if isValid(GetRegistry("deviceFlowRegistry", "walletData"))
     m.wallet.walletData = GetRegistry("deviceFlowRegistry", "walletData")
@@ -211,7 +208,6 @@ sub init()
   end if
   m.authTask.setFields({ "accessToken": m.accessToken: "refreshToken": m.refreshToken: uid: m.flowUID })
   '<field id="oldHash" type="String"/>
-  '<field id="newHash" type="String"/>
   '<field id="walletData" type="String"/>
   m.authTimerObserved = false
   m.syncTimerObserved = false
@@ -2023,7 +2019,7 @@ sub deleteSpinner()
   end if
 end sub
 
-function returnToUIPage()
+sub returnToUIPage()
   m.videoButtons.setFocus(false)
   m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
   m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
@@ -2052,11 +2048,18 @@ function returnToUIPage()
   m.video.visible = false 'Hide video
   m.video.control = "stop" 'Stop video from playing
   deleteSpinner()
-  m.videoEndingTimeSet = false
-  m.video.unObserveField("position")
-  m.videoGrid.setFocus(true)
-  m.focusedItem = 2 '[video grid]
-end function
+  if m.preferences.following.Count() > 0 AND m.focusedItem = 7
+    m.videoEndingTimeSet = false
+    m.video.unObserveField("position")
+    m.videoGrid.setFocus(true)
+    m.focusedItem = 2 '[video grid]
+  else if m.focusedItem = 7
+    m.videoEndingTimeSet = false
+    m.video.unObserveField("position")
+    m.categorySelector.setFocus(true)
+    m.focusedItem = 1 '[selector]
+  end if
+end sub
 
 sub search()
   if m.searchKeyboard.text = "" or Len(m.searchKeyboard.text) < 3
@@ -2497,15 +2500,14 @@ sub Logout()
   m.flowUID = ""
   m.accessToken = ""
   m.refreshToken = ""
-  m.wallet = { "oldHash": "asdf", "newHash": "asdf", "walletData": "asdf" }
-  m.syncLoop.setFields({ "accessToken": m.accessToken, "oldHash": "", "newHash": "", "walletData": "" })
+  m.wallet = { "oldHash": "asdf", "walletData": "asdf" }
+  m.syncLoop.setFields({ "accessToken": m.accessToken, "oldHash": "", "walletData": "" })
   SetRegistry("deviceFlowRegistry", "flowUID", "")
   setRegistry("preferencesRegistry", "loggedIn", "false")
   SetRegistry("deviceFlowRegistry", "accessToken", "")
   SetRegistry("deviceFlowRegistry", "refreshToken", "")
   setRegistry("preferencesRegistry", "preferences", "{}")
   SetRegistry("deviceFlowRegistry", "walletOldHash", "")
-  SetRegistry("deviceFlowRegistry", "walletNewHash", "")
   SetRegistry("deviceFlowRegistry", "walletData", "")
   if m.authTask.authPhase = 3
     m.authTask.authPhase = 10 'logout
@@ -2776,19 +2778,19 @@ sub setReactionDone(msg as object)
 end sub
 
 sub block(channelID)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "append" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
 sub unBlock(channelID)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "remove" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
 sub massFollow(channelIDs)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": channelIDs }: changeType: "append" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": channelIDs }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.preferences.following.Append(channelIDs)
@@ -2798,7 +2800,7 @@ sub massFollow(channelIDs)
 end sub
 
 sub follow(channelID)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
@@ -2810,7 +2812,7 @@ end sub
 
 sub unFollow(channelID)
   ? "attempting to unfollow " + channelID
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
@@ -2841,10 +2843,7 @@ end sub
 sub walletChanged(msg as object)
   data = msg.getData()
   field = msg.getField()
-  if field = "newHash"
-    m.wallet.newHash = data
-    SetRegistry("deviceFlowRegistry", "walletNewHash", m.wallet.newHash)
-  else if field = "oldHash"
+  if field = "oldHash"
     m.wallet.oldHash = data
     SetRegistry("deviceFlowRegistry", "walletOldHash", m.wallet.oldHash)
   else if field = "walletData"

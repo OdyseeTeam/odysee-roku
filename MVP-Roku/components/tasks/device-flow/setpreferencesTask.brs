@@ -43,7 +43,6 @@ function set_prefs()
         '8080 sso
         '8081 sdk
         '8082 api
-        m.top.oldHash = m.top.newHash
         m.inSync = true
         ? "RUNNING setPreferencesTask"
 
@@ -202,6 +201,19 @@ function set_prefs()
             for each claim in blockedData["result"]["items"]
                 rawprefs["result"]["shared"]["value"]["blocked"].Push(claim["permanent_url"].replace("#", ":"))
             end for
+
+            sdkSyncHash = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_hash", "params": {}, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
+            ? formatJSON(sdkSyncHash)
+            if isValid(sdkSyncHash.result)
+                if sdkSyncHash.result <> ""
+                    oldHash = sdkSyncHash.result
+                    ? "got SDK hash"
+                else
+                    oldHash = "0"
+                    ? "no hash from SDK (NEW!)"
+                end if
+            end if
+
             'Step 6: preference_set (set what we altered)
             ?"Step 6: preference_set (set what we altered) TO SDK"
             preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_set", "params": { "key": "shared", "value": formatJson(rawprefs["result"]["shared"]) }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
@@ -210,20 +222,20 @@ function set_prefs()
                 needs_resync = true
             end if
             ? formatJson(preferences)
+
             'Step 7: Sync Apply (to SDK)
             ?"Step 7: Sync Apply (to SDK)"
             syncapply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "": "blocking": true }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
             ?FormatJson(syncapply)
             if isValid(syncapply.data)
                 if isValid(syncapply.data.data) and isValid(syncapply.data.hash)
-                    m.top.newHash = "" + syncapply.result.hash
                     m.top.walletData = syncapply.result.data
                 end if
             end if
             ? formatJson(syncapply)
             'Step 8: Sync Set (to API)
             ?"Step 8: Sync Set (to API)"
-            syncset = postURLEncoded({ old_hash: m.top.oldHash, new_hash: "" + syncapply.result.hash: data: "" + syncapply.result.data }, m.top.constants["ROOT_API"] + "/sync/set", { "Authorization": "Bearer " + m.top.accessToken })
+            syncset = postURLEncoded({ old_hash: oldHash, new_hash: "" + syncapply.result.hash: data: "" + syncapply.result.data }, m.top.constants["ROOT_API"] + "/sync/set", { "Authorization": "Bearer " + m.top.accessToken })
             ?formatJson(syncset)
             if syncset.success = true
                 ?"Successfully synchronized data"

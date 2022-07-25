@@ -38,17 +38,22 @@ sub master()
                 prodWallet = getJSONAuthenticated(m.top.constants["ROOT_API"]+"/sync/get?hash=" + sdkHash, { "Authorization": "Bearer " + m.top.accessToken })
                 if prodWallet.success = true
                     if isValid(prodWallet.data)
-                        if isValid(prodWallet.data.hash) and isValid(prodWallet.data.data)
+                        if isValid(prodWallet.data.hash) and isValid(prodWallet.data.changed)
                             prodHash = prodWallet.data.hash
-                            prodWalletData = prodWallet.data.data
                             prodWalletChanged = prodWallet.data.changed
                             if prodWalletChanged = true
                                 ? "Production changed"
                                 ? FormatJson(prodWallet)
                                 inSync = false
-                                m.top.walletData = prodWalletData
-                            else
+                                m.top.walletData = prodWallet.data.data
+                                prodWalletData = prodWallet.data.data
+                            else if prodWalletData = "" AND m.top.walletData <> ""
+                                sdkSyncApply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "", "blocking": true }, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
+                                prodWalletData = sdksyncapply["result"]["data"]
+                                m.top.walletData = prodWallet.data.data
                                 ? "No change on Production"
+                                inSync = true
+                            else
                                 inSync = true
                             end if
                         end if
@@ -59,7 +64,7 @@ sub master()
                 ? prodHash
 
                 if sdkHash <> prodHash OR inSync = false
-                    sdkSyncApply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "", "data": prodWalletData, "blocking": false }, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
+                    sdkSyncApply = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_apply", "params": { "password": "", "data": prodWalletData, "blocking": true }, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
                     ? formatJson(sdkSyncApply)
                     if isValid(sdkSyncApply.result)
                         if isValid(sdkSyncApply.result.data) and isValid(sdkSyncApply.result.hash)
@@ -74,17 +79,14 @@ sub master()
                             end if
                         end if
                     end if
-
+                    ? "Sync Loop Sync Set"
                     syncset = postURLEncoded({ old_hash: prodHash: new_hash: sdkHash: data: sdkWallet }, m.top.constants["ROOT_API"]+"/sync/set", { "Authorization": "Bearer " + m.top.accessToken })
                      ?formatJson(syncset)
                     if syncset.success = true
-                        date = CreateObject("roDateTime")
                         m.top.inSync = true
                     end if
-
                 else
                     ? "currently in sync (wallet-wise)"
-                    inSync = true
                     if m.top.oldHash <> prodHash
                         ? "change between production+current"
                         m.top.preferencesChanged = true
@@ -96,7 +98,6 @@ sub master()
         end if
     end if
     if isValid(sdkHash) AND isValid(prodHash) AND isValid(inSync)
-        m.top.newHash = sdkHash
         m.top.oldHash = prodHash
         m.top.inSync = inSync
     end if
