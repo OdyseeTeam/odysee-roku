@@ -13,8 +13,8 @@ sub master()
         userAPI = m.top.constants["ROOT_API"] + "/user"
         new = userAPI + "/new"
         existing = userAPI + "/me"
-        currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, {})
-        ?currentUserStatus
+        currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, { "Authorization": "Bearer " + m.top.accessToken })
+        ?FormatJSON(currentUserStatus)
         if isValid(currentUserStatus)
             if currentUserStatus.success
                 ?"SUCCESS."
@@ -22,7 +22,7 @@ sub master()
                 m.top.legacyAuthorized = true
                 m.top.authPhase = 1
             else
-                ?"FAILURE! (no legacy accessToken stored!)"
+                ?"FAILURE! (accessToken is invalid)"
                 newUserData = parseJSON(getRawText(new))
                 currentUserStatus = getURLEncoded({ auth_token: newUserData.data.auth_token.Trim() }, existing, [])
                 if currentUserStatus.success = false

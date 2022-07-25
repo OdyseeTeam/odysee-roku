@@ -6,7 +6,6 @@ sub master()
     '? m.top.constants
     '? m.top.cookies
     '? m.top.uid
-    '? m.top.authtoken
     '? m.top.channels
     '? m.top.rawname
     m.top.resolveAttempts = 0
@@ -17,7 +16,7 @@ function ChannelToVideoGrid(channel)
     date = CreateObject("roDateTime")
     max = 48
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "fee_amount": "<=0", "claim_type": "stream", "stream_types": ["video"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": [channel], "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true } })
+    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "fee_amount": "<=0", "claim_type": "stream", "stream_types": ["video"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": [channel], "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true }, "id": m.top.uid })
     response = postJSON(queryJSON, queryURL, invalid)
     retries = 0
     result = []

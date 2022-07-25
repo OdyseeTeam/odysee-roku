@@ -5,7 +5,7 @@ function getLivestream(channel)
         liveData = livestreamStatus.data
         if liveData["Live"]
             lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_id": liveData["ActiveClaim"]["ClaimID"] } })
+            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_id": liveData["ActiveClaim"]["ClaimID"] }, "id": m.top.uid })
             livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
             liveClaim = livestreamclaimquery["result"]["items"][0]
             if getRawTextAuthenticated(liveData["VideoURL"], m.top.constants["ACCESS_HEADERS"]) = "{error: True}"
@@ -27,7 +27,7 @@ function getLivestreamsBatch(claimIDs, liveData, liveIDs)
         if isValid(claimIDs) and isValid(liveData) and isValid(liveIDs)
             if claimIDs.Count() = liveData.Count() and liveIDs.Count() = claimIDs.Count()
                 lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_ids": claimIDs } })
+                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_ids": claimIDs }, "id": m.top.uid })
                 livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
                 ? formatJson(livestreamClaimQuery)
                 liveClaims = livestreamclaimquery["result"]["items"]

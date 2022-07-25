@@ -61,10 +61,18 @@ function ClaimsToChannelGrid(claims)
         channelList.push(claim.claimId)
     end for
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 50, "fee_amount": "<=0", "claim_type": "stream", "stream_types": ["video"], "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channelList, "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true, "limit_claims_per_channel": 1 } })
+    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 50, "fee_amount": "<=0", "claim_type": "stream", "stream_types": ["video"], "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channelList, "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true, "limit_claims_per_channel": 1 }, "id": m.top.uid })
     cresponse = postJSON(queryJSON, queryURL, invalid)
-    subCountsURL = m.top.constants["ROOT_API"]+"/subscription/sub_count?auth_token="+m.top.authToken+"&claim_id="+channelList.Join(",")
-    subCountsRawData = getRawText(subCountsURL).replace(Chr(10),"").replace(" ","")
+    if isValid(m.top.accessToken) AND m.top.accessToken <> ""
+        subCountsURL = m.top.constants["ROOT_API"] + "/subscription/sub_count?claim_id=" + channelList.Join(",")
+        baseHeaders = { "Authorization": "Bearer " + m.top.accessToken }
+    else if isValid(m.top.authToken) AND m.top.authToken <> ""
+        subCountsURL = m.top.constants["ROOT_API"] + "/subscription/sub_count?auth_token=" + m.top.authToken + "&claim_id=" + channelList.Join(",")
+        baseHeaders = {}
+    else
+        return { result: {}, success: false } 'failure: no authToken or accessToken
+    end if
+    subCountsRawData = getRawTextAuthenticated(subCountsURL, baseHeaders).replace(Chr(10), "").replace(" ", "")
     subCountsData = subCountsRawData.split("[")[1].split("]")[0].split(",")
     for i = 0 to channelList.Count()-1
             numFollowers = Val(subCountsData[i])

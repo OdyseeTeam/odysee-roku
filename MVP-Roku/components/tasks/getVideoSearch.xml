@@ -8,7 +8,6 @@
             <field id="search" type="String"/>
             <!--Account-Specific Vars-->
             <field id="uid" type="Int"/>
-            <field id="authtoken" type="String"/>
             <field id="cookies" type="roArray"/>
             <!--Universal Output-->
             <field id="output" type="assocarray"/>

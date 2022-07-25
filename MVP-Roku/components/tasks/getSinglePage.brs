@@ -6,7 +6,6 @@ sub master()
     '?m.top.constants
     '?m.top.cookies
     '?m.top.uid
-    '?m.top.authtoken
     '?m.top.channels
     '?m.top.rawname
     m.top.output = ChannelsToVideoGrid(m.top.channels, m.top.blocked)

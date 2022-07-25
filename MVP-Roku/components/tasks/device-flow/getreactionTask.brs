@@ -46,11 +46,10 @@ function get_reactions()
     '  }
     reactionHeaders = {}
     reactionQuery = {}
-    if m.top.accessToken <> ""
+    if isValid(m.top.accessToken) AND m.top.accessToken <> ""
         reactionHeaders = { "Authorization": "Bearer " + m.top.accessToken }
         reactionQuery = { "claim_ids": m.top.claimID }
-    else if m.top.authToken <> ""
-        rawreactions = postURLEncoded({ "claim_ids": m.top.claimID, "auth_token": m.top.authToken }, m.top.constants["ROOT_API"] + "/reaction/list", {})
+    else if isValid(m.top.authToken) AND m.top.authToken <> ""
         reactionHeaders = {}
         reactionQuery = { "claim_ids": m.top.claimID, "auth_token": m.top.authToken }
     end if

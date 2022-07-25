@@ -370,12 +370,6 @@ sub authDone()
     m.cookies = m.authTask.cookies
     ?"AUTH IS DONE!"
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
-
-    if m.global.constants.enableStatistics
-      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authTask.authtoken, cookies: m.cookies, accesstoken: m.accessToken })
-      m.rokuInstall.control = "RUN"
-    end if
-
     m.video.EnableCookies()
     m.video.SetHeaders(m.constants["ACCESS_HEADERS"])
     m.video.AddCookies(m.cookies)
@@ -422,7 +416,7 @@ sub gotCIDS()
           ?"found following"
           ?formatJson(m.preferences["following"])
           thread = CreateObject("roSGNode", "getSinglePage")
-          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
+          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
           thread.observeField("output", "threadDone")
           m.threads.push(thread)
           m.favoritesLoaded = true 'favorites were loaded because user is logged in
@@ -450,16 +444,16 @@ sub gotCIDS()
         excludedChannelIds.append(m.preferences.blocked)
         if category = "wildwest"
           ? "is wildwest, resolving livestreams"
-          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
         else
-          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
         end if
       else
         if category = "wildwest"
           ? "is wildwest, resolving livestreams"
-          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
         else
-          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
         end if
       end if
       thread.observeField("output", "threadDone")
@@ -558,6 +552,15 @@ sub threadDone(msg as object)
 end sub
 
 sub finishInit()
+  if m.global.constants.enableStatistics
+    if m.wasLoggedIn
+      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: "", cookies: m.cookies, accesstoken: m.accessToken})
+      m.rokuInstall.control = "RUN"
+    else
+      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authTask.authtoken, cookies: m.cookies, accesstoken: ""})
+      m.rokuInstall.control = "RUN"
+    end if
+  end if
   m.loadingText.text = "Loading...."
   m.InputTask.control = "RUN" 'run input task, since user input is now needed (UI)
   ?"init finished."
@@ -611,7 +614,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ? "Go to channel"
               returnToUIPage()
               curChannel = m.currentVideoChannelID
-              m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+              m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, cookies: m.cookies })
               m.channelResolver.observeField("output", "gotResolvedChannel")
               m.channelResolver.control = "RUN"
               m.taskRunning = True
@@ -924,7 +927,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           hideCategorySelector()
           if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) and m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
             curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
-            m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+            m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, cookies: m.cookies })
             m.channelResolver.observeField("output", "gotResolvedChannel")
             m.channelResolver.control = "RUN"
             m.taskRunning = True
@@ -942,7 +945,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             ? "CATEGORY REFRESH"
             if m.categorySelector.itemFocused = 1 and m.wasLoggedIn 'update favorites
               if m.preferences.following.Count() > 0
-                m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+                m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, cookies: m.cookies })
                 m.favoritesThread.observeField("output", "gotFavorites")
                 m.favoritesThread.control = "RUN"
               end if
@@ -967,16 +970,16 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 excludedChannelIds.append(m.preferences.blocked)
                 if trueName = "wildwest"
                   ? "is wildwest, resolving livestreams"
-                  thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                  thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
                 else
-                  thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                  thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
                 end if
               else
                 if trueName = "wildwest"
                   ? "is wildwest, resolving livestreams"
-                  thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                  thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
                 else
-                  thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, blocked: excludedChannelIds })
+                  thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
                 end if
               end if
               thread.observeField("output", "gotCategoryRefresh")
@@ -1580,7 +1583,7 @@ sub resolveVideo(url = invalid)
         end if
         if curItem.itemType = "channel"
           ?"Resolving a Channel"
-          m.channelResolver.setFields({ constants: m.constants, channel: curitem.channel, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+          m.channelResolver.setFields({ constants: m.constants, channel: curitem.channel, uid: m.uid, cookies: m.cookies })
           m.channelResolver.observeField("output", "gotResolvedChannel")
           m.channelResolver.control = "RUN"
           m.taskRunning = True
@@ -1653,9 +1656,9 @@ sub resolveVideo(url = invalid)
           "superchat": "on_superchat" })
           if isValid(m.preferences)
             if isValid(m.preferences.blocked)
-              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {} })
+              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {}, uid: m.uid })
             else
-              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {} })
+              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {}, "uid": m.uid })
             end if
           end if
           ? m.ws.open
@@ -1698,9 +1701,9 @@ sub resolveVideo(url = invalid)
       regenerateNormalButtonRefs()
     end if
     if m.wasLoggedIn
-      m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies, accesstoken: m.accessToken })
+      m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies, accesstoken: m.accessToken, authtoken: "" })
     else
-      m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies, authtoken: m.authToken })
+      m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies, accessToken: "", authtoken: m.authToken })
     end if
     m.urlResolver.observeField("output", "playResolvedVideo")
     m.urlResolver.control = "RUN"
@@ -1745,7 +1748,7 @@ sub resolveEvaluatedVideo(curItem)
     regenerateNormalButtonRefs()
   end if
   if m.wasLoggedIn
-    m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: m.accessToken, cookies: m.cookies })
+    m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: m.accessToken, authToken: "", cookies: m.cookies })
   else
     m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: "", authToken: m.authToken, cookies: m.cookies })
   end if
@@ -1788,7 +1791,7 @@ sub videoPositionChanged()
         else
           cache = "player"
         end if
-        watchmanFields = { constants: m.constants, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, bandwidth: m.video.streamInfo.measuredBitrate, cache: cache, duration: m.urlResolver.output.length, player: m.urlResolver.output.player, position: m.video.position, protocol: m.urlResolver.output.videotype.replace("mp4", "stb"), rebuf_count: 0, rebuf_duration: 0, url: m.urlResolver.url, uid: m.uid }
+        watchmanFields = { constants: m.constants, uid: m.uid, cookies: m.cookies, bandwidth: m.video.streamInfo.measuredBitrate, cache: cache, duration: m.urlResolver.output.length, player: m.urlResolver.output.player, position: m.video.position, protocol: m.urlResolver.output.videotype.replace("mp4", "stb"), rebuf_count: 0, rebuf_duration: 0, url: m.urlResolver.url, uid: m.uid }
         m.watchman.setFields(watchmanFields)
         m.watchman.control = "RUN"
       end if
@@ -2109,7 +2112,11 @@ sub execSearch(search, searchType)
   end if
   if searchType = "channel"
     ?"will run channel search."
-    m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, rawname: "VSEARCH" })
+    if m.wasLoggedIn
+      m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, accessToken: "m.accessToken", authToken: "", cookies: m.cookies, rawname: "CSEARCH" })
+    else
+      m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, accessToken: "", authToken: m.authToken, cookies: m.cookies, rawname: "CSEARCH" })
+    end if
     m.channelSearch.observeField("output", "gotChannelSearch")
     m.channelSearch.control = "RUN"
     m.taskRunning = True
@@ -2607,7 +2614,7 @@ sub gotUserPrefs()
     end for
   end if
   if m.favoritesThread.state = "init" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0 or m.favoritesThread.state = "stop" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0
-    m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, authtoken: m.authtoken, cookies: m.cookies })
+    m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if
@@ -2769,41 +2776,41 @@ sub setReactionDone(msg as object)
 end sub
 
 sub block(channelID)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "append" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
 sub unBlock(channelID)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "remove" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
 sub massFollow(channelIDs)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": channelIDs }: changeType: "append" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": channelIDs }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.preferences.following.Append(channelIDs)
-  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
   m.favoritesThread.observeField("output", "gotFavorites")
   m.favoritesThread.control = "RUN"
 end sub
 
 sub follow(channelID)
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
   m.preferences.following.push(channelID)
-  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
+  m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
   m.favoritesThread.observeField("output", "gotFavorites")
   m.favoritesThread.control = "RUN"
 end sub
 
 sub unFollow(channelID)
   ? "attempting to unfollow " + channelID
-  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: authtoken: m.authtoken: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
+  m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: newHash: m.wallet.newHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
@@ -2813,7 +2820,7 @@ sub unFollow(channelID)
         m.preferences.following.Delete(i)
       end if
     end for
-    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, authtoken: m.authtoken, cookies: m.cookies, resolveLivestreams: true })
+    m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
   end if

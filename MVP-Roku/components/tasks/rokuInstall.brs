@@ -37,10 +37,10 @@ function installRoku()
     catch e
         return { installed: false, error: true }
     end try
-    if m.top.authToken <> "" AND m.top.accessToken <> ""
-        installQuery = { "auth_token": m.top.authToken, "app_version": appVersion, "domain": "odysee.com", "app_id": "rokueecom692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542V", "node_id": "", "daemon_version": daemon_version, "operating_system": "roku", "platform": fullPlatform }
+    if isValid(m.top.accessToken) AND m.top.accessToken <> ""
+        installQuery = { "app_version": appVersion, "domain": "odysee.com", "app_id": "rokueecom692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542V", "node_id": "", "daemon_version": daemon_version, "operating_system": "roku", "platform": fullPlatform }
         installHeaders = { "Authorization": "Bearer " + m.top.accessToken }
-    else if m.top.authToken <> ""
+    else if isValid(m.top.authToken) AND m.top.authToken <> ""
         installQuery = { "auth_token": m.top.authToken, "app_version": appVersion, "domain": "odysee.com", "app_id": "rokueecom692EAWhtoqDuAfQ6KHMXxFxt8tkhmt7sfprEMHWKjy5hf6PwZcHDV542V", "node_id": "", "daemon_version": daemon_version, "operating_system": "roku", "platform": fullPlatform }
         installHeaders = {}
     end if

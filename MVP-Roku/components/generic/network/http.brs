@@ -351,25 +351,25 @@ function getRawTextAuthenticated(url, headers) as Object
           response = event.getString()
         end if
         if responseCode <= 399 AND responseCode >= 300
-          headers = event.GetResponseHeaders()
-          redirect = headers.location
+          lheaders = event.GetResponseHeaders()
+          redirect = lheaders.location
           http.asynccancel()
-          return getRawText(redirect)
+          return getRawTextAuthenticated(redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
           return "{error: True}"
         end if
         if responseCode <= 599 AND responseCode >= 500
           http.asynccancel()
-          return getRawText(url)
+          return getRawTextAuthenticated(url, headers)
         end if
         if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
           http.asynccancel()
-          return getRawText(url)
+          return getRawTextAuthenticated(url, headers)
         end if
       else if event = invalid then
         http.asynccancel()
-        return getRawText(url)
+        return getRawTextAuthenticated(url, headers)
       Else
         ? "[LBRY_HTTP] AsyncGetToString unknown event"
     end if
