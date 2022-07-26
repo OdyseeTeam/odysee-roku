@@ -169,7 +169,7 @@ sub init()
     ?"found current account with UID" + GetRegistry("authRegistry", "uid")
     m.uid = StrToI(GetRegistry("authRegistry", "uid"))
     m.authToken = GetRegistry("authRegistry", "authtoken")
-    m.authTask.setFields({ uid: m.uid, authtoken: m.authtoken})
+    m.authTask.setFields({ uid: m.uid, authtoken: m.authtoken })
   end if
   if IsValid(GetRegistry("preferencesRegistry", "loggedIn")) and IsValid(GetRegistry("preferencesRegistry", "preferences")) 'Get user preferences (if they exist)
     ?"found preferences" + GetRegistry("preferencesRegistry", "preferences")
@@ -236,7 +236,7 @@ sub gotConstants()
     retryError("Error getting constants from Github", "Please e-mail help@odysee.com.", "retryConstants")
   else
     m.constants = m.constantsTask.constants
-    m.oauthFooter.text = "at "+m.constants["SSO_ACT_URL"]
+    m.oauthFooter.text = "at " + m.constants["SSO_ACT_URL"]
     m.authTask.setField("constants", m.constants)
     m.getpreferencesTask.setField("constants", m.constants)
     m.setpreferencesTask.setField("constants", m.constants)
@@ -508,7 +508,7 @@ sub threadDone(msg as object)
       end if
     else
       ?thread.rawname
-      m.loadingText.text = "Loading."+Str(m.runningThreads.Count())+" categories remain..."
+      m.loadingText.text = "Loading." + Str(m.runningThreads.Count()) + " categories remain..."
       m.categories.addReplace(thread.rawname, thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"
@@ -550,10 +550,10 @@ end sub
 sub finishInit()
   if m.global.constants.enableStatistics
     if m.wasLoggedIn
-      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: "", cookies: m.cookies, accesstoken: m.accessToken})
+      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: "", cookies: m.cookies, accesstoken: m.accessToken })
       m.rokuInstall.control = "RUN"
     else
-      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authTask.authtoken, cookies: m.cookies, accesstoken: ""})
+      m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: m.authTask.authtoken, cookies: m.cookies, accesstoken: "" })
       m.rokuInstall.control = "RUN"
     end if
   end if
@@ -1290,7 +1290,7 @@ sub categorySelectorFocusChanged(msg)
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
       if m.authTask.authPhase = 3
-        if isValid(m.preferences.following) AND m.preferences.following.Count() = 0 AND m.wasLoggedIn
+        if isValid(m.preferences.following) and m.preferences.following.Count() = 0 and m.wasLoggedIn
           m.favoritesLoaded = false
         end if
         if m.favoritesLoaded
@@ -2048,7 +2048,7 @@ sub returnToUIPage()
   m.video.visible = false 'Hide video
   m.video.control = "stop" 'Stop video from playing
   deleteSpinner()
-  if m.wasLoggedIn and isValid(m.preferences) AND isValid(m.preferences.following) AND m.preferences.following.Count() > 0 AND m.focusedItem = 7
+  if m.wasLoggedIn and isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() > 0 and m.focusedItem = 7
     m.videoEndingTimeSet = false
     m.video.unObserveField("position")
     m.videoGrid.setFocus(true)
@@ -2356,7 +2356,7 @@ sub hideCategorySelector()
 end sub
 
 sub showCategorySelector()
-  if isValid(m.categorySelector.content) AND m.loadingBackground.visible = false
+  if isValid(m.categorySelector.content) and m.loadingBackground.visible = false
     m.videoGrid.translation = [210, 120]
     m.categorySelector.visible = true
     m.sidebarTrim.visible = true
@@ -2522,19 +2522,21 @@ end sub
 
 'Sync Task related functions (post auth)
 sub getSync()
-  ?"GETSYNC DEBUG"
-  ?m.syncLoop.inSync
-  ?m.wasLoggedIn
-  ?m.favoritesLoaded
-  ?"GETSYNC DEBUG"
-  if m.preferences.Count() = 0 and m.syncLoop.inSync = true and m.wasLoggedIn and m.syncLoop.accessToken <> "" 'update
-    getUserPrefs()
-  else if m.syncLoop.accessToken = "" 'logged out, stop loop. (fixes wasLoggedIn race condition)
-    m.syncLoop.control = "STOP"
-  else 'get in sync first
-    ? "NOT IN SYNC"
-    m.syncLoop.control = "STOP"
-    m.syncLoop.control = "RUN"
+  if m.setpreferencesTask.state <> "run" and m.setpreferencesTask.state <> "init"
+    ?"GETSYNC DEBUG"
+    ?m.syncLoop.inSync
+    ?m.wasLoggedIn
+    ?m.favoritesLoaded
+    ?"GETSYNC DEBUG"
+    if m.preferences.Count() = 0 and m.syncLoop.inSync = true and m.wasLoggedIn and m.syncLoop.accessToken <> ""
+      getUserPrefs()
+    else if m.syncLoop.accessToken = "" 'logged out, stop loop. (fixes wasLoggedIn race condition)
+      m.syncLoop.control = "STOP"
+    else 'get in sync first
+      ? "NOT IN SYNC"
+      m.syncLoop.control = "STOP"
+      m.syncLoop.control = "RUN"
+    end if
   end if
 end sub
 
@@ -2621,12 +2623,12 @@ sub gotUserPrefs()
     m.favoritesThread.control = "RUN"
   end if
   if isValid(m.getpreferencesTask.preferences.following)
-    if m.getpreferencesTask.preferences.following.Count() = 0 AND m.loadingBackground.visible = false
+    if m.getpreferencesTask.preferences.following.Count() = 0 and m.loadingBackground.visible = false
       m.loadingText.visible = false
       m.oauthHeader.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
       m.oauthHeader.visible = true
     end if
-  end if  
+  end if
   favoritesChanged = invalid
   oldpreferences = invalid
   newpreferences = invalid
@@ -2920,15 +2922,15 @@ end function
 function return_tremendous_data()
   tremendous_data = []
   for each category in m.channelIDs
-      catData = m.channelIDs[category]
-      if isValid(catData)
-        if isValid(catData["channelIds"])
-          tremendous_data.Append(catData["channelIds"])
-          if tremendous_data.Count() > 1000
-            exit for
-          end if
+    catData = m.channelIDs[category]
+    if isValid(catData)
+      if isValid(catData["channelIds"])
+        tremendous_data.Append(catData["channelIds"])
+        if tremendous_data.Count() > 1000
+          exit for
         end if
       end if
+    end if
   end for
   return tremendous_data
 end function
