@@ -8,6 +8,7 @@
             <field id="walletData" type="String"/>
             <field id="uid" type="int"/>
             <field id="cookies" type="roArray"/>
+            <field id="error" type="Bool"/>
             <!--used to trigger external tasks if out-of-sync-->
             <field id="inSync" type="bool"/>
             <field id="preferencesChanged" type="bool"/>

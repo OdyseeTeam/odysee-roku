@@ -137,7 +137,7 @@ sub init()
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
   observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID": "authtoken": "gotAuth": "cookies": "gotCookies" })
-  observeFields("syncLoop", { "inSync": "gotSync": "preferencesChanged": "preferencesChanged": "oldHash": "walletChanged": "walletData": "walletChanged" })
+  observeFields("syncLoop", { "inSync": "gotSync": "preferencesChanged": "preferencesChanged": "oldHash": "walletChanged": "walletData": "walletChanged": "error": "syncLoopError" })
   m.getpreferencesTask = createObject("roSGNode", "getpreferencesTask")
   m.setpreferencesTask = createObject("roSGNode", "setpreferencesTask")
   m.preferences = {} ' user preferences (blocked, following, collections)
@@ -289,7 +289,9 @@ sub authPhaseChanged(msg as object)
       end if
     end if
     if data = 2
-      m.oauthHeader.text = "Enter"
+      if m.oauthCode.text <> "API-ERR"
+        m.oauthHeader.text = "Enter"
+      end if
       ?"Phase 2"
       if m.legacyAuthenticated = false
         m.wasLoggedIn = false
@@ -301,18 +303,29 @@ sub authPhaseChanged(msg as object)
         m.authTimerObserved = true
       end if
     end if
-    if data = 1.5 'BAD SSO.
+    if data = 1.6 'Bad SSO/Data (in syncLoop)
+      ?"Sync Loop Error."
+      if m.legacyAuthenticated = false
+        m.wasLoggedIn = false
+        authDone()
+      end if
+      ? m.wasLoggedin
+      if m.authTimerObserved = false
+        m.authTaskTimer.observeField("fire", "refreshAuth")
+        m.authTimerObserved = true
+      end if
+      m.authTask.authPhase = 1.5
+    end if
+    if data = 1.5 'BAD SSO/Data
       if m.syncTimerObserved = true
         m.syncLoop.control = "STOP"
         m.syncLoopTimer.unobserveField("fire")
         m.syncTimerObserved = false
       end if
-      m.oauthHeader.translation = "[550,500]"
-      m.oauthHeader.text = "Cannot properly connect to SSO"
-      m.oauthCode.text = "SSO-DOWN"
-      m.oauthFooter.translation = "[650,670]"
+      m.oauthHeader.text = "Cannot connect to Accounts"
+      m.oauthCode.text = "API-ERR"
       m.oauthFooter.text = "Contact help@odysee.com"
-      m.wasLoggedIn = false 'better to pretend we're not logged in, the SSO server is not cooperating.
+      m.wasLoggedIn = false 'better to pretend we're not logged in.
       m.authTask.control = "RUN"
       ?"Task Restarted"
     end if
@@ -1309,7 +1322,7 @@ sub categorySelectorFocusChanged(msg)
           m.oauthHeader.visible = true
           m.oauthLogoutButton.visible = true
         end if
-      else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2
+      else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2 AND m.authTask.badSSO = false
         m.oauthHeader.text = "Enter"
         m.videoGrid.visible = false
         m.loadingText.visible = false
@@ -1323,6 +1336,17 @@ sub categorySelectorFocusChanged(msg)
         ?"Would show error status"
         m.authTask.control = "STOP"
         m.authTaskTimer.control = "stop"
+      else if m.authTask.badSSO = true
+        m.authTask.authPhase = 1.5
+        m.videoGrid.visible = false
+        m.loadingText.visible = false
+        m.oauthLogoutButton.visible = false
+        m.oauthHeader.visible = true
+        m.oauthCode.visible = true
+        m.oauthFooter.visible = true
+        m.oauthHeader.text = "Cannot connect to Accounts"
+        m.oauthCode.text = "API-ERR"
+        m.oauthFooter.text = "Contact help@odysee.com"
       end if
     end if
     if m.categorySelector.itemFocused > 1
@@ -1475,6 +1499,14 @@ sub userPrefsError()
   m.getpreferencesTask.control = "STOP"
   Logout()
   Error("Cannot get/parse preferences", "Please e-mail help@odysee.com.")
+end sub
+
+sub syncLoopError()
+  m.wasLoggedIn = false
+  m.syncLoop.control = "STOP"
+  m.syncLoopTimer.unobserveField("fire")
+  m.authTask.authPhase = 1.6
+  m.authTask.badSSO = true
 end sub
 
 sub setPreferencesError()
