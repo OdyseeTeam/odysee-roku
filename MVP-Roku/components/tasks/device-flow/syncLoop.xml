@@ -9,6 +9,7 @@
             <field id="uid" type="int"/>
             <field id="cookies" type="roArray"/>
             <field id="error" type="Bool"/>
+            <field id="errorType" type="String"/>
             <!--used to trigger external tasks if out-of-sync-->
             <field id="inSync" type="bool"/>
             <field id="preferencesChanged" type="bool"/>

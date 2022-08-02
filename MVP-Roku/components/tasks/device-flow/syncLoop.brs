@@ -122,6 +122,7 @@ sub master()
             m.top.inSync = inSync
         end if
     catch e
+        m.top.errorType = e.message
         m.top.error = true
     end try
     sdkHash = invalid

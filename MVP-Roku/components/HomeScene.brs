@@ -349,9 +349,16 @@ sub authPhaseChanged(msg as object)
       if m.wasLoggedIn = false
         authDone()
       end if
-      m.authTask.authPhase = 1
-      m.authTask.control = "RUN" 'TODO: this is probably redundant since we literally stop it on authDone
-      ?"Task Restarted"
+      if m.constants["EMERG_DISABLE"]["accounts"]
+        m.wasLoggedIn = false
+        m.authTask.authPhase = 1.5
+        m.authTask.control = "RUN"
+        ?"Task Restarted (LEGACY AUTHPHASE: ACCTS DISABLED)"
+      else
+        m.authTask.authPhase = 1
+        m.authTask.control = "RUN"
+        ?"Task Restarted (LEGACY AUTHPHASE)"
+      end if
     end if
     if data = 0
       ?"Phase 0"
