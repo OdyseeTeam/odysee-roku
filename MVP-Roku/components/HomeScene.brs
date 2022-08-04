@@ -2155,7 +2155,7 @@ sub execSearch(search, searchType)
   if searchType = "channel"
     ?"will run channel search."
     if m.wasLoggedIn
-      m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, accessToken: "m.accessToken", authToken: "", cookies: m.cookies, rawname: "CSEARCH" })
+      m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, accessToken: m.accessToken, authToken: "", cookies: m.cookies, rawname: "CSEARCH" })
     else
       m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, accessToken: "", authToken: m.authToken, cookies: m.cookies, rawname: "CSEARCH" })
     end if
