@@ -85,6 +85,7 @@ sub init()
   m.oauthLogoutButton = m.top.findNode("logoutButton")
 
   'UI Item observers
+  m.videoObserved = true
   m.video.observeField("state", "onVideoStateChanged")
   m.categorySelector.observeField("itemFocused", "categorySelectorFocusChanged")
   m.videoGrid.observeField("rowItemSelected", "resolveVideo")
@@ -608,6 +609,9 @@ sub finishInit()
       end if
     end if
   end if
+  'resolveVideo used in dev
+  'stop
+  'resolveVideo("lbry://@classical.hi-fi#e/Bach_Mass.B.Minor_Richter.Munich#6")
 end sub
 
 'UI BACKBONE
@@ -1540,6 +1544,9 @@ sub malformedVideoError()
 end sub
 
 sub resolveErrorDismissed()
+  if m.videoObserved = false
+    m.video.observeField("state", "onVideoStateChanged")
+  end if
   m.errorButton.setFocus(false)
   m.errorButton.unobserveField("buttonSelected")
   m.errorText.visible = false
@@ -1704,30 +1711,14 @@ sub resolveVideo(url = invalid)
         end if
       end if
     end if
-  else if type(url) = "roString"
+  else if type(url) = "roString" OR type(url) = "String"
     ?"Resolving a Video (deeplink direct)"
     if m.wasLoggedIn
       m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
       m.videoButtons.itemSpacing = "[20, 20]"
       m.videoButtons.columnSpacings = "[0, 200, 0, 0, 200, 0]"
-      getReactions(curItem.guid)
       m.videoButtons.animateToItem = 3
-      if m.preferences.Count() > 0 and isValid(m.preferences.following)
-        if m.preferences.following.Count() > 0
-          for each claimID in m.preferences.following
-            if claimID = m.currentVideoChannelID
-              ? "This user is being followed."
-              isFollowed = true
-            end if
-          end for
-        end if
-      end if
       regenerateNormalButtonRefs()
-      if isFollowed
-        m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
-      else
-        m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
-      end if
     else
       m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
       m.videoButtons.itemSpacing = "[20, 20]"
@@ -2003,6 +1994,22 @@ function onVideoStateChanged(msg as object)
     state = msg.getData()
     ?"==========VIDEO STATE==========="
     ?state
+    if state = "error"
+      m.video.unobserveField("state")
+      m.videoObserved = false
+      m.videoButtons.setFocus(false)
+      m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+      m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+      m.videoProgressBar.width = 0
+      m.videoOverlayGroup.visible = false
+      m.videoUITimer.control = "stop"
+      m.videoUITimer.unobserveField("fire")
+      m.video.unObserveField("position")
+      m.video.visible = false 'Hide video
+      m.video.control = "stop" 'Stop video from playing
+      deleteSpinner()
+      malformedVideoError()
+    end if
     if state = "finished"
       deleteSpinner()
       if m.global.constants.enableStatistics
@@ -2038,6 +2045,8 @@ function onVideoStateChanged(msg as object)
         m.videoButtonsPlayIcon.fontSize = m.videoButtons.content.getChildren(-1, 0)[2]["fontSize"] 'borrow precalculated fontsize from neighbor
       end if
     end if
+  else if type(msg) = "roSGNodeEvent"
+    ? msg.getData()
   end if
 end function
 

@@ -14,14 +14,14 @@ end sub
 
 function resolve(lbry_url)
     try
-        'get base URL
-        ?lbry_url
-        spliturl = lbry_url.split("#")
-        friendlyname = spliturl[0].split("/")[2]
-        return siteMethod(lbry_url)
+    'get base URL
+    ?lbry_url
+    spliturl = lbry_url.split("#")
+    friendlyname = spliturl[0].split("/")[2]
+    return siteMethod(lbry_url)
     catch e
-        m.top.error = true
-        return { error: true }
+         m.top.error = true
+         return { error: true }
     end try
 end function
 
@@ -44,16 +44,26 @@ function siteMethod(lbry_url)
         'uri: lbryURL
         'outpoint: resolve TXID+":"+resolve NOUT
         'claim_id: claimID
-        if isValid(m.top.accessToken) AND m.top.accessToken <> ""
-            reqData = {uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID}
+        if isValid(m.top.accessToken) and m.top.accessToken <> ""
+            reqData = { uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID }
             reqHeaders = { "Authorization": "Bearer " + m.top.accessToken }
-        else if isValid(m.top.authToken) AND m.top.authToken <> ""
-            reqData = {uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID, "auth_token": m.top.authToken}
+        else if isValid(m.top.authToken) and m.top.authToken <> ""
+            reqData = { uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID, "auth_token": m.top.authToken }
             reqHeaders = {}
         end if
         fileViewRequest = getURLEncoded(reqData, fileViewURL, reqHeaders)
     end if
-    vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
+    playtype = "normal"
+    try
+        vLength = resolveRequestOutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["video"]["duration"]
+    catch e
+        try
+            vLength = resolverequestoutput["result"][resolveRequestOutput["result"].Keys()[0]]["value"]["audio"]["duration"]
+            playType = "audio"
+        catch e
+            vLength = 0
+        end try
+    end try
     vresolvedRedirectURL = resolveRedirect(vurl.EncodeUri())
     vresSplit = vresolvedRedirectURL.split("/")
     vresDone = []
@@ -82,9 +92,9 @@ function siteMethod(lbry_url)
     end if
     if m.global.constants.enableStatistics
         m.top.error = false
-        return { videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url } 'returns video+statdata
+        return { videourl: vresolvedRedirectURL, videotype: vtype, playtype: playtype, title: m.top.title, length: vLength, player: vPlayer, unresolvedURL: m.top.url } 'returns video+statdata
     else
         m.top.error = false
-        return { videourl: vresolvedRedirectURL, videotype: vtype, playtype: "normal", title: m.top.title, length: vLength } 'stat data is not needed for playback w/o statistics
+        return { videourl: vresolvedRedirectURL, videotype: vtype, playtype: playtype, title: m.top.title, length: vLength } 'stat data is not needed for playback w/o statistics
     end if
 end function
