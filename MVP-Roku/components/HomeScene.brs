@@ -6,6 +6,7 @@ sub init()
   m.maxThreads = 50
   m.runningThreads = []
   m.threads = []
+  m.threadsToDelete = []
   'UI Logic/State Variables
   m.loaded = False 'Has the app finished its first load?
   m.favoritesLoaded = false 'Were favorites loaded?(init only)
@@ -509,15 +510,16 @@ sub threadDone(msg as object)
   if type(msg) = "roSGNodeEvent"
     thread = msg.getRoSGNode()
     if thread.error
-      if thread.errorcount = 2
+      if thread.numerrors = 2
         'tried twice (w/likely hundreds of queries), kill it
         thread.control = "STOP"
         thread.unObserveField("output")
         for threadindex = 0 to m.runningthreads.Count()
           if IsValid(m.runningthreads[threadindex])
             if m.runningthreads[threadindex].control = "stop"
-              if m.runningthreads[threadindex] = thread
-                todelete.push(threadindex)
+              if m.runningthreads[threadindex].rawname = thread.rawname
+                m.channelIDs.Delete(thread.rawname)
+                m.threadsToDelete.push(threadindex)
               end if
             end if
           end if
@@ -533,15 +535,14 @@ sub threadDone(msg as object)
       m.categories.addReplace(thread.rawname, thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"
-      todelete = []
       for threadindex = 0 to m.runningthreads.Count()
         if IsValid(m.runningthreads[threadindex])
           if m.runningthreads[threadindex].control = "stop"
-            todelete.push(threadindex)
+            m.threadsToDelete.push(threadindex)
           end if
         end if
       end for
-      for each delthread in todelete
+      for each delthread in m.threadsToDelete
         m.runningthreads.delete(delthread)
       end for
       if m.threads.count() > 0

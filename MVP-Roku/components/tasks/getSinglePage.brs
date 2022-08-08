@@ -122,6 +122,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"
     if (content.getChildCount() * 4) = 0
         m.top.error = true
+        m.top.numerrors+=1
         return { error: true }
     end if
     '?"manufacturing finished for key: "+subkey
