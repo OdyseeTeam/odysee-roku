@@ -21,19 +21,11 @@ sub master()
         'icon = icon
         'label = label
         locale = invalid
-        categorySelectordata = CreateObject("roSGNode", "ContentNode")
-        'create search icon
-        dataItem = categorySelectordata.CreateChild("catselectordata")
-        dataItem.posterUrl = "pkg:/images/png/Search.png"
-        dataItem.labelText = "Search"
-        dataItem = categorySelectordata.CreateChild("catselectordata")
-        dataItem.posterUrl = "pkg:/images/png/Heart.png"
-        dataItem.labelText = "Following"
-        dataItem.trueName = "FAVORITES"
+        categorySelectordata = [{"posterUrl": "pkg:/images/png/Search.png":"labelText":"Search"}, {"posterUrl": "pkg:/images/png/Heart.png":"labelText":"Following":"trueName":"FAVORITES"}]
         ?"Creating categories"
         legacyFormatFrontpageCIDS = {} 'until I change HomeScene.
         for each category in frontpageCIDS 'create categories for selector
-            dataItem = categorySelectordata.CreateChild("catselectordata")
+            dataItem = {}
             if fileSystem.Exists("pkg:/images/png/" + category.icon.replace(" ", "") + ".png")
                 dataItem.posterUrl = "pkg:/images/png/" + category.icon.replace(" ", "") + ".png"
             else
@@ -45,9 +37,10 @@ sub master()
             end if
             dataItem.trueName = category.name
             dataItem.labelText = category.label
+            categorySelectordata.push(dataItem)
             legacyFormatFrontpageCIDS.addReplace(category.name, category)
         end for
-        if frontpageCIDS.count() > 0
+        if frontpageCIDS.count() > 0 AND categorySelectordata.count() > 0
             m.top.categoryselectordata = categorySelectordata
             m.top.channelids = legacyFormatFrontpageCIDS
         else

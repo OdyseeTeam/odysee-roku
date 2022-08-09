@@ -12,6 +12,18 @@ sub master()
 end sub
 
 function ChannelsToVideoGrid(channels, blockedChannels)
+    'uncomment to test multiple removed categories
+    'if m.top.rawname = "rabbithole" OR m.top.rawname = "tech" OR m.top.rawname = "music" or m.top.rawname = "education"
+    '    m.top.error = true
+    '    m.top.numerrors += 1
+    '    return { error: true }
+    'end if
+
+    'uncomment to test all categories missing
+    'm.top.error = true
+    'm.top.numerrors += 1
+    'return { error: true }
+
     m.parseTimer = CreateObject("roTimespan")
     m.parseLibTimer = CreateObject("roTimespan")
     result = [] 'This is an array of associativeArrays that can be used to set a ContentNode
@@ -47,14 +59,14 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             end if
         end if
     end if
-    ? "GetSinglePage,"+threadname+",livestreams," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
+    ? "GetSinglePage," + threadname + ",livestreams," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     'm.parseTimer.Mark()
     'STAGE 2: mass parse
     m.parseLibTimer.Mark()
     currentPage = getVideoPage(curPage)
-    ? "GetSinglePage,"+threadname+",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
+    ? "GetSinglePage," + threadname + ",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
     while gotEnough = false
-        if currentParsedAmount = lastParsedAmount AND curPage <> 1 OR currentParsedAmount >= max 'got no more/got enough
+        if currentParsedAmount = lastParsedAmount and curPage <> 1 or currentParsedAmount >= max 'got no more/got enough
             gotEnough = true
             exit while
         end if
@@ -69,21 +81,21 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             pv = parseVideo(claim)
             if pv.Count() > 0
                 result.push(pv)
-                currentParsedAmount+=1
+                currentParsedAmount += 1
                 if currentParsedAmount >= max
                     exit for
                 end if
             end if
             pv = invalid
         end for
-        ? "GetSinglePage,"+threadname+",parsing," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
+        ? "GetSinglePage," + threadname + ",parsing," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
         if currentParsedAmount >= max
             exit while
         end if
-        curPage+=1
+        curPage += 1
         m.parseLibTimer.Mark()
         currentPage = getVideoPage(curPage)
-        ? "GetSinglePage,"+threadname+",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
+        ? "GetSinglePage," + threadname + ",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
     end while
     '? "GetSinglePage,"+threadname+",get," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     m.parseTimer.Mark()
@@ -116,13 +128,13 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             curitem = invalid
         end if
     end for
-    ? "GetSinglePage,"+threadname+",reformat," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
+    ? "GetSinglePage," + threadname + ",reformat," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     m.parseTimer.Mark()
     '?type(content)
     ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee"
     if (content.getChildCount() * 4) = 0
         m.top.error = true
-        m.top.numerrors+=1
+        m.top.numerrors += 1
         return { error: true }
     end if
     '?"manufacturing finished for key: "+subkey

@@ -7,6 +7,7 @@ sub init()
   m.runningThreads = []
   m.threads = []
   m.threadsToDelete = []
+  m.threaderRunning = false
   'UI Logic/State Variables
   m.loaded = False 'Has the app finished its first load?
   m.favoritesLoaded = false 'Were favorites loaded?(init only)
@@ -413,9 +414,9 @@ sub gotCIDS()
     retryError("Error getting frontpage channel IDs", "Please e-mail help@odysee.com.", "retryCIDS")
   else
     m.channelIDs = m.cidsTask.channelids
-    m.categorySelectordata = m.cidsTask.categoryselectordata
+    m.categorySelectordata = m.cidsTask.categorySelectordata
     ?m.channelIDs
-    ?"Got channelIDs+category selector data"
+    ?"Got channelIDs+raw category selector data"
     ?"Creating threads"
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     blocked = []
@@ -437,7 +438,7 @@ sub gotCIDS()
           thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
           thread.observeField("output", "threadDone")
           m.threads.push(thread)
-          m.favoritesLoaded = true 'favorites were loaded because user is logged in
+          m.favoritesLoaded = false 'Not yet.
         else
           m.favoritesLoaded = false
         end if
@@ -482,9 +483,8 @@ sub gotCIDS()
     end for
     ?"Done, starting threader."
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
-    m.categorySelector.content = m.categorySelectordata
     ?m.categorySelectordata
-    ?m.categorySelector.content
+    m.threaderRunning = true
     m.runningThreads = m.threads
     m.threads = []
     for each thread in m.runningthreads
@@ -511,48 +511,63 @@ sub threadDone(msg as object)
     thread = msg.getRoSGNode()
     if thread.error
       if thread.numerrors = 2
+        ?thread.rawname+" will now be deleted."
         'tried twice (w/likely hundreds of queries), kill it
         thread.control = "STOP"
         thread.unObserveField("output")
-        for threadindex = 0 to m.runningthreads.Count()
-          if IsValid(m.runningthreads[threadindex])
-            if m.runningthreads[threadindex].control = "stop"
-              if m.runningthreads[threadindex].rawname = thread.rawname
-                m.channelIDs.Delete(thread.rawname)
-                m.threadsToDelete.push(threadindex)
-              end if
-            end if
+        m.channelIDs.Delete(thread.rawname)
+        for categoryindex = 1 to m.categorySelectorData.Count()
+          if m.categorySelectorData[categoryindex].trueName = thread.rawname
+            m.categorySelectorData.delete(categoryindex)
+            exit for
+          end if
+        end for
+        for eThread = 0 to m.runningThreads.Count() - 1
+          if m.runningThreads[eThread].rawname = thread.rawname
+              m.runningThreads.delete(eThread)
+              exit for
           end if
         end for
       else
         'retry: thread is not past limit
+        ?thread.rawname+" error. Trying again."
         thread.control = "STOP"
         thread.control = "RUN"
       end if
     else
-      ?thread.rawname
+      ?thread.rawname+" completed successfully"
       m.loadingText.text = "Loading." + Str(m.runningThreads.Count()) + " categories remain..."
       m.categories.addReplace(thread.rawname, thread.output.content)
       thread.unObserveField("output")
       thread.control = "STOP"
-      for threadindex = 0 to m.runningthreads.Count()
-        if IsValid(m.runningthreads[threadindex])
-          if m.runningthreads[threadindex].control = "stop"
-            m.threadsToDelete.push(threadindex)
-          end if
+      for cThread = 0 to m.runningThreads.Count() - 1
+        if m.runningThreads[cThread].rawname = thread.rawname
+            m.runningThreads.delete(cThread)
+            exit for
         end if
       end for
-      for each delthread in m.threadsToDelete
-        m.runningthreads.delete(delthread)
-      end for
-      if m.threads.count() > 0
-        thread = m.threads.Pop()
-        thread.control = "RUN"
-        m.runningthreads.Push(thread)
-      else
-        if m.authTask.authPhase > 0 and m.runningThreads.count() = 0
+        if m.authTask.authPhase > 0 and m.runningThreads.count() = 0 AND m.categories.count() > 0
           ?m.categories
           ?m.categories[m.categories.Keys()[0]]
+          m.categorySelector.content = createObject("roSGNode", "ContentNode")
+          for each category in m.categorySelectordata 'create categories for selector
+            if isValid(category.trueName)
+                if m.categories.DoesExist(category.truename)
+                  dataItem = m.categorySelector.content.CreateChild("catselectordata")
+                  dataItem.setFields(category)
+                  if category.trueName = "FAVORITES"
+                    m.favoritesLoaded = true
+                  end if
+                else if category.trueName = "FAVORITES"
+                  dataItem = m.categorySelector.content.CreateChild("catselectordata")
+                  dataItem.setFields(category)
+                  m.favoritesLoaded = false
+                end if
+              else 'core/system categories
+                dataItem = m.categorySelector.content.CreateChild("catselectordata")
+                dataItem.setFields(category)
+            end if
+          end for
           ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
           m.videoGrid.content = m.categories[m.categories.Keys()[0]]
           m.loadingText.visible = false
@@ -561,12 +576,17 @@ sub threadDone(msg as object)
           m.loadingText.vertAlign = "center"
           m.loadingText.horizAlign = "left"
           finishInit()
-        else if m.runningThreads.count() = 0
-          retryError("CRITICAL ERROR: Cannot get/parse ANY frontpage data", "Please e-mail help@odysee.com.", "retryConstants")
         end if
       end if
     end if
-  end if
+    'Roku compiles variables as static, even ones that seem dynamic for speed.
+    ? m.runningThreads.count() 'Force recount/dev debug
+    if m.runningThreads.count() = 0
+      m.categories.count() 
+      if m.categories.count() = 0
+        retryError("CRITICAL ERROR: claim_search down/parsing failure", "The app cannot start without categories. Press OK to attempt again."+Chr(10)+"Please e-mail help@odysee.com.", "retryCIDS")
+      end if
+    end if
 end sub
 
 sub finishInit()
@@ -1334,7 +1354,7 @@ sub categorySelectorFocusChanged(msg)
           m.oauthHeader.visible = true
           m.oauthLogoutButton.visible = true
         end if
-      else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2 AND m.authTask.badSSO = false
+      else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2 and m.authTask.badSSO = false
         m.oauthHeader.text = "Enter"
         m.videoGrid.visible = false
         m.loadingText.visible = false
@@ -1712,7 +1732,7 @@ sub resolveVideo(url = invalid)
         end if
       end if
     end if
-  else if type(url) = "roString" OR type(url) = "String"
+  else if type(url) = "roString" or type(url) = "String"
     ?"Resolving a Video (deeplink direct)"
     if m.wasLoggedIn
       m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
@@ -2666,7 +2686,7 @@ sub gotUserPrefs()
       end if
     end for
   end if
-  if m.favoritesThread.state = "init" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0 or m.favoritesThread.state = "stop" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0
+  if m.favoritesThread.state = "init" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0 or m.favoritesThread.state = "stop" and favoritesChanged and m.getpreferencesTask.preferences.following.Count() > 0 and m.threaderRunning = false
     m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"

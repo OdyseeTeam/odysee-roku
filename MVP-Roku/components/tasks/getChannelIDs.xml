@@ -6,7 +6,7 @@
             <field id="constants" type="assocarray"/>
             <field id="channelids" type="assocarray"/>
             <field id="error" type="bool"/>
-            <field id="categoryselectordata" type="node"/>
+            <field id="categorySelectorData" type="roArray"/>
             <field id="cookies" type="roArray"/>
     </interface>
     <script type="text/brightscript" uri="pkg:/components/tasks/getChannelIDs.brs" />
