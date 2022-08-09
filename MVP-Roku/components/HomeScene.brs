@@ -785,6 +785,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         if m.video.visible
           returnToUIPage()
           return true
+        else if m.itemFocused = 20 '[error button]
+          ErrorDismissed()
         else if (m.uiLayer = 0 and m.focusedItem = 1) or (m.uiLayer = 0 and m.focusedItem = 2) 'are favorites or category 1 in focus with no additional UI layers?
           'TODO: add "are you sure you want to exit Odysee" screen
           'for now, re-add old behavior
@@ -1444,14 +1446,22 @@ sub downsizeVideoGrid()
   m.videoGrid.rowitemSize = [[380, 280]]
 end sub
 
-sub failedSearch()
+sub failedSearch(errortype)
   ?"search failed"
   m.videoGrid.visible = false
   m.videoSearch.control = "STOP"
   m.channelSearch.control = "STOP"
   m.taskRunning = False
   ?"task stopped"
-  Error("No results.", "Nothing found on Odysee.")
+  if errortype = "noResults"
+    Error("No results.", "Nothing found on Odysee.")
+  else if errortype = "lighthouseError"
+    Error("Search server error", "Search may be down at this time.")
+  else if errortype = "claimSearchError"
+    Error("Claim_search error", "Please e-mail help@odysee.com ASAP.")
+  else if errortype = "parseError"
+    Error("Parsing error", "Recieved invalid or malformed data from Odysee.")
+  end if
 end sub
 
 sub handleInputEvent(msg)
@@ -1478,6 +1488,7 @@ sub Error(title, error)
   m.errorText.visible = true
   m.errorSubtext.visible = true
   m.errorButton.visible = true
+  m.focusedItem = 20 '[error button]
   m.errorButton.observeField("buttonSelected", "ErrorDismissed")
   m.errorButton.setFocus(true)
 end sub
@@ -1490,8 +1501,18 @@ sub ErrorDismissed()
   m.searchKeyboard.text = ""
   if m.searchFailed = true
     backToKeyboard()
+  else if m.UILayers.Count() = 0
+    resetVideoGrid()
+    showCategorySelector()
+    m.videoGrid.visible = true
+    m.errorButton.setFocus(false)
+    m.focusedItem = 2
+    m.videoGrid.setFocus(true)
   else
     m.videoGrid.visible = True
+    m.errorButton.setFocus(false)
+    m.focusedItem = 2
+    m.videoGrid.setFocus(true)
   end if
 end sub
 
@@ -1524,6 +1545,7 @@ sub resolveError()
   m.errorButton.observeField("buttonSelected", "resolveerrorDismissed")
   m.errorButton.setFocus(true)
 end sub
+
 
 sub userPrefsError()
   m.taskRunning = false
@@ -2235,7 +2257,7 @@ sub gotVideoSearch(msg as object)
       m.videoGrid.setFocus(true)
     else
       m.searchFailed = true
-      failedSearch()
+      failedSearch(m.videoSearch.output.errorType)
     end if
   end if
 end sub
@@ -2246,7 +2268,7 @@ sub gotChannelSearch(msg as object)
     ?data
     if data.success = true
       downsizeVideoGrid()
-      m.videoSearch.unobserveField("output")
+      m.channelSearch.unobserveField("output")
       'if msg
       m.videoGrid.content = data.content
       m.channelSearch.control = "STOP"
@@ -2273,8 +2295,9 @@ sub gotChannelSearch(msg as object)
       end if
       m.videoGrid.setFocus(true)
     else
+      m.channelSearch.unobserveField("output")
       m.searchFailed = true
-      failedSearch()
+      failedSearch(m.channelSearch.output.errorType)
     end if
   end if
 end sub
@@ -2287,9 +2310,9 @@ sub gotResolvedChannel(msg as object)
       m.taskRunning = false
       if m.uiLayers.Count() > 0
         m.videoGrid.content = m.uiLayers[0]
-        resolveError()
+        failedSearch(m.channelresolver.output.errorType)
       else
-        failedSearch()
+        failedSearch(m.channelresolver.output.errorType)
       end if
     else
       m.videoGrid.visible = true

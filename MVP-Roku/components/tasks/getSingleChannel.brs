@@ -30,122 +30,127 @@ function ChannelToVideoGrid(channel)
         end if
         if retries > 5
             m.top.error = true
-            return { error: true }
+            return { error: true, errortype: "claimSearchError" }
         end if
     end while
     if m.top.error = false 'Stage 1: Parse content
-        items = response.result.items
         try
-            m.top.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + items[1].signing_channel.value.thumbnail.url
-        catch e
-            m.top.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-        end try
-        defaultChannelIcon = m.top.channelIcon
-        streamStatus = getLivestream(channel)
-        if streamStatus.success = true
-            result.push(streamStatus.liveItem)
-        else
-            ? channel + " is not livestreaming"
-        end if
-        ? "got " + str(items.Count()) + " items from Odysee"
-        for i = 0 to items.Count() - 1 step 1 'Parse response
-            item = {}
-            item.Title = items[i].value.title
+            'TODO: use parseLib for this
+            items = response.result.items
             try
-                item.Creator = items[i].signing_channel.value.title
+                m.top.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + items[1].signing_channel.value.thumbnail.url
             catch e
-                item.Creator = items[i].signing_channel.name
+                m.top.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
             end try
-            if isValid(items[i]["value"]["video"]["duration"])
-                item.videoLength = getvideoLength(items[i]["value"]["video"]["duration"])
+            defaultChannelIcon = m.top.channelIcon
+            streamStatus = getLivestream(channel)
+            if streamStatus.success = true
+                result.push(streamStatus.liveItem)
+            else
+                ? channel + " is not livestreaming"
             end if
-            item.rawCreator = items[i].signing_channel.name
-            item.Description = ""
-            item.Channel = items[i].signing_channel.claim_id
-            item.ChannelIcon = defaultChannelIcon
-            time = CreateObject("roDateTime")
-            try
+            ? "got " + str(items.Count()) + " items from Odysee"
+            for i = 0 to items.Count() - 1 step 1 'Parse response
+                item = {}
+                item.Title = items[i].value.title
                 try
-                    time.FromSeconds(items[i]["value"]["release_time"])
+                    item.Creator = items[i].signing_channel.value.title
                 catch e
-                    time.FromSeconds(items[i].meta.creation_timestamp)
+                    item.Creator = items[i].signing_channel.name
                 end try
-            catch e
-                time.FromSeconds(items[i].timestamp)
-            end try
-            timestr = time.AsDateString("short-month-short-weekday") + " "
-            timestr = timestr.Trim()
-            time = invalid
-            item.ReleaseDate = timestr
-            item.guid = items[i].claim_id
-            try
-                thumbnail = m.top.constants["IMAGE_PROCESSOR"] + items[i].value.thumbnail.url
-            catch e
-                thumbnail = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-            end try
-            item.HDPosterURL = thumbnail
-            item.thumbnailDimensions = [360, 240]
-            'all set on watching video due to https://QUERY_API/api/v1/proxy?m=get
-            item.url = items[i].permanent_url.Trim() 'to be used to resolve with m?=get
-            'item.stream = {url : item.url}
-            'item.link = item.url
-            'item.streamFormat = ""
-            item.source = "odysee"
-            item.itemType = "video"
-            result.push(item)
-        end for
-        'Stage 2: Format Content (content -> row -> item) from "result"/preparsed.
-        content = createObject("RoSGNode", "ContentNode")
-        counter = 0
-        rowSize = 4
-        if result.Count() > rowSize
-            for each item in result
-                if counter < rowSize
-                    if IsValid(currow) <> true
-                        currow = createObject("RoSGNode", "ContentNode")
-                    end if
-                    curitem = createObject("RoSGNode", "ContentNode")
-                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "",  rawCreator: "", videoLength: "" })
-                    curitem.setFields(item)
-                    currow.appendChild(curitem)
-                    if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
-                        content.appendChild(currow)
-                    end if
-                    counter += 1
-                    curitem = invalid
-                else
-                    content.appendChild(currow)
-                    currow = invalid
-                    currow = createObject("RoSGNode", "ContentNode")
-                    curitem = createObject("RoSGNode", "ContentNode")
-                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", rawCreator: "", videoLength: "" })
-                    curitem.setFields(item)
-                    currow.appendChild(curitem)
-                    counter = 1
-                    curitem = invalid
+                if isValid(items[i]["value"]["video"]["duration"])
+                    item.videoLength = getvideoLength(items[i]["value"]["video"]["duration"])
                 end if
+                item.rawCreator = items[i].signing_channel.name
+                item.Description = ""
+                item.Channel = items[i].signing_channel.claim_id
+                item.ChannelIcon = defaultChannelIcon
+                time = CreateObject("roDateTime")
+                try
+                    try
+                        time.FromSeconds(items[i]["value"]["release_time"])
+                    catch e
+                        time.FromSeconds(items[i].meta.creation_timestamp)
+                    end try
+                catch e
+                    time.FromSeconds(items[i].timestamp)
+                end try
+                timestr = time.AsDateString("short-month-short-weekday") + " "
+                timestr = timestr.Trim()
+                time = invalid
+                item.ReleaseDate = timestr
+                item.guid = items[i].claim_id
+                try
+                    thumbnail = m.top.constants["IMAGE_PROCESSOR"] + items[i].value.thumbnail.url
+                catch e
+                    thumbnail = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                end try
+                item.HDPosterURL = thumbnail
+                item.thumbnailDimensions = [360, 240]
+                'all set on watching video due to https://QUERY_API/api/v1/proxy?m=get
+                item.url = items[i].permanent_url.Trim() 'to be used to resolve with m?=get
+                'item.stream = {url : item.url}
+                'item.link = item.url
+                'item.streamFormat = ""
+                item.source = "odysee"
+                item.itemType = "video"
+                result.push(item)
             end for
-        else
-            currow = createObject("RoSGNode", "ContentNode")
-            for each item in result
-                curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", rawCreator: "" })
-                curitem.setFields(item)
-                currow.appendChild(curitem)
-                curitem = invalid
-            end for
-            content.appendChild(currow)
-        end if
-        rowSize = invalid
-        defaultChannelIcon = invalid
-        '? type(content)
-        ? "exported" + Str(content.getChildCount() * 4) + " items from Odysee"
-        if content.getChildCount() = 0
-            m.top.error = true
-            return { error: true }
-        end if
-        '? "manufacturing finished for key: "+subkey
-        return { contentarray: result: content: content } 'Returns the array
+            'Stage 2: Format Content (content -> row -> item) from "result"/preparsed.
+            content = createObject("RoSGNode", "ContentNode")
+            counter = 0
+            rowSize = 4
+            if result.Count() > rowSize
+                for each item in result
+                    if counter < rowSize
+                        if IsValid(currow) <> true
+                            currow = createObject("RoSGNode", "ContentNode")
+                        end if
+                        curitem = createObject("RoSGNode", "ContentNode")
+                        curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", rawCreator: "", videoLength: "" })
+                        curitem.setFields(item)
+                        currow.appendChild(curitem)
+                        if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
+                            content.appendChild(currow)
+                        end if
+                        counter += 1
+                        curitem = invalid
+                    else
+                        content.appendChild(currow)
+                        currow = invalid
+                        currow = createObject("RoSGNode", "ContentNode")
+                        curitem = createObject("RoSGNode", "ContentNode")
+                        curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", rawCreator: "", videoLength: "" })
+                        curitem.setFields(item)
+                        currow.appendChild(curitem)
+                        counter = 1
+                        curitem = invalid
+                    end if
+                end for
+            else
+                currow = createObject("RoSGNode", "ContentNode")
+                for each item in result
+                    curitem = createObject("RoSGNode", "ContentNode")
+                    curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", rawCreator: "" })
+                    curitem.setFields(item)
+                    currow.appendChild(curitem)
+                    curitem = invalid
+                end for
+                content.appendChild(currow)
+            end if
+            rowSize = invalid
+            defaultChannelIcon = invalid
+            '? type(content)
+            ? "exported" + Str(content.getChildCount() * 4) + " items from Odysee"
+            if content.getChildCount() = 0
+                m.top.error = true
+                return { error: true }
+            end if
+            '? "manufacturing finished for key: "+subkey
+            return { contentarray: result: content: content } 'Returns the array
+        catch e
+            return { error: true, errortype: "parseError" }
+        end try
     else
         return { error: true }
     end if
@@ -160,26 +165,26 @@ function getvideoLength(length)
     seconds = timeConverter.GetSeconds().ToStr()
     result = ""
     if timeConverter.GetDayOfMonth() < 10
-      days = "0" + timeConverter.GetDayOfMonth().ToStr()
+        days = "0" + timeConverter.GetDayOfMonth().ToStr()
     end if
     if timeConverter.GetHours() < 10
-      hours = "0" + timeConverter.GetHours().ToStr()
+        hours = "0" + timeConverter.GetHours().ToStr()
     end if
     if timeConverter.GetMinutes() < 10
-      minutes = "0" + timeConverter.GetMinutes().ToStr()
+        minutes = "0" + timeConverter.GetMinutes().ToStr()
     end if
     if timeConverter.GetSeconds() < 10
-      seconds = "0" + timeConverter.GetSeconds().ToStr()
+        seconds = "0" + timeConverter.GetSeconds().ToStr()
     end if
     if length < 3600
-      'use minute format
-      result = minutes + ":" + seconds
+        'use minute format
+        result = minutes + ":" + seconds
     end if
     if length >= 3600 and length < 86400
-      result = hours + ":" + minutes + ":" + seconds
+        result = hours + ":" + minutes + ":" + seconds
     end if
     if length >= 86400 'TODO: make videos above month length display proper length
-      result = days + ":" + hours + ":" + minutes + ":" + seconds
+        result = days + ":" + hours + ":" + minutes + ":" + seconds
     end if
     timeConverter = invalid
     days = invalid
@@ -187,4 +192,4 @@ function getvideoLength(length)
     minutes = invalid
     seconds = invalid
     return result
-  end function
+end function

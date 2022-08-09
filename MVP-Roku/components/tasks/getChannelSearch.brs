@@ -16,9 +16,10 @@ function getLighthouseResult(search)
     queryRAW = { s: m.top.search, size: "50", from: "0", "claimType": "channel", nsfw: "false", free_only: "true" }
     claimIds = []
     failcount = 0
+    m.errorType = "noResults"
     while true
         queryResult = getURLEncoded(queryRAW, queryURL, [])
-        if type(queryResult) = "roArray"
+        if type(queryResult) = "roArray" OR type(queryResult) = "Array"
             if queryResult.Count() > 0
                 ?"got" + Str(queryResult.Count() * 4) + " channels from Odysee (Channel Search)"
                 ?"valid"
@@ -26,27 +27,29 @@ function getLighthouseResult(search)
             else
                 failcount += 1
                 if failcount > 5
+                    m.errorType = "noResults"
                     exit while
                 end if
             end if
         else
             failcount += 1
             if failcount > 5
+                m.errorType = "lighthouseError"
                 exit while
             end if
         end if
     end while
-    if type(queryResult) = "roArray"
+    if type(queryResult) = "roArray" OR type(queryResult) = "Array"
         if queryResult.Count() > 0
             ?"valid"
             return ClaimsToChannelGrid(queryResult)
         else
             ?"no results"
-            return { result: {}, success: false }
+            return { result: {}, success: false, errortype: m.errorType }
         end if
     else
         ?"no results"
-        return { result: {}, success: false }
+        return { result: {}, success: false, errortype: m.errorType }
     end if
 end function
 
