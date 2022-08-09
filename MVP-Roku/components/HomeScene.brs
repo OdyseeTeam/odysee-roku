@@ -590,6 +590,7 @@ sub threadDone(msg as object)
 end sub
 
 sub finishInit()
+  m.threaderRunning = false
   if m.global.constants.enableStatistics
     if m.wasLoggedIn
       m.rokuInstall.setFields({ constants: m.constants, uid: m.uid, authtoken: "", cookies: m.cookies, accesstoken: m.accessToken })
