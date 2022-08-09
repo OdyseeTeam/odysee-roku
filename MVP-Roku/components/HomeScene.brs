@@ -265,6 +265,11 @@ sub authPhaseChanged(msg as object)
   if type(msg) = "roSGNodeEvent"
     m.authTask.control = "STOP"
     data = msg.getData()
+    if data = -10
+      ?"API is probably down."
+      m.authTask.control = "STOP"
+      retryError("CRITICAL ERROR: Authentication Broken/API Down.", "The app cannot start without the API. Press OK to attempt again."+Chr(10)+"Please e-mail help@odysee.com.", "retryConstants")
+    end if
     if data = 10
       ?"Phase 10 (Logging Out)"
       ? m.authTask

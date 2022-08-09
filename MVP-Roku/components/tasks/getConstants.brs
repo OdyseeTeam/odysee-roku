@@ -33,5 +33,14 @@ sub master()
     if isValid(globalAPIConstants["SSO_ACT_URL"]) = false
         globalAPIConstants["SSO_ACT_URL"] = "activate.odysee.com"
     end if
+
+    'uncomment this to test API/SS0 being down.
+    'globalAPIConstants["ROOT_API"] = "http://localhost"
+    'globalAPIConstants["ROOT_SSO"] = "http://localhost"
+
+
+    'uncomment this to test API/SS0 being invalid
+    'globalAPIConstants["ROOT_API"] = "https://halitesoftware.com"
+    'globalAPIConstants["ROOT_SSO"] = "https://halitesoftware.com"
     m.top.constants = globalAPIConstants
 end sub
