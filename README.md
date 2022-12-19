@@ -23,8 +23,8 @@
     <img src="https://img.shields.io/discord/362322208485277697.svg?style=flat-square&logo=discord"/>
   </a>
 
-  <a href="https://tosdr.org/en/service/2391">
-    <img src="https://shields.tosdr.org/en_2391.svg"/>
+  <a href="https://tosdr.org/en/service/6751">
+    <img src="https://shields.tosdr.org/en_6751.svg"/>
 </a>
 </div>
 
