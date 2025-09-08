@@ -2426,6 +2426,7 @@ sub gotResolvedChannel(msg as object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
     if isValid(data.error)
+      m.channelResolver.unobserveField("output")
       m.channelResolver.control = "STOP"
       m.taskRunning = false
       if m.uiLayers.Count() > 0
@@ -2438,7 +2439,7 @@ sub gotResolvedChannel(msg as object)
       m.videoGrid.visible = true
       m.loadingText.visible = false
       resetVideoGrid()
-      m.videoSearch.unobserveField("output")
+      m.channelResolver.unobserveField("output")
       m.videoGrid.content = data.content
       m.channelResolver.control = "STOP"
       m.taskRunning = False
