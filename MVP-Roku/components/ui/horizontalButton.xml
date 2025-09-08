@@ -10,44 +10,111 @@
  
 <script type="text/brightscript" >
 <![CDATA[ 
+  function IsValid(value as Dynamic) as Boolean
+    return (Type(value) <> "<uninitialized>" and value <> invalid)
+  end function
+
   function itemContentChanged()
-    if m.top.itemContent.labelText <> ""
-      m.itemText.text = m.top.itemContent.labelText
-      m.itemText.visible = true
-    else
-      m.itemText.text = ""
-      m.itemText.visible = false
+    ' Ensure nodes exist (onChange can fire before init)
+    if not isValid(m.itemImage) then
+      m.itemImage = m.top.findNode("itemImage")
     end if
-    if m.top.itemContent.posterUrl <> ""
-      m.itemImage.uri = m.top.itemContent.posterUrl
-      m.itemImage.visible = true
-    else
-      m.itemImage.uri = ""
-      m.itemImage.visible = false
+    if not isValid(m.itemText) then
+      m.itemText = m.top.findNode("itemText")
     end if
-    if m.top.itemContent.fontUrl <> ""
-      m.itemText.font.uri = m.top.itemContent.fontUrl
-      m.itemText.visible = true
+    if not isValid(m.itemOutline) then
+      m.itemOutline = m.top.findNode("outline")
     end if
-    if m.top.itemContent.fontSize <> ""
-      m.itemText.font.size = m.top.itemContent.fontSize
-      m.itemText.visible = true
+    if not isValid(m.itemBackground) then
+      m.itemBackground = m.top.findNode("background")
     end if
-    m.itemOutline.width = m.top.itemContent.width
-    m.itemOutline.height = m.top.itemContent.height
-    m.itemBackground.width = m.top.itemContent.width - 4
-    m.itemBackground.height = m.top.itemContent.height - 4
-    m.itemFocusBackground.width = m.top.itemContent.width - 4
-    m.itemFocusBackground.height = m.top.itemContent.height - 4
-    m.itemImage.width = m.top.itemContent.width - 4
-    m.itemImage.height = m.top.itemContent.height - 4
-    m.itemText.width = m.top.itemContent.width - 4
-    m.itemText.height = m.top.itemContent.height - 4
-    m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"99"
-    m.itemOutline.color = m.top.itemContent.outlineColor
-    m.top.itemContent.backgroundColor = Left(m.top.itemContent.backgroundColor, 8)
-    m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
-    m.itemFocusBackground.color = m.top.itemContent.backgroundColor+"AA"
+    if not isValid(m.itemFocusBackground) then
+      m.itemFocusBackground = m.top.findNode("focusBackground")
+    end if
+
+    ic = m.top.itemContent
+    if isValid(ic)
+      ' Text
+      if isValid(m.itemText)
+        if isValid(ic.labelText) and ic.labelText <> ""
+          m.itemText.text = ic.labelText
+          m.itemText.visible = true
+        else
+          m.itemText.text = ""
+          m.itemText.visible = false
+        end if
+        if isValid(ic.fontUrl) and ic.fontUrl <> "" and isValid(m.itemText.font)
+          m.itemText.font.uri = ic.fontUrl
+          m.itemText.visible = true
+        end if
+        if isValid(ic.fontSize) and ic.fontSize <> "" and isValid(m.itemText.font)
+          m.itemText.font.size = ic.fontSize
+          m.itemText.visible = true
+        end if
+      end if
+
+      ' Image
+      if isValid(m.itemImage)
+        if isValid(ic.posterUrl) and ic.posterUrl <> ""
+          m.itemImage.uri = ic.posterUrl
+          m.itemImage.visible = true
+        else
+          m.itemImage.uri = ""
+          m.itemImage.visible = false
+        end if
+      end if
+
+      ' Sizing
+      w = 0 : h = 0
+      if isValid(ic.width) then
+        w = ic.width
+      end if
+      if isValid(ic.height) then
+        h = ic.height
+      end if
+      if isValid(m.itemOutline) then
+        m.itemOutline.width = w
+        m.itemOutline.height = h
+      end if
+      if isValid(m.itemBackground) then
+        m.itemBackground.width = w - 4
+        m.itemBackground.height = h - 4
+      end if
+      if isValid(m.itemFocusBackground) then
+        m.itemFocusBackground.width = w - 4
+        m.itemFocusBackground.height = h - 4
+      end if
+      if isValid(m.itemImage) then
+        m.itemImage.width = w - 4
+        m.itemImage.height = h - 4
+      end if
+      if isValid(m.itemText) then
+        m.itemText.width = w - 4
+        m.itemText.height = h - 4
+      end if
+
+      ' Colors
+      outlineColor = "0xFFFFFFFF"
+      bgBase = "0x000000"
+      if isValid(ic.outlineColor) and len(ic.outlineColor) >= 8 then
+        outlineColor = ic.outlineColor
+      end if
+      if isValid(ic.backgroundColor) and len(ic.backgroundColor) >= 8 then
+        bgBase = Left(ic.backgroundColor, 8)
+      end if
+      if isValid(m.itemText) then
+        m.itemText.color = Left(outlineColor, 8)+"99"
+      end if
+      if isValid(m.itemOutline) then
+        m.itemOutline.color = outlineColor
+      end if
+      if isValid(m.itemBackground) then
+        m.itemBackground.color = bgBase+"FF"
+      end if
+      if isValid(m.itemFocusBackground) then
+        m.itemFocusBackground.color = bgBase+"AA"
+      end if
+    end if
   end function
 
   function itemFocus()
@@ -78,6 +145,7 @@
 
 ]]>
 </script>
+
 
 <children>
   <Rectangle id="outline"/>

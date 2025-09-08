@@ -55,27 +55,34 @@ sub itemContentChanged()
     end if
 end sub
 sub updateLayout()
+    ' Ensure node refs exist (update can fire before init)
+    if not isValid(m.Poster) then m.Poster = m.top.findNode("poster")
+    if not isValid(m.Title) then m.Title = m.top.findNode("title")
+    if not isValid(m.Published) then m.Published = m.top.findNode("published")
+    if not isValid(m.liveIcon) then m.liveIcon = m.top.findNode("liveIcon")
+    if not isValid(m.videoLength) then m.videoLength = m.top.findNode("videoLength")
+    if not isValid(m.videoLengthBackground) then m.videoLengthBackground = m.top.findNode("lbackground")
+    if not isValid(m.Background) then m.Background = m.top.findNode("ibackground")
+    if not isValid(m.Creator) then m.Creator = m.top.findNode("creator")
     if m.top.height > 0 and m.top.width > 0 then
         if m.top.height > 349
-            m.Title.wrap = true
-            m.Published.translation=[10,277]
+            if isValid(m.Title) then m.Title.wrap = true
+            if isValid(m.Published) then m.Published.translation=[10,277]
         else
-            m.Published.translation=[10,240]
-            m.Title.wrap = false
-            m.liveIcon.visible = false
-            m.videoLength.visible = false
-            m.videoLengthBackground.visible = false
-            m.videoLength.text = ""
+            if isValid(m.Published) then m.Published.translation=[10,240]
+            if isValid(m.Title) then m.Title.wrap = false
+            if isValid(m.liveIcon) then m.liveIcon.visible = false
+            if isValid(m.videoLength) then m.videoLength.visible = false
+            if isValid(m.videoLengthBackground) then m.videoLengthBackground.visible = false
+            if isValid(m.videoLength) then m.videoLength.text = ""
         end if
-        m.Poster.width = m.top.width - 20
-        m.Poster.loadwidth = m.poster.width
-        m.Poster.height = 197
-        m.poster.loadHeight = m.poster.height
-        m.liveIcon.translation = [m.poster.width-160, m.poster.height-40]
-        m.Background.width = m.top.width
-        m.Background.height = m.top.height
-        m.Title.width = m.top.width - 20
-        m.Published.width = m.top.width - 20
-        m.Creator.width = m.top.width - 20
+        if isValid(m.Poster) then m.Poster.width = m.top.width - 20
+        if isValid(m.Poster) then m.Poster.height = 197
+        if isValid(m.liveIcon) and isValid(m.Poster) then m.liveIcon.translation = [m.poster.width-160, m.poster.height-40]
+        if isValid(m.Background) then m.Background.width = m.top.width
+        if isValid(m.Background) then m.Background.height = m.top.height
+        if isValid(m.Title) then m.Title.width = m.top.width - 20
+        if isValid(m.Published) then m.Published.width = m.top.width - 20
+        if isValid(m.Creator) then m.Creator.width = m.top.width - 20
     end if
 end sub

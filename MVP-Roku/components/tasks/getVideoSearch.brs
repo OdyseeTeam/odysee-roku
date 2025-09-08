@@ -52,7 +52,10 @@ function ClaimsToVideoGrid(claims)
         response = postJSON(queryJSON, queryURL, invalid)
         retries = 0
         while true
-            if IsValid(response.error)
+            if (not isValid(response)) or (Type(response) <> "roAssociativeArray") then
+                response = postJSON(queryJSON, queryURL, invalid)
+                retries += 1
+            else if IsValid(response.error)
                 response = postJSON(queryJSON, queryURL, invalid)
                 retries += 1
             else
@@ -63,95 +66,53 @@ function ClaimsToVideoGrid(claims)
                 return { error: true, errorType: "claimSearchError" }
             end if
         end while
-        items = response.result.items
+        ' Safely extract items; response.result may be missing
+        items = invalid
+        if isValid(response) and Type(response) = "roAssociativeArray"
+            res = response["result"]
+            if isValid(res) and Type(res) = "roAssociativeArray"
+                it = res["items"]
+                if isValid(it) and (Type(it) = "roArray" or Type(it) = "Array")
+                    items = it
+                end if
+            end if
+        end if
+        if not isValid(items) or (Type(items) <> "roArray" and Type(items) <> "Array") or items.Count() = 0
+            content = createObject("RoSGNode", "ContentNode")
+            return { contentarray: [], content: content, error: false }
+        end if
         result = []
         counter = 0
         content = createObject("RoSGNode", "ContentNode")
         ?"got " + str(items.Count()) + " items from Odysee (Video Search)"
-        'TODO: use parseLib here.
-        for i = 0 to items.Count() - 1 step 1 'Parse response
-            item = {}
-            item.Title = items[i].value.title
-            try
-                item.Creator = items[i].signing_channel.value.title
-            catch e
-                item.Creator = items[i].signing_channel.name
-            end try
-            if isValid(items[i]["value"]["video"]["duration"])
-                item.videoLength = getvideoLength(items[i]["value"]["video"]["duration"])
-            end if
-            item.Description = ""
-            item.Channel = items[i].signing_channel.claim_id
-            try
-                if isValid(items[i].signing_channel.value.thumbnail.url)
-                    item.ChannelIcon = m.top.constants["IMAGE_PROCESSOR"] + items[i].signing_channel.value.thumbnail.url
+        currow = createObject("RoSGNode", "ContentNode")
+        for each claim in items 'Parse response via parseLib (defensive)
+            pv = parseVideo(claim)
+            if pv.Count() > 0
+                if counter < 4
+                    curitem = createObject("RoSGNode", "ContentNode")
+                    curitem.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", videoLength: "" })
+                    curitem.setFields(pv)
+                    currow.appendChild(curitem)
+                    counter += 1
                 else
-                    item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-                end if
-            catch e
-                item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-            end try
-            time = CreateObject("roDateTime")
-            try
-                try
-                    time.FromSeconds(items[i]["value"]["release_time"])
-                catch e
-                    time.FromSeconds(items[i].meta.creation_timestamp)
-                end try
-            catch e
-                time.FromSeconds(items[i].timestamp)
-            end try
-            timestr = time.AsDateString("short-month-short-weekday") + " "
-            timestr = timestr.Trim()
-            time = invalid
-            item.ReleaseDate = timestr
-            item.guid = items[i].claim_id
-            try
-                thumbnail = items[i].value.thumbnail.url
-            catch e
-                thumbnail = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-            end try
-            item.HDPosterURL = thumbnail
-            item.thumbnailDimensions = [360, 240]
-            'all set on watching video due to https://QUERY_API/api/v1/proxy?m=get
-            item.url = items[i].permanent_url.Trim() 'to be used to resolve with m?=get
-            'item.stream = {url : item.url}
-            'item.link = item.url
-            'item.streamFormat = ""
-            item.source = "odysee"
-            item.itemType = "video"
-            'Create content (content -> row -> item)
-            if counter < 4
-                if IsValid(currow) <> true
+                    if IsValid(currow)
+                        content.appendChild(currow)
+                    end if
                     currow = createObject("RoSGNode", "ContentNode")
+                    curitem = createObject("RoSGNode", "ContentNode")
+                    curitem.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", videoLength: "" })
+                    curitem.setFields(pv)
+                    currow.appendChild(curitem)
+                    counter = 1
                 end if
-                curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", videoLength: "" })
-                curitem.setFields(item)
-                currow.appendChild(curitem)
-                if i = items.Count() - 1 'misalignment fix, will need to implement this better later.
-                    content.appendChild(currow)
-                end if
-                counter += 1
-                curitem = invalid
-            else
-                content.appendChild(currow)
-                currow = invalid
-                currow = createObject("RoSGNode", "ContentNode")
-                curitem = createObject("RoSGNode", "ContentNode")
-                curitem.addFields({ creator: "", thumbnailDimensions: [], itemType: "", Channel: "", ChannelIcon: "", videoLength: "" })
-                curitem.setFields(item)
-                currow.appendChild(curitem)
-                counter = 1
-                curitem = invalid
+                result.push(pv)
             end if
-            result.push(item) 'Unparsed "XMLContent", can be used to cache results later.
-            item = invalid
+            pv = invalid
         end for
-        '?type(content)
-        ?"exported" + Str(content.getChildCount() * 4) + " items from Odysee (Video Search)"
-
-        '?"manufacturing finished for key: "+subkey
+        if IsValid(currow) and counter > 0 and currow.getChildCount() > 0
+            content.appendChild(currow)
+        end if
         return { contentarray: result: content: content: error: false } 'Returns the array
     catch e
         m.errorType = "parseError"
@@ -159,40 +120,3 @@ function ClaimsToVideoGrid(claims)
     end try
 end function
 
-function getvideoLength(length)
-    timeConverter = CreateObject("roDateTime")
-    timeConverter.FromSeconds(length)
-    days = timeConverter.GetDayOfMonth().ToStr()
-    hours = timeConverter.GetHours().ToStr()
-    minutes = timeConverter.GetMinutes().ToStr()
-    seconds = timeConverter.GetSeconds().ToStr()
-    result = ""
-    if timeConverter.GetDayOfMonth() < 10
-        days = "0" + timeConverter.GetDayOfMonth().ToStr()
-    end if
-    if timeConverter.GetHours() < 10
-        hours = "0" + timeConverter.GetHours().ToStr()
-    end if
-    if timeConverter.GetMinutes() < 10
-        minutes = "0" + timeConverter.GetMinutes().ToStr()
-    end if
-    if timeConverter.GetSeconds() < 10
-        seconds = "0" + timeConverter.GetSeconds().ToStr()
-    end if
-    if length < 3600
-        'use minute format
-        result = minutes + ":" + seconds
-    end if
-    if length >= 3600 and length < 86400
-        result = hours + ":" + minutes + ":" + seconds
-    end if
-    if length >= 86400 'TODO: make videos above month length display proper length
-        result = days + ":" + hours + ":" + minutes + ":" + seconds
-    end if
-    timeConverter = invalid
-    days = invalid
-    hours = invalid
-    minutes = invalid
-    seconds = invalid
-    return result
-end function

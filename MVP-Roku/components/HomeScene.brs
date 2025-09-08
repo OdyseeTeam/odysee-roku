@@ -209,7 +209,7 @@ sub init()
   if isValid(GetRegistry("deviceFlowRegistry", "refreshTokenExpiration"))
     m.refreshTokenExpiration = GetRegistry("deviceFlowRegistry", "refreshTokenExpiration")
   end if
-  m.authTask.setFields({ "accessToken": m.accessToken: "refreshToken": m.refreshToken: uid: m.flowUID })
+  m.authTask.setFields({ "accessToken": m.accessToken: "refreshToken": m.refreshToken: uid: m.flowUID: "accessTokenExpiration": m.accessTokenExpiration: "refreshTokenExpiration": m.refreshTokenExpiration })
   '<field id="oldHash" type="String"/>
   '<field id="walletData" type="String"/>
   m.authTimerObserved = false
@@ -248,6 +248,10 @@ sub gotConstants()
     m.syncLoop.setField("constants", m.constants)
     ?"Constants are done, running auth"
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+    ' If a refresh token exists from a prior session, skip legacy Phase 0
+    if isValid(m.refreshToken) and m.refreshToken <> ""
+      m.authTask.authPhase = 1
+    end if
     m.authTask.control = "RUN" 'authPhaseChanged is the next sub that will be triggered by the authTask.
   end if
 end sub
@@ -285,15 +289,31 @@ sub authPhaseChanged(msg as object)
       ?"Phase 3 (Fully authenticated)"
       m.wasLoggedIn = true
       setRegistry("preferencesRegistry", "loggedIn", "true")
+      ' Hide OAuth UI if visible
+      m.oauthHeader.visible = false
+      m.oauthCode.visible = false
+      m.oauthFooter.visible = false
+      m.loadingText.visible = false
       if m.syncTimerObserved = false
         m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
         m.syncLoop.control = "RUN"
         m.syncLoopTimer.observeField("fire", "getSync")
         m.syncTimerObserved = true
       end if
+      ' Kick off immediate preferences load to populate Following without delay
+      if m.getpreferencesTask.state <> "run" and m.getpreferencesTask.state <> "init"
+        getUserPrefs()
+      else
+        ' Also trigger a sync iteration now; if not ready, timer will handle
+        getSync()
+      end if
       if m.authTimerObserved = false
         m.authTaskTimer.observeField("fire", "refreshAuth")
         m.authTimerObserved = true
+      end if
+      ' If we skipped legacy auth (Phase 0), ensure UI bootstrap proceeds
+      if m.legacyAuthenticated = false
+        authDone()
       end if
     end if
     if data = 2
@@ -301,6 +321,15 @@ sub authPhaseChanged(msg as object)
         m.oauthHeader.text = "Enter"
       end if
       ?"Phase 2"
+      ' Only manipulate OAuth UI when user is on Following view; otherwise wait for focus handler
+      if m.categorySelector.itemFocused = 1 and m.uiLayer = 0
+        m.videoGrid.visible = false
+        m.loadingText.visible = false
+        m.oauthLogoutButton.visible = false
+        m.oauthHeader.visible = true
+        m.oauthCode.visible = true
+        m.oauthFooter.visible = true
+      end if
       if m.legacyAuthenticated = false
         m.wasLoggedIn = false
         authDone()
@@ -339,6 +368,7 @@ sub authPhaseChanged(msg as object)
     end if
     if data = 1.4
       ?"Phase 1.4 (Post forced-logout)"
+      ' Trigger task; UI for device-code will be handled by focus change to Following and gotRokuCode
       m.authTask.control = "RUN"
     end if
     if data = 1
@@ -363,9 +393,10 @@ sub authPhaseChanged(msg as object)
         m.authTask.control = "RUN"
         ?"Task Restarted (LEGACY AUTHPHASE: ACCTS DISABLED)"
       else
-        m.authTask.authPhase = 1
+        ' Do not reassign authPhase here; let authTask progress from phase 1
+        ' We only need to resume the task after STOP at handler entry
         m.authTask.control = "RUN"
-        ?"Task Restarted (LEGACY AUTHPHASE)"
+        ?"Task Continued (Legacy -> OAuth)"
       end if
     end if
     if data = 0
@@ -661,9 +692,15 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ? "Go to channel"
               returnToUIPage()
               curChannel = m.currentVideoChannelID
-              m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, cookies: m.cookies })
-              m.channelResolver.observeField("output", "gotResolvedChannel")
-              m.channelResolver.control = "RUN"
+              if not isValid(m.channelResolver)
+                m.channelResolver = createObject("roSGNode", "getSingleChannel")
+                m.channelResolver.observeField("cookies", "gotCookies")
+              end if
+              if isValid(curChannel)
+                m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, cookies: m.cookies })
+                m.channelResolver.observeField("output", "gotResolvedChannel")
+                m.channelResolver.control = "RUN"
+              end if
               m.taskRunning = True
               m.videoGrid.setFocus(false)
               m.videoGrid.visible = false
@@ -887,7 +924,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "play"
-        if m.video.visible and m.videoContent.Live = false
+        if isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
           'Video transition state:
           '0=None, -1=Rewind, 1=FastForward
@@ -940,7 +977,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "fastforward"
-        if m.video.visible and m.videoContent.Live = false
+        if isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live = false
           showVideoOverlay()
           if m.videoTransitionState <= 0
             m.ffrwTimer.duration = .7
@@ -958,7 +995,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.ffrwTimer.control = "start"
           end if
         end if
-        if m.video.visible and m.videoContent.Live
+        if isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live
           'TODO: change toggleChat video button's image.
           if m.chatBox.visible
             m.chatBackground.visible = false
@@ -974,8 +1011,26 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
           'VGM01
           hideCategorySelector()
-          if isValid(m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL) and m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL <> ""
-            curChannel = m.videoGrid.content.getChild(m.videoGrid.rowItemFocused[0]).getChild(m.videoGrid.rowItemFocused[1]).CHANNEL
+          row = -1 : col = -1
+          if isValid(m.videoGrid) and isValid(m.videoGrid.rowItemFocused) and Type(m.videoGrid.rowItemFocused) = "roArray" and m.videoGrid.rowItemFocused.Count() >= 2
+            row = m.videoGrid.rowItemFocused[0]
+            col = m.videoGrid.rowItemFocused[1]
+          end if
+          itemNode = invalid
+          if isValid(m.videoGrid) and isValid(m.videoGrid.content) and row >= 0 and col >= 0
+            if m.videoGrid.content.getChildCount() > row
+              rnode = m.videoGrid.content.getChild(row)
+              if isValid(rnode) and rnode.getChildCount() > col
+                itemNode = rnode.getChild(col)
+              end if
+            end if
+          end if
+          if isValid(itemNode) and isValid(itemNode.CHANNEL) and itemNode.CHANNEL <> ""
+            curChannel = itemNode.CHANNEL
+            if not isValid(m.channelResolver)
+              m.channelResolver = createObject("roSGNode", "getSingleChannel")
+              m.channelResolver.observeField("cookies", "gotCookies")
+            end if
             m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, cookies: m.cookies })
             m.channelResolver.observeField("output", "gotResolvedChannel")
             m.channelResolver.control = "RUN"
@@ -1674,9 +1729,15 @@ sub resolveVideo(url = invalid)
         end if
         if curItem.itemType = "channel"
           ?"Resolving a Channel"
-          m.channelResolver.setFields({ constants: m.constants, channel: curitem.channel, uid: m.uid, cookies: m.cookies })
-          m.channelResolver.observeField("output", "gotResolvedChannel")
-          m.channelResolver.control = "RUN"
+          if not isValid(m.channelResolver)
+            m.channelResolver = createObject("roSGNode", "getSingleChannel")
+            m.channelResolver.observeField("cookies", "gotCookies")
+          end if
+          if isValid(curitem.channel)
+            m.channelResolver.setFields({ constants: m.constants, channel: curitem.channel, uid: m.uid, cookies: m.cookies })
+            m.channelResolver.observeField("output", "gotResolvedChannel")
+            m.channelResolver.control = "RUN"
+          end if
           m.taskRunning = True
           m.videoGrid.setFocus(false)
           m.videoGrid.visible = false
@@ -1859,57 +1920,93 @@ end sub
 sub videoPositionChanged()
   if m.global.constants.enableStatistics 'if position/duration changes, report if vStats are turned on.
     if m.vStatsTimer.TotalSeconds() > 5
-      m.vStatsTimer.Mark()
-      if isValid(m.video.playStartInfo)
-        if m.video.playStartInfo.prebuf_dur > 10
-          cache = "miss"
-        else
-          cache = "player"
+      ' Avoid flooding the watchman task; only run if it is not already running
+      if not isValid(m.watchman) or m.watchman.state <> "run"
+        m.vStatsTimer.Mark()
+        if isValid(m.video) and isValid(m.video.playStartInfo) and isValid(m.urlResolver) and isValid(m.urlResolver.output)
+          if m.video.playStartInfo.prebuf_dur > 10
+            cache = "miss"
+          else
+            cache = "player"
+          end if
+          protocol = "stb"
+          if isValid(m.urlResolver.output.videotype)
+            protocol = m.urlResolver.output.videotype.replace("mp4", "stb")
+          end if
+          duration = 0
+          if isValid(m.urlResolver.output.length)
+            duration = m.urlResolver.output.length
+          end if
+          player = ""
+          if isValid(m.urlResolver.output.player)
+            player = m.urlResolver.output.player
+          end if
+          urlStr = ""
+          if isValid(m.urlResolver.url)
+            urlStr = m.urlResolver.url
+          end if
+          bitrate = 0
+          if isValid(m.video.streamInfo) and isValid(m.video.streamInfo.measuredBitrate)
+            bitrate = m.video.streamInfo.measuredBitrate
+          end if
+          watchmanFields = { constants: m.constants, uid: m.uid, cookies: m.cookies, bandwidth: bitrate, cache: cache, duration: duration, player: player, position: m.video.position, protocol: protocol, rebuf_count: 0, rebuf_duration: 0, url: urlStr, uid: m.uid }
+          m.watchman.setFields(watchmanFields)
+          m.watchman.control = "RUN"
         end if
-        watchmanFields = { constants: m.constants, uid: m.uid, cookies: m.cookies, bandwidth: m.video.streamInfo.measuredBitrate, cache: cache, duration: m.urlResolver.output.length, player: m.urlResolver.output.player, position: m.video.position, protocol: m.urlResolver.output.videotype.replace("mp4", "stb"), rebuf_count: 0, rebuf_duration: 0, url: m.urlResolver.url, uid: m.uid }
-        m.watchman.setFields(watchmanFields)
-        m.watchman.control = "RUN"
       end if
     end if
   end if
   'change video UI
   if m.videoProgressBar.visible = true and m.videoProgressBarp1.visible = true and m.videoProgressBarp2.visible = true
-    m.videoProgressBarp1.text = getvideoLength(m.video.position)
-    if m.video.position > 0
-      m.videoProgressBar.width = 1290 * (m.video.position / m.urlResolver.output.length)
+    totalLen = 0
+    if isValid(m.urlResolver) and isValid(m.urlResolver.output) and isValid(m.urlResolver.output.length)
+      totalLen = m.urlResolver.output.length
     end if
-    m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.video.position)
+    m.videoProgressBarp1.text = getvideoLength(m.video.position)
+    if m.video.position > 0 and totalLen > 0
+      m.videoProgressBar.width = 1290 * (m.video.position / totalLen)
+    end if
+    if totalLen > 0
+      m.videoProgressBarp2.text = getvideoLength(totalLen + 1 - m.video.position)
+    end if
   end if
 end sub
 
 sub changeVideoPosition()
+  totalLen = 0
+  if isValid(m.urlResolver) and isValid(m.urlResolver.output) and isValid(m.urlResolver.output.length)
+    totalLen = m.urlResolver.output.length
+  end if
   if m.videoVP = 0
     m.videoVP = m.video.position
   end if
+  if totalLen <= 0
+    return
+  end if
   if m.videoTransitionState > 0 and abs(m.videoTransitionState) < m.videoTransitionStateLimit
     '1 second only on 1x/finegrain
-    if m.videoVP + 1 <= m.urlResolver.output.length
+    if m.videoVP + 1 <= totalLen
       m.video.seek = m.videoVP + 1
       m.videoVP += 1
       if m.videoVP > 0
-        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
+        m.videoProgressBar.width = 1290 * (m.videoVP / totalLen)
       end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
-      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + 1 - m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(totalLen + 1 - m.videoVP)
     end if
 
   else if m.videoTransitionState > 0 and abs(m.videoTransitionState) >= m.videoTransitionStateLimit
 
     '2+ seconds on coarser
     videoScrubSpeed = (Abs(m.videoTransitionState) - 4) * 2
-    if m.videoVP + videoScrubSpeed <= m.urlResolver.output.length
+    if m.videoVP + videoScrubSpeed <= totalLen
       m.video.seek = m.videoVP + videoScrubSpeed
       m.videoVP += videoScrubSpeed
       if m.videoVP > 0
-        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
+        m.videoProgressBar.width = 1290 * (m.videoVP / totalLen)
       end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
-      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length + videoScrubSpeed - m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(totalLen + videoScrubSpeed - m.videoVP)
     end if
 
   else if m.videoTransitionState < 0 and abs(m.videoTransitionState) < m.videoTransitionStateLimit
@@ -1920,10 +2017,10 @@ sub changeVideoPosition()
       m.video.seek = m.videoVP - 1
       m.videoVP = m.videoVP - 1
       if m.videoVP > 0
-        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
+        m.videoProgressBar.width = 1290 * (m.videoVP / totalLen)
       end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
-      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length - 1 - m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(totalLen - 1 - m.videoVP)
     end if
 
   else if m.videoTransitionState < 0 and abs(m.videoTransitionState) >= m.videoTransitionStateLimit
@@ -1934,10 +2031,10 @@ sub changeVideoPosition()
       m.video.seek = m.videoVP - videoScrubSpeed
       m.videoVP = m.videoVP - videoScrubSpeed
       if m.videoVP > 0
-        m.videoProgressBar.width = 1290 * (m.videoVP / m.urlResolver.output.length)
+        m.videoProgressBar.width = 1290 * (m.videoVP / totalLen)
       end if
       m.videoProgressBarp1.text = getvideoLength(m.videoVP)
-      m.videoProgressBarp2.text = getvideoLength(m.urlResolver.output.length - videoScrubSpeed - m.videoVP)
+      m.videoProgressBarp2.text = getvideoLength(totalLen - videoScrubSpeed - m.videoVP)
     end if
     videoScrubSpeed = invalid
   end if
@@ -2245,10 +2342,28 @@ sub gotVideoSearch(msg as object)
       if isValid(m.uiLayers[m.uiLayers.Count() - 1])
         previousData = m.uiLayers[m.uiLayers.Count() - 1]
         currentData = data.result.content
-        previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
-        currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
-        if previousDataChildTitle <> currentDataChildTitle
-          m.uiLayers.push(data.result.content) 'so we can go back a layer when someone hits back.
+        prevTitle = ""
+        currTitle = ""
+        if isValid(currentData) and currentData.getChildCount() > 0
+          row = currentData.getChild(0)
+          if isValid(row) and row.getChildCount() > 0
+            item0 = row.getChild(0)
+            if isValid(item0) and isValid(item0.TITLE)
+              currTitle = item0.TITLE
+            end if
+          end if
+        end if
+        if isValid(previousData) and previousData.getChildCount() > 0
+          prow = previousData.getChild(0)
+          if isValid(prow) and prow.getChildCount() > 0
+            pitem0 = prow.getChild(0)
+            if isValid(pitem0) and isValid(pitem0.TITLE)
+              prevTitle = pitem0.TITLE
+            end if
+          end if
+        end if
+        if prevTitle <> currTitle
+          m.uiLayers.push(currentData) 'so we can go back a layer when someone hits back.
           m.uiLayer += 1
           'VGM01
           hideCategorySelector()
@@ -2332,10 +2447,28 @@ sub gotResolvedChannel(msg as object)
         ? "last layer is valid"
         previousData = m.uiLayers[m.uiLayers.Count() - 1]
         currentData = data.content
-        previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
-        currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
-        if previousDataChildTitle <> currentDataChildTitle
-          m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
+        prevTitle = ""
+        currTitle = ""
+        if isValid(currentData) and currentData.getChildCount() > 0
+          row = currentData.getChild(0)
+          if isValid(row) and row.getChildCount() > 0
+            item0 = row.getChild(0)
+            if isValid(item0) and isValid(item0.TITLE)
+              currTitle = item0.TITLE
+            end if
+          end if
+        end if
+        if isValid(previousData) and previousData.getChildCount() > 0
+          prow = previousData.getChild(0)
+          if isValid(prow) and prow.getChildCount() > 0
+            pitem0 = prow.getChild(0)
+            if isValid(pitem0) and isValid(pitem0.TITLE)
+              prevTitle = pitem0.TITLE
+            end if
+          end if
+        end if
+        if prevTitle <> currTitle
+          m.uiLayers.push(currentData) 'so we can go back a layer when someone hits back.
           m.uiLayer += 1
           'VGM01
           hideCategorySelector()
@@ -2542,8 +2675,15 @@ end sub
 
 sub gotRokuCode(msg as object)
   m.oauthCode.text = msg.getData()
-  if m.videoGrid.visible = false and m.loadingText.visible = false and m.searchKeyboard.visible = false
+  ' If user is viewing Following, surface the OAuth UI immediately
+  if m.categorySelector.itemFocused = 1 and m.uiLayer = 0
+    m.oauthHeader.text = "Enter"
+    m.videoGrid.visible = false
+    m.loadingText.visible = false
+    m.oauthLogoutButton.visible = false
+    m.oauthHeader.visible = true
     m.oauthCode.visible = true
+    m.oauthFooter.visible = true
   end if
 end sub
 
@@ -2572,19 +2712,19 @@ sub Logout()
     videoFocused = true
   end if
   m.categorySelector.setFocus(true)
-  if m.categorySelector.itemFocused = 1
-    m.focusedItem = 1
-    m.uiLayer = 0
-    m.uiLayers = []
-    m.categorySelector.jumpToItem = 1
-    if m.video.visible = false
-      m.videoGrid.visible = false
-      m.oauthLogoutButton.visible = false
-      m.oauthHeader.visible = true
-      m.oauthCode.text = ""
-      m.oauthCode.visible = true
-      m.oauthFooter.visible = true
-    end if
+  ' Force OAuth device-code UI immediately on logout
+  m.focusedItem = 1
+  m.uiLayer = 0
+  m.uiLayers = []
+  m.categorySelector.jumpToItem = 1
+  if m.video.visible = false
+    m.videoGrid.visible = false
+    m.oauthLogoutButton.visible = false
+    m.oauthHeader.text = "Enter"
+    m.oauthHeader.visible = true
+    m.oauthCode.text = ""
+    m.oauthCode.visible = true
+    m.oauthFooter.visible = true
   end if
   if videoFocused = true
     m.focusedItem = 7
@@ -2612,7 +2752,8 @@ sub Logout()
     m.authTask.control = "RUN"
     m.authTaskTimer.control = "start"
   else
-    m.authTask.authPhase = 2
+    ' Jump straight to device-code init for fastest UX
+    m.authTask.authPhase = 1.4
     m.authTask.control = "RUN"
     m.authTaskTimer.control = "start"
   end if
@@ -2890,6 +3031,12 @@ sub unBlock(channelID)
 end sub
 
 sub massFollow(channelIDs)
+  if not isValid(m.preferences) then
+    m.preferences = {}
+  end if
+  if not isValid(m.preferences.following) or Type(m.preferences.following) <> "roArray"
+    m.preferences.following = []
+  end if
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": channelIDs }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
@@ -2900,10 +3047,18 @@ sub massFollow(channelIDs)
 end sub
 
 sub follow(channelID)
+  if not isValid(m.preferences) then
+    m.preferences = {}
+  end if
+  if not isValid(m.preferences.following) or Type(m.preferences.following) <> "roArray"
+    m.preferences.following = []
+  end if
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
-  m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+  if isValid(m.videoButtonsFollowingIcon)
+    m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+  end if
   m.preferences.following.push(channelID)
   m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
   m.favoritesThread.observeField("output", "gotFavorites")
@@ -2912,10 +3067,18 @@ end sub
 
 sub unFollow(channelID)
   ? "attempting to unfollow " + channelID
+  if not isValid(m.preferences) then
+    m.preferences = {}
+  end if
+  if not isValid(m.preferences.following) or Type(m.preferences.following) <> "roArray"
+    m.preferences.following = []
+  end if
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
   m.setpreferencesTask.observeField("state", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
-  m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+  if isValid(m.videoButtonsFollowingIcon)
+    m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+  end if
   if m.preferences.following.Count() > 0
     for i = 0 to m.preferences.following.Count() - 1
       if m.preferences.following[i] = channelID

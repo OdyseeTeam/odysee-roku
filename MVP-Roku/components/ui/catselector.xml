@@ -8,14 +8,36 @@
  
 <script type="text/brightscript" >
 <![CDATA[ 
+  function IsValid(value as Dynamic) as Boolean
+    return (Type(value) <> "<uninitialized>" and value <> invalid)
+  end function
+
   function itemContentChanged() 
+    ' Ensure nodes are initialized (onChange can fire before init)
+    if not isValid(m.itemImage) then
+      m.itemImage = m.top.findNode("itemImage")
+    end if
+    if not isValid(m.itemText) then
+      m.itemText = m.top.findNode("itemText")
+    end if
+    if not isValid(m.itemFont) and isValid(m.itemText) then
+      m.itemFont = m.itemText.font
+    end if
     itemData = m.top.itemContent
-    m.itemImage.uri = itemData.posterUrl
-    m.itemText.text = itemData.labelText
+    if isValid(itemData)
+      if isValid(m.itemImage) and isValid(itemData.posterUrl)
+        m.itemImage.uri = itemData.posterUrl
+      end if
+      if isValid(m.itemText) and isValid(itemData.labelText)
+        m.itemText.text = itemData.labelText
+      end if
+    end if
     ' isTextEllipsized has a significant lag between the text being ellipsized and the determination that it is.
     ' see https://forums.roku.com/viewtopic.php?t=104425&p=565559#p565638 for more information on why this has to be done this way.
-    if m.itemText.text.split("").Count() > 12
-      m.itemFont.size = m.itemFont.size - (m.itemText.text.split("").Count() / 12)
+    if isValid(m.itemText) and isValid(m.itemFont)
+      if m.itemText.text.split("").Count() > 12
+        m.itemFont.size = m.itemFont.size - (m.itemText.text.split("").Count() / 12)
+      end if
     end if
   end function
   
@@ -26,6 +48,7 @@
   end function
 ]]>
 </script>
+
 
 <children>
     <Poster id="itemImage" width="48" height="48" translation="[30,0]"/>
