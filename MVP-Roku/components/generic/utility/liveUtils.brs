@@ -5,7 +5,7 @@ function getLivestream(channel)
         liveData = livestreamStatus.data
         if liveData["Live"]
             lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_id": liveData["ActiveClaim"]["ClaimID"] }, "id": m.top.uid })
+            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_id": liveData["ActiveClaim"]["ClaimID"], "page": 1, "page_size": 1, "no_totals": true }, "id": m.top.uid })
             livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
             liveClaim = livestreamclaimquery["result"]["items"][0]
             if getRawTextAuthenticated(liveData["VideoURL"], m.top.constants["ACCESS_HEADERS"]) = "{error: True}"
@@ -27,9 +27,10 @@ function getLivestreamsBatch(claimIDs, liveData, liveIDs)
         if isValid(claimIDs) and isValid(liveData) and isValid(liveIDs)
             if claimIDs.Count() = liveData.Count() and liveIDs.Count() = claimIDs.Count()
                 lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_ids": claimIDs }, "id": m.top.uid })
+                pageSize = claimIDs.Count()
+                if pageSize <= 0 then pageSize = 50
+                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_ids": claimIDs, "page": 1, "page_size": pageSize, "no_totals": true }, "id": m.top.uid })
                 livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
-                ? formatJson(livestreamClaimQuery)
                 liveClaims = livestreamclaimquery["result"]["items"]
                 if liveIDs.Count() = liveClaims.Count()
                     liveClaimsIndexed = {}
@@ -157,38 +158,132 @@ end function
 function parseLiveData(channel, liveData, liveClaim)
     item = {}
     time = CreateObject("roDateTime")
-    time.FromISO8601String(liveData["ActiveClaim"]["ReleaseTime"])
-    timestr = time.AsDateString("short-month-short-weekday") + " "
-    timestr = timestr.Trim()
-    time.FromISO8601String(liveData["Start"])
-    streamStart = time.AsSeconds()
-    time = invalid
-    item.Title = liveClaim["value"]["title"]
+    ' Started "X ago" text from Start
+    startedAgo = ""
     try
-        item.Creator = liveClaim["signing_channel"]["value"]["title"]
+        time.FromISO8601String(liveData["Start"])
+        streamStart = time.AsSeconds()
+        nowDT = CreateObject("roDateTime")
+        nowSecs = nowDT.AsSeconds()
+        diff = nowSecs - streamStart
+        if diff < 0 then diff = 0
+        minutes = Int(diff / 60)
+        hours = Int(diff / 3600)
+        days = Int(diff / 86400)
+        if days > 0
+            if days = 1 then startedAgo = "Started 1 day ago" else startedAgo = "Started " + days.ToStr() + " days ago"
+        else if hours > 0
+            if hours = 1 then startedAgo = "Started 1 hour ago" else startedAgo = "Started " + hours.ToStr() + " hours ago"
+        else
+            if minutes = 1 then startedAgo = "Started 1 minute ago" else startedAgo = "Started " + minutes.ToStr() + " minutes ago"
+        end if
+        nowDT = invalid
     catch e
-        item.Creator = liveClaim["signing_channel"]["name"]
+        streamStart = 0
+        startedAgo = "Live now"
+    end try
+    time = invalid
+    ' Title from claim (defensive)
+    try
+        item.Title = liveClaim.value.title
+    catch e
+        item.Title = ""
+    end try
+    ' Creator from claim (defensive)
+    try
+        item.Creator = liveClaim.signing_channel.value.title
+    catch e
+        try
+            item.Creator = liveClaim.signing_channel.name
+        catch e2
+            item.Creator = ""
+        end try
     end try
     item.Channel = channel
-    item.ReleaseDate = timestr
+    item.ReleaseDate = startedAgo
     item.startUTC = streamStart 'for future use
-    item.guid = liveData["ActiveClaim"]["ClaimID"]
+    item.guid = ""
     try
-        item.HDPosterURL = m.top.constants["IMAGE_PROCESSOR"] + liveClaim["value"]["thumbnail"]["url"]
+        item.guid = liveData.ActiveClaim.ClaimID
     catch e
-        item.HDPosterURL = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+        ' leave blank if not present
     end try
+    ' Poster thumbnail with fallbacks (claim → live API → channel)
+    hdPoster = invalid
+    posterUrl = ""
+    ' Try claim thumbnail first
+    try
+        posterUrl = liveClaim.value.thumbnail.url
+    catch e
+        posterUrl = ""
+    end try
+    if posterUrl = ""
+        ' Try live API thumbnail
+        try
+            posterUrl = liveData.ThumbnailURL
+        catch e
+            posterUrl = ""
+        end try
+    end if
+    if posterUrl = ""
+        ' Fallback to channel thumbnail
+        try
+            posterUrl = liveClaim.signing_channel.value.thumbnail.url
+        catch e
+            posterUrl = ""
+        end try
+    end if
+    if posterUrl <> ""
+        ' If posterUrl already absolute, do not double-prefix
+        if Left(posterUrl, 4) = "http"
+            hdPoster = posterUrl
+        else
+            hdPoster = m.top.constants["IMAGE_PROCESSOR"] + posterUrl
+        end if
+    else
+        hdPoster = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+    end if
+    item.HDPosterURL = hdPoster
+    item.HDPOSTERURL = hdPoster
     item.thumbnailDimensions = [360, 240]
+    chThumb = ""
     try
-        item.channelIcon = m.top.constants["IMAGE_PROCESSOR"] + liveClaim["signing_channel"]["value"]["thumbnail"]["url"]
+        chThumb = liveClaim.signing_channel.value.thumbnail.url
     catch e
-        item.channelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+        chThumb = ""
     end try
+    if chThumb <> ""
+        if Left(chThumb, 4) = "http"
+            chIcon = chThumb
+        else
+            chIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + chThumb
+        end if
+    else
+        chIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+    end if
+    item.ChannelIcon = chIcon
     item.url = liveData["VideoURL"]
     item.stream = { url: item.url }
     item.link = item.url
     item.streamFormat = "hls"
     item.source = "odysee"
     item.itemType = "livestream"
+    ' Ensure both cases for poster URL are set
+    item.HDPOSTERURL = item.HDPosterURL
+    ' Viewer count (raw and display)
+    try
+        item.viewers = liveData["ViewerCount"]
+        v = item.viewers
+        if v >= 1000000
+            item.viewerDisplay = Str(Int(v / 1000000)) + "M"
+        else if v >= 1000
+            item.viewerDisplay = Str(Int(v / 1000)) + "K"
+        else
+            item.viewerDisplay = v.ToStr()
+        end if
+    catch e
+        item.viewers = 0
+        item.viewerDisplay = ""
+    end try
     return item
 end function

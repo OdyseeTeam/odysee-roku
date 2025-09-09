@@ -42,9 +42,9 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     'If last parsed items = current parsed items, no more items are avaliable
     'If no more items are avalible, and amount of items is 0, error.
     m.parseTimer.Mark()
-    'STAGE 1: resolve livestreams
-    potentiallyLiveUsers = channels
-    if m.top.resolveLivestreams 'we have to resolve livestreams now, apparently.
+    'STAGE 1: resolve livestreams (disabled by default; use global all-live instead)
+    if m.top.resolveLivestreams
+        potentiallyLiveUsers = channels
         if isValid(potentiallyLiveUsers)
             liveData = getLiveDataFromCIDS(potentiallyLiveUsers)
             allStreams = getLivestreamsBatch(liveData.claimIDs, liveData.liveData, liveData.liveIDs)
@@ -58,8 +58,8 @@ function ChannelsToVideoGrid(channels, blockedChannels)
                 result.Append(allStreams)
             end if
         end if
+        ? "GetSinglePage," + threadname + ",livestreams," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     end if
-    ? "GetSinglePage," + threadname + ",livestreams," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     'm.parseTimer.Mark()
     'STAGE 2: mass parse
     m.parseLibTimer.Mark()
@@ -128,6 +128,10 @@ function ChannelsToVideoGrid(channels, blockedChannels)
             curitem = invalid
         end if
     end for
+    ' Append any remaining partial row
+    if IsValid(currow) and counter > 0
+        content.appendChild(currow)
+    end if
     ? "GetSinglePage," + threadname + ",reformat," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     m.parseTimer.Mark()
     '?type(content)

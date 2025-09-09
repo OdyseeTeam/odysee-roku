@@ -101,7 +101,37 @@ function getVideoPage(pageNum)
     end if
     rawChannels = invalid
     
-    queryJSON = { "jsonrpc": "2.0", "method": "claim_search", "params": { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"],"release_time": "<"+curTime.toStr() }, "id": m.top.uid }
+    params = { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
+    ' Wild West: use trending order instead of release_time
+    if IsValid(m.top.rawname)
+        if LCase(m.top.rawname) = "wildwest"
+            params["order_by"] = ["trending_group", "trending_mixed"]
+        end if
+    end if
+    ' Apply wildwest excludedChannelIds via not_channel_ids if provided on task
+    ' Apply user blocked to all claim searches, and merge with category-level
+    ' exclusions (e.g., Wild West) when provided.
+    notIdsMap = {}
+    ' user blocked
+    if IsValid(m.top.blocked)
+        if Type(m.top.blocked) = "roArray" or Type(m.top.blocked) = "Array"
+            for each bid in m.top.blocked
+                if IsValid(bid) then notIdsMap.addReplace(bid, true)
+            end for
+        end if
+    end if
+    ' category excluded
+    if IsValid(m.top.excluded)
+        if Type(m.top.excluded) = "roArray" or Type(m.top.excluded) = "Array"
+            for each eid in m.top.excluded
+                if IsValid(eid) then notIdsMap.addReplace(eid, true)
+            end for
+        end if
+    end if
+    if notIdsMap.Keys().Count() > 0
+        params["not_channel_ids"] = notIdsMap.Keys()
+    end if
+    queryJSON = { "jsonrpc": "2.0", "method": "claim_search", "params": params, "id": m.top.uid }
     query = FormatJson(queryJSON)
     response = postJSON(query, queryURL, invalid)
     retries = 0

@@ -25,20 +25,30 @@ sub master()
         ?"Creating categories"
         legacyFormatFrontpageCIDS = {} 'until I change HomeScene.
         for each category in frontpageCIDS 'create categories for selector
-            dataItem = {}
-            if fileSystem.Exists("pkg:/images/png/" + category.icon.replace(" ", "") + ".png")
-                dataItem.posterUrl = "pkg:/images/png/" + category.icon.replace(" ", "") + ".png"
-            else
-                if urlExists("https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png")
-                    dataItem.posterUrl = "https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png"
-                else
-                    dataItem.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
-                end if
+            skipCategory = false
+            ' Filter out Discover category by name or label (case-insensitive)
+            if isValid(category.name)
+                if LCase(category.name) = "discover" then skipCategory = true
             end if
-            dataItem.trueName = category.name
-            dataItem.labelText = category.label
-            categorySelectordata.push(dataItem)
-            legacyFormatFrontpageCIDS.addReplace(category.name, category)
+            if skipCategory = false and isValid(category.label)
+                if LCase(category.label) = "discover" then skipCategory = true
+            end if
+            if skipCategory = false
+                dataItem = {}
+                if fileSystem.Exists("pkg:/images/png/" + category.icon.replace(" ", "") + ".png")
+                    dataItem.posterUrl = "pkg:/images/png/" + category.icon.replace(" ", "") + ".png"
+                else
+                    if urlExists("https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png")
+                        dataItem.posterUrl = "https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png"
+                    else
+                        dataItem.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                    end if
+                end if
+                dataItem.trueName = category.name
+                dataItem.labelText = category.label
+                categorySelectordata.push(dataItem)
+                legacyFormatFrontpageCIDS.addReplace(category.name, category)
+            end if
         end for
         if frontpageCIDS.count() > 0 AND categorySelectordata.count() > 0
             m.top.categoryselectordata = categorySelectordata

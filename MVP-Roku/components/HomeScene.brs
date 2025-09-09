@@ -75,6 +75,8 @@ sub init()
   m.currentVideoClaimID = "" 'Current claim ID for Video
   m.currentVideoReactions = {}
   m.currentVideoPosition = [0, 0]
+  m.pendingResume = -1 'seconds to seek to after playback starts; -1 when none
+  m.resumeTimer = CreateObject("roTimeSpan") 'throttle resume saves
   m.searchHistoryBox = m.top.findNode("searchHistory")
   m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
   m.searchHistoryItems = []
@@ -117,7 +119,7 @@ sub init()
   m.date = CreateObject("roDateTime")
   m.chatArray = [] 'legacy: left in for now.
   m.superChatArray = []
-  m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]", "")
+  m.chatRegex = CreateObject("roRegex", "[^\x00-\x7F]", "") 'incredibly scuffed
   m.chatImageRegex = CreateObject("roRegex", "(?:!\[(.*?)\]\((.*?)\))", "") 'incredibly scuffed
   m.channelIDs = {}
   m.categories = {}
@@ -127,6 +129,7 @@ sub init()
   m.videoSearch = createObject("roSGNode", "getVideoSearch")
   m.channelSearch = createObject("roSGNode", "getChannelSearch")
   m.channelPage = CreateObject("roSGNode", "getChannelPage")
+  m.allLiveTask = CreateObject("roSGNode", "getAllLiveItems")
   m.InputTask = createObject("roSgNode", "inputTask")
   m.InputTask.observefield("inputData", "handleInputEvent")
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
@@ -137,6 +140,7 @@ sub init()
   m.channelSearch.observeField("cookies", "gotCookies")
   m.constantsTask = createObject("roSGNode", "getConstants")
   m.constantsTask.observeField("constants", "gotConstants")
+  m.allLiveTask.observeField("output", "gotAllLive")
   m.authTask = createObject("roSGNode", "authTask")
   m.syncLoop = createObject("roSGNode", "syncLoop")
   observeFields("authTask", { "authPhase": "authPhaseChanged": "userCode": "gotRokuCode": "accessToken": "gotAccessToken": "refreshToken": "gotRefreshToken": "uid": "gotUID": "authtoken": "gotAuth": "cookies": "gotCookies" })
@@ -166,6 +170,7 @@ sub init()
   m.deviceFlowRegistry = CreateObject("roRegistrySection", "deviceFlowData") 'Device Flow Data (Wallet, Sync Hashes (old/new), Auth Token+Refresh Token)
   m.preferencesRegistry = CreateObject("roRegistrySection", "preferences") 'User preferences (odysee.com/app local)
   m.searchHistoryRegistry = CreateObject("roRegistrySection", "searchHistory") 'Search History
+  m.resumeRegistry = CreateObject("roRegistrySection", "resumePoints") 'Per-claim resume positions
 
   'Get current (older non-token) auth
   if IsValid(GetRegistry("authRegistry", "uid")) and IsValid(GetRegistry("authRegistry", "authtoken"))
@@ -228,6 +233,81 @@ sub init()
   m.constantsTask.control = "RUN"
 end sub
 
+sub gotAllLive(msg as object)
+  if type(msg) = "roSGNodeEvent"
+    data = msg.getData()
+    m.allLiveTask.control = "STOP"
+    m.allLive = data ' store: items (all live), claims, byChannel
+    ' Update current visible category grid in place if focused on video grid
+    if m.focusedItem = 2 and isValid(m.categorySelector) and m.categorySelector.itemFocused > 1
+      catIndex = m.categorySelector.itemFocused
+      catName = m.categorySelectordata[catIndex].trueName
+      if isValid(catName) and isValid(m.categories[catName])
+        ' Re-run merge logic for this category only
+        vodContent = m.categories[catName]
+        mergedContent = vodContent
+        if isValid(m.channelIDs[catName])
+          catChannels = m.channelIDs[catName]["channelIds"]
+          catMap = {}
+          for each cid in catChannels: catMap.addReplace(cid, true): end for
+          liveClaimsForCat = []
+          for each liveItem in m.allLive.items
+            if isValid(catMap[liveItem.ChannelClaimID]) then liveClaimsForCat.push(liveItem.ActiveClaim.ClaimID)
+          end for
+          if liveClaimsForCat.Count() > 0 and isValid(m.allLive.claims)
+            claimsIndex = {}
+            for each cl in m.allLive.claims: claimsIndex.addReplace(cl.claim_id, cl): end for
+            liveNodes = createObject("RoSGNode", "ContentNode")
+            counter = 0: currow = invalid
+            for each cId in liveClaimsForCat
+              cl = claimsIndex[cId]
+              if IsValid(cl)
+                ' Compute channel claim id from the live map; fall back to signing_channel.claim_id
+                chId = ""
+                try
+                  chId = m.allLive.byChannel.Keys()[0] 'placeholder to satisfy parser
+                catch e
+                  chId = ""
+                end try
+                ' Prefer cl.signing_channel.claim_id when available
+                if IsValid(cl.signing_channel) and IsValid(cl.signing_channel.claim_id)
+                  chId = cl.signing_channel.claim_id
+                end if
+                lv = parseLiveData(chId, m.allLive.byChannel[chId], cl)
+                if counter < 4
+                  if IsValid(currow) <> true then currow = createObject("RoSGNode", "ContentNode")
+                  n = createObject("RoSGNode", "ContentNode")
+                  n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "" })
+                  n.setFields(lv)
+                  currow.appendChild(n)
+                  counter += 1
+                else
+                  liveNodes.appendChild(currow)
+                  currow = createObject("RoSGNode", "ContentNode")
+                  n = createObject("RoSGNode", "ContentNode")
+                  n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "" })
+                  n.setFields(lv)
+                  currow.appendChild(n)
+                  counter = 1
+                end if
+              end if
+            end for
+            if IsValid(currow) and currow.getChildCount() > 0 then liveNodes.appendChild(currow)
+            if liveNodes.getChildCount() > 0
+              merged = createObject("RoSGNode", "ContentNode")
+              for i = 0 to liveNodes.getChildCount() - 1: merged.appendChild(liveNodes.getChild(i)): end for
+              for i = 0 to vodContent.getChildCount() - 1: merged.appendChild(vodContent.getChild(i)): end for
+              mergedContent = merged
+            end if
+          end if
+        end if
+        m.categories.addReplace(catName, mergedContent)
+        if m.videoGrid.visible then m.videoGrid.content = mergedContent
+      end if
+    end if
+  end if
+end sub
+
 'TODO: order app according to startup[done]/seperate brightscript into seperate scripts for UI/startup/etc.
 
 'STARTUP TASKS
@@ -246,6 +326,9 @@ sub gotConstants()
     m.setpreferencesTask.observeField("error", "setPreferencesError")
     m.setreactionTask.setField("constants", m.constants)
     m.syncLoop.setField("constants", m.constants)
+    ' Kick off one-shot live fetch for merging across categories
+    m.allLiveTask.setField("constants", m.constants)
+    m.allLiveTask.control = "RUN"
     ?"Constants are done, running auth"
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     ' If a refresh token exists from a prior session, skip legacy Phase 0
@@ -482,37 +565,36 @@ sub gotCIDS()
     end if
     for each category in m.channelIDs 'create categories for selector
       catData = m.channelIDs[category]
-      catOrder = "trending"
+      catOrder = "new"
       excludedChannelIds = []
       if isValid(catData.order)
         if Type(catData.order) = "roString"
           catOrder = catData.order
         end if
       end if
-      if isValid(catData.excludedChannelIds)
-        if type(catData.excludedChannelId) = "roArray"
-          excludedChannelIds.append(catData.excludedChannelIds)
+      if IsValid(catData.excludedChannelIds)
+        if Type(catData.excludedChannelIds) = "roArray" or Type(catData.excludedChannelIds) = "Array"
+          excludedChannelIds = catData.excludedChannelIds
         end if
       end if
       thread = CreateObject("roSGNode", "getSinglePage")
+      userBlocked = []
       if m.wasLoggedIn and m.preferences.Count() > 0
-        excludedChannelIds.append(m.preferences.blocked)
-        if category = "wildwest"
-          ? "is wildwest, resolving livestreams"
-          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
-        else
-          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
-        end if
-      else
-        if category = "wildwest"
-          ? "is wildwest, resolving livestreams"
-          thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
-        else
-          thread.setFields({ sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
+        if IsValid(m.preferences.blocked)
+          userBlocked = m.preferences.blocked
         end if
       end if
+      categoryExcluded = []
+      if category = "wildwest"
+        catorder="trending"
+        if IsValid(excludedChannelIds)
+          categoryExcluded = excludedChannelIds
+        end if
+      end if
+      thread.setFields({ resolveLivestreams: false, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: category, uid: m.uid, cookies: m.cookies, blocked: userBlocked, excluded: categoryExcluded })
       thread.observeField("output", "threadDone")
       m.threads.push(thread)
+      ' No per-category live fetch; we merge from one-shot all-live later
       catData = invalid 'save memory
       catOrder = invalid
       excludedChannelIds = invalid
@@ -573,7 +655,93 @@ sub threadDone(msg as object)
     else
       ?thread.rawname+" completed successfully"
       m.loadingText.text = "Loading." + Str(m.runningThreads.Count()) + " categories remain..."
-      m.categories.addReplace(thread.rawname, thread.output.content)
+      ' If all-live exists, prepend live rows (special-case wildwest: top 8 overall)
+      mergedContent = thread.output.content
+      if IsValid(m.allLive) and IsValid(m.allLive.items)
+        liveClaimsForCat = []
+        if thread.rawname = "wildwest"
+          ' Wild West: take top 8 active lives from /all (already sorted)
+          if Type(m.allLive.items) = "roArray" or Type(m.allLive.items) = "Array"
+            count = 0
+            for each liveItem in m.allLive.items
+              if IsValid(liveItem) and IsValid(liveItem.ActiveClaim) and IsValid(liveItem.ActiveClaim.ClaimID)
+                liveClaimsForCat.push(liveItem.ActiveClaim.ClaimID)
+                count += 1
+                if count >= 8 then exit for
+              end if
+            end for
+          end if
+        else if IsValid(m.channelIDs[thread.rawname]) and IsValid(m.channelIDs[thread.rawname]["channelIds"]) and (Type(m.channelIDs[thread.rawname]["channelIds"]) = "roArray" or Type(m.channelIDs[thread.rawname]["channelIds"]) = "Array")
+          catChannels = m.channelIDs[thread.rawname]["channelIds"]
+          ' build filter map for category channels
+          catMap = {}
+          for each cid in catChannels
+            catMap.addReplace(cid, true)
+          end for
+          ' collect live claim IDs for these channels, preserving sort by viewer count from API
+          if Type(m.allLive.items) = "roArray" or Type(m.allLive.items) = "Array"
+            for each liveItem in m.allLive.items
+              if IsValid(liveItem) and IsValid(liveItem.ChannelClaimID) and IsValid(liveItem.ActiveClaim) and IsValid(liveItem.ActiveClaim.ClaimID)
+                if IsValid(catMap[liveItem.ChannelClaimID])
+                  liveClaimsForCat.push(liveItem.ActiveClaim.ClaimID)
+                end if
+              end if
+            end for
+          end if
+        end if
+        if liveClaimsForCat.Count() > 0 and isValid(m.allLive.claims)
+          ' index claims by claim_id
+          claimsIndex = {}
+          for each cl in m.allLive.claims
+            claimsIndex.addReplace(cl.claim_id, cl)
+          end for
+          ' build live ContentNode rows-of-4
+          liveNodes = createObject("RoSGNode", "ContentNode")
+          counter = 0: currow = invalid
+          for each cId in liveClaimsForCat
+            cl = claimsIndex[cId]
+            if IsValid(cl)
+              chId = ""
+              if IsValid(cl.signing_channel) and IsValid(cl.signing_channel.claim_id)
+                chId = cl.signing_channel.claim_id
+              end if
+              ' prefer byClaim map to source the live API fields (ThumbnailURL, ViewerCount)
+              liveMeta = invalid
+              if IsValid(m.allLive.byClaim) and IsValid(m.allLive.byClaim[cId])
+                liveMeta = m.allLive.byClaim[cId]
+              else if IsValid(m.allLive.byChannel) and IsValid(m.allLive.byChannel[chId])
+                liveMeta = m.allLive.byChannel[chId]
+              end if
+              lv = parseLiveData(chId, liveMeta, cl)
+              if counter < 4
+                if IsValid(currow) <> true then currow = createObject("RoSGNode", "ContentNode")
+                n = createObject("RoSGNode", "ContentNode")
+                n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+                n.setFields(lv)
+                currow.appendChild(n)
+                counter += 1
+              else
+                liveNodes.appendChild(currow)
+                currow = createObject("RoSGNode", "ContentNode")
+                n = createObject("RoSGNode", "ContentNode")
+                n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+                n.setFields(lv)
+                currow.appendChild(n)
+                counter = 1
+              end if
+            end if
+          end for
+          if IsValid(currow) and currow.getChildCount() > 0 then liveNodes.appendChild(currow)
+          ' merge live rows before vod
+          if liveNodes.getChildCount() > 0
+            merged = createObject("RoSGNode", "ContentNode")
+            for i = 0 to liveNodes.getChildCount() - 1: merged.appendChild(liveNodes.getChild(i)): end for
+            for i = 0 to mergedContent.getChildCount() - 1: merged.appendChild(mergedContent.getChild(i)): end for
+            mergedContent = merged
+          end if
+        end if
+      end if
+      m.categories.addReplace(thread.rawname, mergedContent)
       thread.unObserveField("output")
       thread.control = "STOP"
       for cThread = 0 to m.runningThreads.Count() - 1
@@ -623,6 +791,33 @@ sub threadDone(msg as object)
         retryError("CRITICAL ERROR: claim_search down/parsing failure", "The app cannot start without categories. Press OK to attempt again."+Chr(10)+"Please e-mail help@odysee.com.", "retryCIDS")
       end if
     end if
+end sub
+
+sub threadDoneLive(msg as object)
+  if type(msg) = "roSGNodeEvent"
+    thread = msg.getRoSGNode()
+    rawname = thread.rawname
+    if not isValid(m.categories[rawname])
+      ' If VOD hasn't arrived yet, temporarily store live under categories
+      m.categories.addReplace(rawname, thread.output.content)
+    else
+      ' Prepend live rows before existing content rows
+      vodContent = m.categories[rawname]
+      liveContent = thread.output.content
+      merged = createObject("RoSGNode", "ContentNode")
+      ' First add live rows
+      for i = 0 to liveContent.getChildCount() - 1
+        merged.appendChild(liveContent.getChild(i))
+      end for
+      ' Then add existing vod rows
+      for i = 0 to vodContent.getChildCount() - 1
+        merged.appendChild(vodContent.getChild(i))
+      end for
+      m.categories.addReplace(rawname, merged)
+    end if
+    thread.unObserveField("output")
+    thread.control = "STOP"
+  end if
 end sub
 
 sub finishInit()
@@ -1058,7 +1253,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ? "would refresh " + trueName
               catData = m.channelIDs[trueName]
               excludedChannelIds = []
-              catOrder = "trending"
+              catOrder = "new"
               if isValid(catData.order)
                 if Type(catData.order) = "roString"
                   catOrder = catData.order
@@ -1073,6 +1268,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               if m.wasLoggedIn and m.preferences.Count() > 0
                 excludedChannelIds.append(m.preferences.blocked)
                 if trueName = "wildwest"
+                  catOrder = "trending"
                   ? "is wildwest, resolving livestreams"
                   thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
                 else
@@ -1080,6 +1276,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 end if
               else
                 if trueName = "wildwest"
+                  catOrder = "trending"
                   ? "is wildwest, resolving livestreams"
                   thread.setFields({ resolveLivestreams: true, sortorder: catOrder, constants: m.constants, channels: catData["channelIds"], rawname: trueName, uid: m.uid, cookies: m.cookies, blocked: excludedChannelIds })
                 else
@@ -1970,6 +2167,15 @@ sub videoPositionChanged()
       m.videoProgressBarp2.text = getvideoLength(totalLen + 1 - m.video.position)
     end if
   end if
+  ' Save resume point every ~10 seconds
+  if isValid(m.currentVideoClaimID)
+    if not isValid(m.resumeTimer) then m.resumeTimer = CreateObject("roTimeSpan")
+    if m.resumeTimer.TotalSeconds() >= 10
+      m.resumeTimer.Mark()
+      resumeKey = "resume-" + m.currentVideoClaimID
+      SetRegistry("resumeRegistry", resumeKey, m.video.position.ToStr())
+    end if
+  end if
 end sub
 
 sub changeVideoPosition()
@@ -2086,6 +2292,21 @@ sub playResolvedVideo(msg as object)
       m.videoButtons.setFocus(true)
       m.focusedItem = 7 '[video player/overlay]
       m.video.control = "play"
+      ' Attempt to resume from saved position
+      m.pendingResume = -1
+      if isValid(m.currentVideoClaimID)
+        resumeKey = "resume-" + m.currentVideoClaimID
+        saved = GetRegistry("resumeRegistry", resumeKey)
+        if isValid(saved)
+          seconds = StrToI(saved)
+          if seconds > 0 and seconds < data.length - 15
+            m.pendingResume = seconds
+          end if
+        end if
+      end if
+      if m.pendingResume > 0
+        m.video.seek = m.pendingResume
+      end if
       m.video.observeField("position", "videoPositionChanged")
       ?m.video.errorStr
       ?m.video.videoFormat
@@ -2162,6 +2383,11 @@ function onVideoStateChanged(msg as object)
         m.video.unobserveField("position")
       end if
       m.video.unobserveField("duration")
+      ' Clear resume on completion
+      if isValid(m.currentVideoClaimID)
+        resumeKey = "resume-" + m.currentVideoClaimID
+        SetRegistry("resumeRegistry", resumeKey, "0")
+      end if
       m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       m.videoProgressBar.width = 0
@@ -2332,8 +2558,10 @@ sub gotVideoSearch(msg as object)
     data = msg.getData()
     if data.success = true
       m.videoSearch.unobserveField("output")
-      'if msg
-      m.videoGrid.content = data.result.content
+      ' Render Lighthouse-backed grid immediately
+      if isValid(data.result) and isValid(data.result.content)
+        m.videoGrid.content = data.result.content
+      end if
       m.videoSearch.control = "STOP"
       m.taskRunning = False
       m.videoGrid.visible = true
@@ -2375,6 +2603,11 @@ sub gotVideoSearch(msg as object)
         hideCategorySelector()
       end if
       m.videoGrid.setFocus(true)
+      ' When user enters a category, refresh lives in the background and update in place
+      if isValid(m.allLiveTask)
+        m.allLiveTask.setField("constants", m.constants)
+        m.allLiveTask.control = "RUN"
+      end if
     else
       m.searchFailed = true
       failedSearch(m.videoSearch.output.errorType)

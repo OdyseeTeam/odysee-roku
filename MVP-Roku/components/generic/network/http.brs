@@ -4,6 +4,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
   maxRetries = 5
   maxRedirects = 5
   retries = 0
+  backoffMs = 250
   done = false
   while done = false and retries <= maxRetries
     redirects = 0
@@ -18,7 +19,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
       http.AddHeader("Content-Type", "application/json")
       http.AddHeader("Accept", "application/json")
       if http.AsyncPostFromString(json) then
-        event = Wait(5000, http.GetPort())
+        event = Wait(10000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 and responseCode <= 299
@@ -71,87 +72,168 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
         exit while
       end if
     end while
+    if done = false and retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
+    end if
   end while
   cleanup()
   return response
 end function
 
 function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: {header: headerdata}
-  http = httpPreSetup(url)
-  if IsValid(headers)
-    if headers.Count() > 0
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
+  responseCode = 500
+  currentUrl = url
+  maxRetries = 5
+  maxRedirects = 5
+  retries = 0
+  backoffMs = 250
+  done = false
+  while done = false and retries <= maxRetries
+    redirects = 0
+    innerUrl = currentUrl
+    while redirects <= maxRedirects
+      http = httpPreSetup(innerUrl)
+      if IsValid(headers)
+        if headers.Count() > 0
+          http.SetHeaders(headers) 'in some cases, this is actually needed!
+        end if
+      end if
+      http.AddHeader("Content-Type", "application/json")
+      http.AddHeader("Accept", "application/json")
+      if http.AsyncPostFromString(json) then
+        event = Wait(10000, http.GetPort())
+        if Type(event) = "roUrlEvent" Then
+          code = event.GetResponseCode()
+          if code >= 200 and code <= 299
+            responseCode = code
+            done = true
+            exit while
+          else if code >= 300 and code <= 399
+            lheaders = event.GetResponseHeaders()
+            redirect = lheaders.location
+            http.asynccancel()
+            if isValid(redirect)
+              innerUrl = redirect
+              redirects = redirects + 1
+            else
+              responseCode = code
+              done = true
+              exit while
+            end if
+          else if code >= 400 and code <= 499
+            responseCode = code
+            done = true
+            exit while
+          else if code >= 500 and code <= 599
+            http.asynccancel()
+            retries = retries + 1
+            exit while ' retry outer loop
+          else
+            http.asynccancel()
+            retries = retries + 1
+            exit while ' retry outer loop
+          end if
+        else if event = invalid then
+          http.asynccancel()
+          retries = retries + 1
+          exit while ' retry outer loop
+        else
+          done = true
+          exit while
+        end if
+      else
+        done = true
+        exit while
+      end if
+    end while
+    if done = false and retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
     end if
-  end if
-  http.AddHeader("Content-Type", "application/json")
-  http.AddHeader("Accept", "application/json")
-  if http.AsyncPostFromString(json) then
-    event = Wait(5000, http.GetPort())
-    if Type(event) = "roUrlEvent" Then
-      responseCode = event.GetResponseCode()
-    else if event = invalid then
-      http.asynccancel()
-      return 500
-      Else
-          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
-    end if
-  end if
+  end while
   cleanup()
   return responseCode
 end function
 
 function postURLEncoded(data, url, headers) as Object
-  http = httpPreSetup(url)
-  if IsValid(headers)
-    if headers.Count() > 0
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
-    end if
-  end if
-  http.AddHeader("Accept", "application/json")
-  response=""
-  lastresponsecode = ""
-  lastresponsefailurereason = ""
-  ' Guard against invalid data
-  body = posturlencode(data)
-  if http.AsyncPostFromString(body) then
-    event = Wait(5000, http.GetPort())
-      if Type(event) = "roUrlEvent" Then
-        responseCode = event.GetResponseCode()
-        if responseCode <= 299 AND responseCode >= 200
-          m.top.cookies = http.getCookies("", "/")
-          response = parsejson(event.getString().replace("\n","|||||"))
+  response = ""
+  currentUrl = url
+  maxRetries = 5
+  maxRedirects = 5
+  retries = 0
+  backoffMs = 250
+  done = false
+  while done = false and retries <= maxRetries
+    redirects = 0
+    innerUrl = currentUrl
+    while redirects <= maxRedirects
+      http = httpPreSetup(innerUrl)
+      if IsValid(headers)
+        if headers.Count() > 0
+          http.SetHeaders(headers)
         end if
-        if responseCode <= 399 AND responseCode >= 300
-          headers = event.GetResponseHeaders()
-          redirect = headers.location
-          http.asynccancel()
-          return postURLEncoded(data, redirect, headers)
-        end if
-        if responseCode <= 499 AND responseCode >= 400
-          try
+      end if
+      http.AddHeader("Accept", "application/json")
+      body = posturlencode(data)
+      if http.AsyncPostFromString(body) then
+        event = Wait(10000, http.GetPort())
+        if Type(event) = "roUrlEvent" Then
+          responseCode = event.GetResponseCode()
+          if responseCode >= 200 and responseCode <= 299
             m.top.cookies = http.getCookies("", "/")
             response = parsejson(event.getString().replace("\n","|||||"))
-          catch e
-            return {success: False}
-          end try
-        end if
-        if responseCode <= 599 AND responseCode >= 500
+            done = true
+            exit while
+          else if responseCode >= 300 and responseCode <= 399
+            lheaders = event.GetResponseHeaders()
+            redirect = lheaders.location
+            http.asynccancel()
+            if isValid(redirect)
+              innerUrl = redirect
+              redirects = redirects + 1
+            else
+              done = true
+              exit while
+            end if
+          else if responseCode >= 400 and responseCode <= 499
+            try
+              m.top.cookies = http.getCookies("", "/")
+              response = parsejson(event.getString().replace("\n","|||||"))
+            catch e
+              response = { success: False }
+            end try
+            done = true
+            exit while
+          else if responseCode >= 500 and responseCode <= 599
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          else
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          end if
+        else if event = invalid then
           http.asynccancel()
-          return postURLEncoded(data, url, headers)
+          retries = retries + 1
+          exit while
+        else
+          done = true
+          exit while
         end if
-        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
-          http.asynccancel()
-          return postURLEncoded(data, url, headers)
-        end if
-      else if event = invalid then
-        http.asynccancel()
-        return postURLEncoded(data, url, headers)
-      Else
-          ? "[LBRY_HTTP] AsyncPostFromString unknown event"
+      else
+        done = true
+        exit while
+      end if
+    end while
+    if done = false and retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
     end if
-  end if
-cleanup()
-return response
+  end while
+  cleanup()
+  return response
 end function
 
 function posturlencode(data)
@@ -173,52 +255,81 @@ function posturlencode(data)
 end function
 
 function getURLEncoded(data, url, headers) as Object
-    currenturl = url+urlencode(data)
-    ? currenturl
-    http = httpPreSetup(currenturl)
-    if IsValid(headers)
-      if headers.Count() > 0
-        http.SetHeaders(headers) 'in some cases, this is actually needed!
+  response = ""
+  baseUrl = url
+  maxRetries = 5
+  maxRedirects = 5
+  retries = 0
+  backoffMs = 250
+  done = false
+  while done = false and retries <= maxRetries
+    redirects = 0
+    innerBaseUrl = baseUrl
+    while redirects <= maxRedirects
+      requestUrl = innerBaseUrl + urlencode(data)
+      ? requestUrl
+      http = httpPreSetup(requestUrl)
+      if IsValid(headers)
+        if headers.Count() > 0
+          http.SetHeaders(headers)
+        end if
       end if
-    end if
-    if http.AsyncGetToString() then
-      event = Wait(5000, http.GetPort())
+      if http.AsyncGetToString() then
+        event = Wait(10000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
-          if responseCode <= 299 AND responseCode >= 200
+          if responseCode >= 200 AND responseCode <= 299
             m.top.cookies = http.getCookies("", "/")
             response = parsejson(event.getString().replace("\n","|||||"))
-          end if
-          if responseCode <= 399 AND responseCode >= 300
-            headers = event.GetResponseHeaders()
-            redirect = headers.location
+            done = true
+            exit while
+          else if responseCode >= 300 AND responseCode <= 399
+            lheaders = event.GetResponseHeaders()
+            redirect = lheaders.location
             http.asynccancel()
-            return getURLEncoded(data, redirect, headers)
-          end if
-          if responseCode <= 499 AND responseCode >= 400 'todo: fix cookies
+            if isValid(redirect)
+              innerBaseUrl = redirect
+              redirects = redirects + 1
+            else
+              done = true
+              exit while
+            end if
+          else if responseCode >= 400 AND responseCode <= 499
             try
               m.top.cookies = http.getCookies("", "/")
               response = parsejson(event.getString().replace("\n","|||||"))
             catch e
-              http.asynccancel()
-              return {success: False}
+              response = { success: False }
             end try
-          end if
-          if responseCode <= 599 AND responseCode >= 500
+            done = true
+            exit while
+          else if responseCode >= 500 AND responseCode <= 599
             http.asynccancel()
-            return getURLEncoded(data, url, headers)
-          end if
-          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+            retries = retries + 1
+            exit while
+          else
             http.asynccancel()
-            return getURLEncoded(data, url, headers)
+            retries = retries + 1
+            exit while
           end if
         else if event = invalid then
           http.asynccancel()
-          return getURLEncoded(data, url, headers)
-        Else
-          ? "[LBRY_HTTP] AsyncGetToString unknown event"
+          retries = retries + 1
+          exit while
+        else
+          done = true
+          exit while
+        end if
+      else
+        done = true
+        exit while
       end if
+    end while
+    if done = false and retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
     end if
+  end while
   cleanup()
   return response
 end function
@@ -249,7 +360,7 @@ function getJSONAuthenticated(url, headers = invalid) as Object
     end if
   end if
   if http.AsyncGetToString() then
-    event = Wait(5000, http.GetPort())
+    event = Wait(10000, http.GetPort())
       if Type(event) = "roUrlEvent" Then
         responseCode = event.GetResponseCode()
         if responseCode <= 299 AND responseCode >= 200
@@ -257,10 +368,10 @@ function getJSONAuthenticated(url, headers = invalid) as Object
           response = parsejson(event.getString().replace("\n","|||||"))
         end if
         if responseCode <= 399 AND responseCode >= 300
-          headers = event.GetResponseHeaders()
-          redirect = headers.location
+          lheaders = event.GetResponseHeaders()
+          redirect = lheaders.location
           http.asynccancel()
-          return getJSON(redirect)
+          return getJSONAuthenticated(redirect, headers)
         end if
         if responseCode <= 499 AND responseCode >= 400
           try
@@ -272,15 +383,15 @@ function getJSONAuthenticated(url, headers = invalid) as Object
         end if
         if responseCode <= 599 AND responseCode >= 500
           http.asynccancel()
-          return getJSON(url)
+          return getJSONAuthenticated(url, headers)
         end if
         if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
           http.asynccancel()
-          return getJSON(url)
+          return getJSONAuthenticated(url, headers)
         end if
       else if event = invalid then
         http.asynccancel()
-        return getJSON(url)
+        return getJSONAuthenticated(url, headers)
       Else
         ? "[LBRY_HTTP] AsyncGetToString unknown event"
     end if
@@ -302,7 +413,7 @@ function getJSON(url) as Object
     while redirects <= maxRedirects
       http = httpPreSetup(innerUrl)
       if http.AsyncGetToString() then
-        event = Wait(5000, http.GetPort())
+        event = Wait(10000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 AND responseCode <= 299
@@ -359,126 +470,204 @@ function getJSON(url) as Object
 end function
 
 function getRawText(url) as Object
-    http = httpPreSetup(url)
-    if http.AsyncGetToString() then
-      event = Wait(5000, http.GetPort())
+  response = ""
+  currentUrl = url
+  maxRetries = 5
+  maxRedirects = 5
+  retries = 0
+  backoffMs = 250
+  done = false
+  while done = false and retries <= maxRetries
+    redirects = 0
+    innerUrl = currentUrl
+    while redirects <= maxRedirects
+      http = httpPreSetup(innerUrl)
+      if http.AsyncGetToString() then
+        event = Wait(10000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
-          if responseCode <= 299 AND responseCode >= 200
+          if responseCode >= 200 AND responseCode <= 299
             m.top.cookies = http.getCookies("", "/")
             response = event.getString()
-          end if
-          if responseCode <= 399 AND responseCode >= 300
-            headers = event.GetResponseHeaders()
-            redirect = headers.location
+            done = true
+            exit while
+          else if responseCode >= 300 AND responseCode <= 399
+            lheaders = event.GetResponseHeaders()
+            redirect = lheaders.location
             http.asynccancel()
-            return getRawText(redirect)
-          end if
-          if responseCode <= 499 AND responseCode >= 400
+            if isValid(redirect)
+              innerUrl = redirect
+              redirects = redirects + 1
+            else
+              done = true
+              exit while
+            end if
+          else if responseCode >= 400 AND responseCode <= 499
             return "{error: True}"
-          end if
-          if responseCode <= 599 AND responseCode >= 500
+          else if responseCode >= 500 AND responseCode <= 599
             http.asynccancel()
-            return getRawText(url)
-          end if
-          if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
+            retries = retries + 1
+            exit while
+          else
             http.asynccancel()
-            return getRawText(url)
+            retries = retries + 1
+            exit while
           end if
         else if event = invalid then
           http.asynccancel()
-          return getRawText(url)
-        Else
-          ? "[LBRY_HTTP] AsyncGetToString unknown event"
+          retries = retries + 1
+          exit while
+        else
+          done = true
+          exit while
+        end if
+      else
+        done = true
+        exit while
       end if
+    end while
+    if done = false and retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
     end if
+  end while
   cleanup()
   return response
 end function
 
 function getRawTextAuthenticated(url, headers) as Object
-  http = httpPreSetup(url)
-  if IsValid(headers)
-    if headers.Count() > 0
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
+  response = ""
+  currentUrl = url
+  maxRetries = 5
+  maxRedirects = 5
+  retries = 0
+  backoffMs = 250
+  done = false
+  while done = false and retries <= maxRetries
+    redirects = 0
+    innerUrl = currentUrl
+    while redirects <= maxRedirects
+      http = httpPreSetup(innerUrl)
+      if IsValid(headers)
+        if headers.Count() > 0
+          http.SetHeaders(headers)
+        end if
+      end if
+      if http.AsyncGetToString() then
+        event = Wait(10000, http.GetPort())
+        if Type(event) = "roUrlEvent" Then
+          responseCode = event.GetResponseCode()
+          if responseCode >= 200 AND responseCode <= 299
+            m.top.cookies = http.getCookies("", "/")
+            response = event.getString()
+            done = true
+            exit while
+          else if responseCode >= 300 AND responseCode <= 399
+            lheaders = event.GetResponseHeaders()
+            redirect = lheaders.location
+            http.asynccancel()
+            if isValid(redirect)
+              innerUrl = redirect
+              redirects = redirects + 1
+            else
+              done = true
+              exit while
+            end if
+          else if responseCode >= 400 AND responseCode <= 499
+            return "{error: True}"
+          else if responseCode >= 500 AND responseCode <= 599
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          else
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          end if
+        else if event = invalid then
+          http.asynccancel()
+          retries = retries + 1
+          exit while
+        else
+          done = true
+          exit while
+        end if
+      else
+        done = true
+        exit while
+      end if
+    end while
+    if done = false and retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
     end if
-  end if
-  if http.AsyncGetToString() then
-    event = Wait(5000, http.GetPort())
-      if Type(event) = "roUrlEvent" Then
-        responseCode = event.GetResponseCode()
-        if responseCode <= 299 AND responseCode >= 200
-          m.top.cookies = http.getCookies("", "/")
-          response = event.getString()
-        end if
-        if responseCode <= 399 AND responseCode >= 300
-          lheaders = event.GetResponseHeaders()
-          redirect = lheaders.location
-          http.asynccancel()
-          return getRawTextAuthenticated(redirect, headers)
-        end if
-        if responseCode <= 499 AND responseCode >= 400
-          return "{error: True}"
-        end if
-        if responseCode <= 599 AND responseCode >= 500
-          http.asynccancel()
-          return getRawTextAuthenticated(url, headers)
-        end if
-        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
-          http.asynccancel()
-          return getRawTextAuthenticated(url, headers)
-        end if
-      else if event = invalid then
-        http.asynccancel()
-        return getRawTextAuthenticated(url, headers)
-      Else
-        ? "[LBRY_HTTP] AsyncGetToString unknown event"
-    end if
-  end if
-cleanup()
-return response
+  end while
+  cleanup()
+  return response
 end function
 
 function urlExists(url) as Object
-  http = httpPreSetup(url)
-  if http.AsyncGetToString() then
-    event = Wait(5000, http.GetPort())
-      if Type(event) = "roUrlEvent" Then
-        responseCode = event.GetResponseCode()
-        if responseCode <= 299 AND responseCode >= 200
-          return true
-        end if
-        if responseCode <= 399 AND responseCode >= 300
-          headers = event.GetResponseHeaders()
-          redirect = headers.location
+  currentUrl = url
+  maxRetries = 3
+  maxRedirects = 5
+  retries = 0
+  backoffMs = 250
+  done = false
+  while done = false and retries <= maxRetries
+    redirects = 0
+    innerUrl = currentUrl
+    while redirects <= maxRedirects
+      http = httpPreSetup(innerUrl)
+      if http.AsyncHead() then
+        event = Wait(10000, http.GetPort())
+        if Type(event) = "roUrlEvent" Then
+          responseCode = event.GetResponseCode()
+          if responseCode >= 200 AND responseCode <= 299
+            return true
+          else if responseCode >= 300 AND responseCode <= 399
+            lheaders = event.GetResponseHeaders()
+            redirect = lheaders.location
+            http.asynccancel()
+            if isValid(redirect)
+              innerUrl = redirect
+              redirects = redirects + 1
+            else
+              return false
+            end if
+          else if responseCode >= 400 AND responseCode <= 499
+            return false
+          else if responseCode >= 500 AND responseCode <= 599
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          else
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          end if
+        else if event = invalid then
           http.asynccancel()
-          return urlExists(redirect)
-        end if
-        if responseCode <= 499 AND responseCode >= 400
+          retries = retries + 1
+          exit while
+        else
           return false
         end if
-        if responseCode <= 599 AND responseCode >= 500
-          http.asynccancel()
-          return false
-        end if
-        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
-          http.asynccancel()
-          return urlExists(url)
-        end if
-      else if event = invalid then
-        http.asynccancel()
+      else
         return false
-      Else
-        ? "[LBRY_HTTP] AsyncGetToString unknown event"
+      end if
+    end while
+    if retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
     end if
-  end if
-cleanup()
+  end while
+  cleanup()
 end function
 
 Function resolveRedirect(url As String) As String
 http = httpPreSetup(url)
 if http.AsyncHead() then
-  event = Wait(5000, http.GetPort())
+  event = Wait(10000, http.GetPort())
     if Type(event) = "roUrlEvent" Then
       responseCode = event.GetResponseCode()
       headers = event.GetResponseHeaders()
@@ -492,7 +681,7 @@ if http.AsyncHead() then
       if responseCode <= 399 AND responseCode >= 300
         headers = event.GetResponseHeaders()
         redirect = headers.location
-        if redirect.split("/")[0] <> "http" OR redirect.split("/")[0] <> "https"
+        if redirect.Instr("://") = -1
           urlsplit = url.split("/")
           urlsplit.Shift()
           urlsplit.Shift()

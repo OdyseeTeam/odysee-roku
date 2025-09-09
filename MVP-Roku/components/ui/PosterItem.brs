@@ -1,6 +1,8 @@
 sub Init()
     m.Poster = m.top.findNode("poster")
-    m.liveIcon = m.top.findNode("liveIcon")
+    m.ChannelIcon = m.top.findNode("channelIcon")
+    m.liveDot = m.top.findNode("liveDot")
+    m.liveDotBg = m.top.findNode("liveDotBg")
     m.Title = m.top.findNode("title")
     m.Published = m.top.findNode("published")
     m.LBC = m.top.findNode("lbc")
@@ -8,30 +10,77 @@ sub Init()
     m.Creator = m.top.findNode("creator")
     m.videoLength = m.top.findNode("videoLength")
     m.videoLengthBackground = m.top.findNode("lbackground")
+    m.viewers = invalid
+    m.viewersBackground = invalid
+    m.viewersIcon = invalid
     m.repostIcon = m.top.findNode("repostIcon")
     m.repostedBy = m.top.findNode("repostedBy")
     m.repostedBackground = m.top.findNode("rbackground")
 end sub
 sub itemContentChanged()
     m.Poster.uri = m.top.itemContent.HDPOSTERURL
+    ' Set channel icon to processed 100px (processor already prefixes in parseLib)
+    if isValid(m.top.itemContent.ChannelIcon)
+        m.ChannelIcon.uri = m.top.itemContent.ChannelIcon
+    else
+        m.ChannelIcon.visible = false
+    end if
     m.Title.text = m.top.itemContent.TITLE
     m.Creator.text = m.top.itemContent.CREATOR
     m.Published.text = m.top.itemContent.RELEASEDATE
     if isValid(m.top.itemContent.ITEMTYPE)
         if m.top.itemContent.ITEMTYPE = "livestream"
-            m.Background.color = "#3f0000"
-            m.liveIcon.visible = true
+            m.Background.color = "0x3f0000" ' darker backdrop
+            m.liveDot.visible = true
+            m.liveDotBg.visible = true
+            if isValid(m.Poster) then m.Poster.loadDisplayMode = "limitSize"
             m.videoLength.visible = false
             m.videoLengthBackground.visible = false
+            ' viewer chip
+            if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
+            if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
+            if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
+            if isValid(m.top.itemContent.viewerDisplay) and m.top.itemContent.viewerDisplay <> ""
+                m.viewers.text = m.top.itemContent.viewerDisplay
+                m.viewers.visible = true
+                m.viewersBackground.visible = true
+                m.viewersIcon.visible = true
+                m.viewersIcon.uri = "pkg:/images/png/eye.png"
+                ' Dynamic width for background: icon (16) + gap (6) + text charWidth*len + padding
+                charCount = Len(m.viewers.text)
+                charWidth = 12
+                bgWidth = 16 + 6 + (charCount * charWidth) + 12
+                if bgWidth < 70 then bgWidth = 70
+                if isValid(m.viewersBackground) then m.viewersBackground.width = bgWidth
+                if isValid(m.viewers) then m.viewers.width = bgWidth - 22
+            else
+                if isValid(m.viewers) then m.viewers.visible = false
+                if isValid(m.viewersBackground) then m.viewersBackground.visible = false
+                if isValid(m.viewersIcon) then m.viewersIcon.visible = false
+            end if
         else if m.top.itemContent.ITEMTYPE = "video"
             m.Background.color = "0x1f1f1f"
-            m.liveIcon.visible = false
+            if isValid(m.liveDot) then m.liveDot.visible = false
+            if isValid(m.liveDotBg) then m.liveDotBg.visible = false
+            if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
+            if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
+            if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
+            if isValid(m.viewers) then m.viewers.visible = false
+            if isValid(m.viewersBackground) then m.viewersBackground.visible = false
+            if isValid(m.viewersIcon) then m.viewersIcon.visible = false
         else if m.top.itemContent.ITEMTYPE = "channel"
             m.Background.color = "0x1f1f1f"
-            m.liveIcon.visible = false
+            if isValid(m.liveDot) then m.liveDot.visible = false
+            if isValid(m.liveDotBg) then m.liveDotBg.visible = false
             m.videoLength.visible = false
             m.videoLengthBackground.visible = false
             m.Published.text = m.top.itemContent.FOLLOWERS
+            if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
+            if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
+            if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
+            if isValid(m.viewers) then m.viewers.visible = false
+            if isValid(m.viewersBackground) then m.viewersBackground.visible = false
+            if isValid(m.viewersIcon) then m.viewersIcon.visible = false
         end if
     end if
     if isValid(m.top.itemContent.reposted) AND isValid(m.top.itemContent.repostedBy)
@@ -51,6 +100,14 @@ sub itemContentChanged()
             m.videoLength.visible = true
             m.videoLengthBackground.visible = true
             m.videoLength.text = m.top.itemContent.videolength
+            ' Adjust duration background width dynamically to fit text snugly
+            charCount = Len(m.videoLength.text)
+            charWidth = 12 'approx width per character at font size 24
+            bgWidth = (charCount * charWidth) + 16 'padding
+            if bgWidth < 70 then bgWidth = 70
+            if bgWidth > 130 then bgWidth = 130
+            m.videoLengthBackground.width = bgWidth
+            m.videoLength.width = bgWidth - 10
         end if
     end if
 end sub
@@ -65,24 +122,52 @@ sub updateLayout()
     if not isValid(m.Background) then m.Background = m.top.findNode("ibackground")
     if not isValid(m.Creator) then m.Creator = m.top.findNode("creator")
     if m.top.height > 0 and m.top.width > 0 then
-        if m.top.height > 349
-            if isValid(m.Title) then m.Title.wrap = true
-            if isValid(m.Published) then m.Published.translation=[10,277]
-        else
-            if isValid(m.Published) then m.Published.translation=[10,240]
-            if isValid(m.Title) then m.Title.wrap = false
-            if isValid(m.liveIcon) then m.liveIcon.visible = false
-            if isValid(m.videoLength) then m.videoLength.visible = false
-            if isValid(m.videoLengthBackground) then m.videoLengthBackground.visible = false
-            if isValid(m.videoLength) then m.videoLength.text = ""
-        end if
+        ' Poster area
         if isValid(m.Poster) then m.Poster.width = m.top.width - 20
-        if isValid(m.Poster) then m.Poster.height = 197
-        if isValid(m.liveIcon) and isValid(m.Poster) then m.liveIcon.translation = [m.poster.width-160, m.poster.height-40]
+        if isValid(m.Poster) then m.Poster.height = 220
+        ' Duration pill pinned near poster bottom-left
+        ' Bottom-left corner of poster with small inset
+        if isValid(m.videoLengthBackground) and isValid(m.Poster) then m.videoLengthBackground.translation = [10, 10 + m.Poster.height - 32]
+        if isValid(m.videoLength) and isValid(m.Poster) then m.videoLength.translation = [14, 10 + m.Poster.height - 35]
+        if isValid(m.liveDot) and isValid(m.liveDotBg)
+            ' Keep LIVE dot at top-left over poster area
+            m.liveDotBg.translation = [10, 10]
+            m.liveDot.translation = [18, 18]
+        end if
+        ' viewers chip baseline near duration pill
+        if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
+        if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
+        if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
+        if isValid(m.Poster)
+            baseY = 10 + m.Poster.height - 32 'top of the chip background (height ~29)
+            if isValid(m.viewersBackground) then m.viewersBackground.translation = [10, baseY]
+            ' Center label vertically in the 29px bar (label height 32)
+            if isValid(m.viewers) then m.viewers.translation = [32, baseY - 2]
+            ' Center icon vertically relative to background height and icon height
+            if isValid(m.viewersIcon)
+                iconH = 16
+                try
+                    if isValid(m.viewersIcon.height) then iconH = m.viewersIcon.height
+                catch e
+                end try
+                chipH = 29
+                iconY = baseY + Int((chipH - iconH) / 2)
+                m.viewersIcon.translation = [12, iconY]
+            end if
+        end if
+        ' Title below poster, allow 2 lines without overlap
+        if isValid(m.Title) then m.Title.translation = [10, 234]
+        if isValid(m.Title) then m.Title.width = m.top.width - 20
+        if isValid(m.Title) then m.Title.wrap = true
+        ' Published/date below title
+        if isValid(m.Published) then m.Published.translation = [10, 292]
+        if isValid(m.Published) then m.Published.width = m.top.width - 20
+        ' Bottom row: channel icon + creator
+        if isValid(m.ChannelIcon) then m.ChannelIcon.translation = [10, m.top.height - 26]
+        if isValid(m.Creator) then m.Creator.translation = [36, m.top.height - 30]
+        if isValid(m.Creator) then m.Creator.width = m.top.width - 46
+        ' Background
         if isValid(m.Background) then m.Background.width = m.top.width
         if isValid(m.Background) then m.Background.height = m.top.height
-        if isValid(m.Title) then m.Title.width = m.top.width - 20
-        if isValid(m.Published) then m.Published.width = m.top.width - 20
-        if isValid(m.Creator) then m.Creator.width = m.top.width - 20
     end if
 end sub

@@ -234,10 +234,7 @@ sub checkRefresh()
         ?curUnixTime
         ?"expiration time"
         ?m.top.accessTokenExpiration
-        ?"Token is:"
-        ?"`" + m.top.accessToken + "`"
-        ?"Refresh is:"
-        ?"`" + m.top.refreshToken + "`"
+        ' Sensitive tokens removed from logs
         ?"getting user info (TEST)"
         accountRoot = m.top.constants["ROOT_SSO"] + ""
         authreq = getJSONAuthenticated(accountRoot + "/auth/realms/Users/protocol/openid-connect/userinfo", { "Authorization": "Bearer " + m.top.accessToken })

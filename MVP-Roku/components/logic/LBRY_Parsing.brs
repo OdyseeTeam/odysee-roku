@@ -21,7 +21,7 @@ Function ManufacturePlaceholderVideoGrid(amount, category) 'Create Placeholder G
         thumbnail = "pkg:/images/odysee_oops.png"
         item.HDPosterURL = thumbnail
         item.thumbnailDimensions = [360, 240]
-        item.url = "https://cdn.lbryplayer.xyz/api/v3/streams/free/he-died-1000-times...-and-then-this/233ffa6e82b720ae85c910edf59be0b15ff58f8d/d1ce99"
+        item.url = "http://player.odycdn.com/api/v3/streams/free/he-died-1000-times...-and-then-this/233ffa6e82b720ae85c910edf59be0b15ff58f8d/d1ce99"
         item.stream = {url : item.url}
         item.streamFormat = "mp4"
         item.link = item.url

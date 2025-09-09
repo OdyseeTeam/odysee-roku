@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="getAllLiveItems" extends="Task">
+    <interface>
+        <field id="constants" type="assocarray"/>
+        <field id="uid" type="Int"/>
+        <field id="cookies" type="roArray"/>
+        <field id="output" type="assocarray"/>
+        <field id="error" type="bool"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/getAllLiveItems.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/liveUtils.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/parseLib.brs" />
+</component>
+
+

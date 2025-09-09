@@ -13,11 +13,11 @@
         <Rectangle
         id="ibackground"
         color="0x1f1f1f" />
-        <Poster id="poster" loadDisplayMode="scaleToZoom" loadWidth="320" loadHeight="180" translation="[10,10]">
+        <Poster id="poster" loadDisplayMode="limitSize" loadWidth="390" loadHeight="220" translation="[10,10]">
         </Poster>
-        <Poster id="liveIcon" uri = "pkg:/images/liveIcon.png" visible="false">
-        </Poster>
-        <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,210]" wrap = "true" numLines = "2" lineSpacing = "3" text="title">
+        <Rectangle id="liveDotBg" color="0x000000AA" width="28" height="28" translation="[10,10]" visible="false" />
+        <Rectangle id="liveDot" color="0xFF0000FF" width="12" height="12" translation="[18,18]" visible="false" />
+        <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,240]" wrap = "true" numLines = "2" lineSpacing = "0" text="title">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
         <Label id="published" font="font:Inter-Emoji" color="#ffffff" translation="[10,277]" text="date">
@@ -31,16 +31,30 @@
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
         -->
-        <Label id="creator" font="font:Inter-Emoji" color="#ffffff" translation="[10,310]" text="publisher">
+        <Poster id="channelIcon" width="20" height="20" translation="[10,310]" visible="true" />
+        <Label id="creator" font="font:Inter-Emoji" color="#ffffff" translation="[40,310]" text="publisher">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
         <Rectangle
         id="lbackground"
         color="0x000000aa"
-        width="120"
+        width="130"
         height="29"
         translation="[10,185]" />
-        <Label id="videoLength" width="120" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[10,182]" horizAlign="center" vertAlign="center" numLines = "1" text="00:00:00:00">
+        <Label id="videoLength" width="120" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[10,182]" horizAlign="left" vertAlign="center" numLines = "1" text="00:00:00:00">
+        <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
+        </Label>
+
+        <!-- Live viewers chip at bottom-left of poster -->
+        <Rectangle
+        id="vbackground"
+        color="0x000000aa"
+        width="140"
+        height="29"
+        translation="[10,185]"
+        visible="false" />
+        <Poster id="viewersIcon" width="16" height="16" translation="[12,186]" vertAlign="center" visible="false"/>
+        <Label id="viewers" width="130" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[32,182]" horizAlign="left" vertAlign="center" numLines = "1" text="">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
 

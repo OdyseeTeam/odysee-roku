@@ -6,6 +6,7 @@
     <field id="mediaType" type="string"/>
   </interface>
     <script type="text/brightscript" uri="pkg:/components/HomeScene.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/liveUtils.brs" />
     <!-- All nodes must be inside <children> headers -->
     <children>
 
@@ -134,9 +135,9 @@
         translation= "[210,120]"
         itemComponentName= "PosterItem"
         numRows= "4"
-        rowitemSize="[[380,350]]"
+        rowItemSize="[[410,380]]"
         rowItemSpacing= "[[20,0]]"
-        itemSize= "[1920,365]"
+        itemSize= "[1920,400]"
         focusXOffset = "[50]"
         showRowLabel= "[false]"
         rowFocusAnimationStyle= "floatingfocus"

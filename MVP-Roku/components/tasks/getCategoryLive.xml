@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="getCategoryLive" extends="Task">
+    <interface>
+        <field id="constants" type="assocarray"/>
+        <field id="channels" type="roArray"/>
+        <field id="blocked" type="roArray"/>
+        <field id="rawname" type="String"/>
+        <field id="uid" type="Int"/>
+        <field id="cookies" type="roArray"/>
+        <field id="output" type="assocarray"/>
+        <field id="error" type="bool"/>
+        <field id="numerrors" type="int"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/getCategoryLive.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/liveUtils.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/parseLib.brs" />
+</component>
+
+

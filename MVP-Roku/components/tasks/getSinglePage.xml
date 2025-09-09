@@ -9,9 +9,11 @@
             <field id="rawname" type="String"/>
             <!--Channels to NOT get in query-->
             <field id="blocked" type="roArray"/>
+            <!--Category-level exclusions for claim_search (e.g., Wild West) -->
+            <field id="excluded" type="roArray"/>
             <!--Should we attempt to resolve livestreams? (false by default)-->
             <field id="resolveLivestreams" type="bool" value="false"/>
-            <field id="sortorder" type="String" value="trending"/>
+            <field id="sortorder" type="String" value="new"/>
             <!--Account-Specific Vars-->
             <field id="uid" type="Int"/>
             <field id="authtoken" type="String"/>
