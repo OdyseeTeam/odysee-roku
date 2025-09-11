@@ -37,8 +37,14 @@ function parseVideo(itemIn)
             catch e
                 item.videoLength = "0:00"
             end try
+            ' Only assign ChannelIcon when needed; always through optimizer (100x0)
             try
-                item.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + curItem.signing_channel.value.thumbnail.url
+                iconPath = curItem.signing_channel.value.thumbnail.url
+                if isValid(iconPath)
+                    item.ChannelIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + iconPath
+                else
+                    item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+                end if
             catch e
                 item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
             end try
@@ -101,7 +107,7 @@ function getVideoPage(pageNum)
     end if
     rawChannels = invalid
     
-    params = { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream", "repost"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
+    params = { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr(), "limit_claims_per_channel": 3 }
     ' Wild West: use trending order instead of release_time
     if IsValid(m.top.rawname)
         if LCase(m.top.rawname) = "wildwest"

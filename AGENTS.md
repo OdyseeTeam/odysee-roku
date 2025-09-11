@@ -84,6 +84,12 @@ This document gives AI and human contributors a concise map of the repo, the app
   1. Create `components/tasks/MyTask.xml` with fields (inputs/outputs) and `.brs` script; set `m.top.functionName` in `Init()`.
   2. Implement network logic using `http.brs`; respect retry patterns and set `m.top.error`/output fields.
   3. In `HomeScene.brs`, create the node, observe its output field(s), and trigger it from UI input/state.
+  4. Component creation checklist (avoid runtime "Failed to create roSGNode with type ..."):
+     - The XML must exist and live under `MVP-Roku/components/...`.
+     - The XML `component name` must EXACTLY match the string passed to `CreateObject("roSGNode", "Name")`.
+     - The XML must `<script>` include its `.brs` and any utility scripts it uses.
+     - After adding a new XML, RE-SIDELOAD the app so Roku registers the new component.
+     - If you still see the error, double-check path/name casing and that the XML is packaged.
 - Add a new API call
   - Prefer `postJSON` for JSON‑RPC; `getURLEncoded`/`postURLEncoded` for REST; use auth variants when calling protected endpoints.
   - Add any new base URL or header to `appConstants.json` (and/or the remote constants) and read through `m.global.constants`.
@@ -124,3 +130,61 @@ This document gives AI and human contributors a concise map of the repo, the app
 - Consider moving constant fetch to startup and caching with a schema/version.
 
 If you need help deciding where a change fits, start from `HomeScene.brs` to find the observer/trigger, then follow the task to its network helpers.
+
+## BrightScript guardrails (avoid recurring compile/runtime errors)
+
+Use these rules when editing `.brs` to avoid common syntax and runtime pitfalls we’ve repeatedly hit:
+
+- Control flow must be multi-line
+  - Never write single-line `if ... then ...` with multiple statements. Always expand to:
+```brightscript
+if condition then
+  ' ... statements
+else if otherCondition then
+  ' ... statements
+else
+  ' ...
+end if
+```
+  - Never use inline `for each` bodies. Always:
+```brightscript
+for each item in items
+  ' ...
+end for
+```
+
+- Match all block terminators
+  - Every `if/for/while/function/sub` needs a corresponding `end if/end for/end while/end function/end sub` at the correct nesting level.
+
+- Reserved and case-sensitive identifiers
+  - Do not use reserved/common identifiers as variables: e.g., use `focusPos` instead of `pos`.
+  - Use correct casing for built-ins: `IsValid(...)` (not `isvalid`).
+
+- Do not introduce placeholders from tasks when merging UI
+  - Tasks should not pad rows with `itemType="placeholder"`; merging is handled in `HomeScene.brs` via `appendRowsFillingPartial` which fills partial rows using next page data.
+
+- Initialize and guard UI nodes
+  - Always `findNode(...)` in `init()` before accessing fields; guard with `IsValid(node)` before setting fields like `visible`.
+
+- Timer usage pattern
+  - When adding background refresh timers:
+```brightscript
+timer = CreateObject("roSGNode", "Timer")
+timer.duration = 300
+timer.repeat = true
+timer.observeField("fire", "handlerName")
+m.top.appendChild(timer)
+timer.control = "start"
+```
+  - Avoid overlapping work: in the handler, check task `state <> "run"` before starting.
+
+- Network and API parameter casing
+  - Lighthouse queries require exact `claimType` casing. Our URL encoder normalizes this, but new code must not regress key casing.
+
+- Task interfaces and cookies
+  - If a task relies on `http.brs` cookies, declare `<field id="cookies" type="roArray"/>` in its XML.
+
+- Redirect/auth semantics
+  - Preserve auth headers across redirects in authenticated requests; use the centralized helpers in `components/generic/network/http.brs`.
+
+Following these patterns prevents the recurring compile errors we’ve seen around inline control flow and ensures consistent UI/task wiring.

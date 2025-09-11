@@ -252,11 +252,24 @@ function parseLiveData(channel, liveData, liveClaim)
     catch e
         chThumb = ""
     end try
+    ' Resolve optimizer base safely from m.top.constants or m.constants; fallback to a sane default
+    optimizer = "https://thumbnails.odycdn.com/optimize/s:100:0/quality:85/plain/"
+    try
+        if IsValid(m.top) and IsValid(m.top.constants) and Type(m.top.constants) = "roAssociativeArray" and IsValid(m.top.constants["CHANNEL_ICON_PROCESSOR"]) then optimizer = m.top.constants["CHANNEL_ICON_PROCESSOR"]
+    catch e
+    end try
+    if optimizer = "https://thumbnails.odycdn.com/optimize/s:100:0/quality:85/plain/" then
+        try
+            if IsValid(m.constants) and Type(m.constants) = "roAssociativeArray" and IsValid(m.constants["CHANNEL_ICON_PROCESSOR"]) then optimizer = m.constants["CHANNEL_ICON_PROCESSOR"]
+        catch e
+        end try
+    end if
     if chThumb <> ""
-        if Left(chThumb, 4) = "http"
+        ' If already optimized, use as-is; otherwise prefix with optimizer
+        if Instr(1, LCase(chThumb), "thumbnails.odycdn.com/optimize") > 0 then
             chIcon = chThumb
         else
-            chIcon = m.top.constants["CHANNEL_ICON_PROCESSOR"] + chThumb
+            chIcon = optimizer + chThumb
         end if
     else
         chIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"

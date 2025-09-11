@@ -16,12 +16,15 @@ sub Init()
     m.repostIcon = m.top.findNode("repostIcon")
     m.repostedBy = m.top.findNode("repostedBy")
     m.repostedBackground = m.top.findNode("rbackground")
+    m.placeholderOverlay = m.top.findNode("placeholderOverlay")
+    m.placeholderPulse = m.top.findNode("placeholderPulse")
 end sub
 sub itemContentChanged()
     m.Poster.uri = m.top.itemContent.HDPOSTERURL
-    ' Set channel icon to processed 100px (processor already prefixes in parseLib)
-    if isValid(m.top.itemContent.ChannelIcon)
+    ' Always show channel icons when provided; URIs are pre-optimized via CHANNEL_ICON_PROCESSOR
+    if isValid(m.top.itemContent.ChannelIcon) and m.top.itemContent.ChannelIcon <> ""
         m.ChannelIcon.uri = m.top.itemContent.ChannelIcon
+        m.ChannelIcon.visible = true
     else
         m.ChannelIcon.visible = false
     end if
@@ -58,6 +61,9 @@ sub itemContentChanged()
                 if isValid(m.viewersBackground) then m.viewersBackground.visible = false
                 if isValid(m.viewersIcon) then m.viewersIcon.visible = false
             end if
+            ' Ensure placeholder pulse is off for non-placeholder
+            if isValid(m.placeholderPulse) then m.placeholderPulse.control = "stop"
+            if isValid(m.placeholderOverlay) then m.placeholderOverlay.visible = false
         else if m.top.itemContent.ITEMTYPE = "video"
             m.Background.color = "0x1f1f1f"
             if isValid(m.liveDot) then m.liveDot.visible = false
@@ -68,6 +74,8 @@ sub itemContentChanged()
             if isValid(m.viewers) then m.viewers.visible = false
             if isValid(m.viewersBackground) then m.viewersBackground.visible = false
             if isValid(m.viewersIcon) then m.viewersIcon.visible = false
+            if isValid(m.placeholderPulse) then m.placeholderPulse.control = "stop"
+            if isValid(m.placeholderOverlay) then m.placeholderOverlay.visible = false
         else if m.top.itemContent.ITEMTYPE = "channel"
             m.Background.color = "0x1f1f1f"
             if isValid(m.liveDot) then m.liveDot.visible = false
@@ -75,12 +83,33 @@ sub itemContentChanged()
             m.videoLength.visible = false
             m.videoLengthBackground.visible = false
             m.Published.text = m.top.itemContent.FOLLOWERS
+            ' Ensure channel tile has enough height for followers text
+            if isValid(m.Background) then m.Background.height = 400
+            if isValid(m.placeholderPulse) then m.placeholderPulse.control = "stop"
+            if isValid(m.placeholderOverlay) then m.placeholderOverlay.visible = false
+        else if LCase(m.top.itemContent.ITEMTYPE) = "placeholder"
+            ' Keep reserved space but render empty
+            if isValid(m.Poster) then m.Poster.uri = "pkg:/images/placeholder1x1.png"
+            if isValid(m.Title) then m.Title.text = ""
+            if isValid(m.Creator) then m.Creator.text = ""
+            if isValid(m.Published) then m.Published.text = ""
+            if isValid(m.videoLength) then m.videoLength.visible = false
+            if isValid(m.videoLengthBackground) then m.videoLengthBackground.visible = false
+            if isValid(m.liveDot) then m.liveDot.visible = false
+            if isValid(m.liveDotBg) then m.liveDotBg.visible = false
+            if isValid(m.viewers) then m.viewers.visible = false
+            if isValid(m.viewersBackground) then m.viewersBackground.visible = false
+            if isValid(m.viewersIcon) then m.viewersIcon.visible = false
+            if isValid(m.ChannelIcon) then m.ChannelIcon.visible = false
             if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
             if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
             if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
             if isValid(m.viewers) then m.viewers.visible = false
             if isValid(m.viewersBackground) then m.viewersBackground.visible = false
             if isValid(m.viewersIcon) then m.viewersIcon.visible = false
+            ' Show pulse overlay
+            if isValid(m.placeholderOverlay) then m.placeholderOverlay.visible = true
+            if isValid(m.placeholderPulse) then m.placeholderPulse.control = "start"
         end if
     end if
     if isValid(m.top.itemContent.reposted) AND isValid(m.top.itemContent.repostedBy)
@@ -125,6 +154,15 @@ sub updateLayout()
         ' Poster area
         if isValid(m.Poster) then m.Poster.width = m.top.width - 20
         if isValid(m.Poster) then m.Poster.height = 220
+        if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
+        if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
+        if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
+        ' Sync placeholder overlay to poster
+        if isValid(m.placeholderOverlay)
+            m.placeholderOverlay.width = m.Poster.width
+            m.placeholderOverlay.height = m.Poster.height
+            m.placeholderOverlay.translation = m.Poster.translation
+        end if
         ' Duration pill pinned near poster bottom-left
         ' Bottom-left corner of poster with small inset
         if isValid(m.videoLengthBackground) and isValid(m.Poster) then m.videoLengthBackground.translation = [10, 10 + m.Poster.height - 32]
@@ -135,9 +173,6 @@ sub updateLayout()
             m.liveDot.translation = [18, 18]
         end if
         ' viewers chip baseline near duration pill
-        if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
-        if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
-        if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
         if isValid(m.Poster)
             baseY = 10 + m.Poster.height - 32 'top of the chip background (height ~29)
             if isValid(m.viewersBackground) then m.viewersBackground.translation = [10, baseY]

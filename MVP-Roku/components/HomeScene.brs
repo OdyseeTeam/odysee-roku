@@ -1,3 +1,37 @@
+' Insert a single placeholder row (4 tiles) that will pulse while loading
+sub ensureLoadingPlaceholderRow()
+  if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then return
+  dest = m.videoGrid.content
+  ' If last row already a placeholder row, keep it
+  if dest.getChildCount() > 0
+    last = dest.getChild(dest.getChildCount()-1)
+    if IsValid(last) and last.getChildCount() > 0
+      firstNode = last.getChild(0)
+      if IsValid(firstNode) and IsValid(firstNode.itemType) and LCase(firstNode.itemType) = "placeholder" then return
+    end if
+  end if
+  row = CreateObject("roSGNode","ContentNode")
+  for i = 0 to 3
+    n = CreateObject("roSGNode","ContentNode")
+    n.addFields({ itemType: "placeholder", HDPOSTERURL: "pkg:/images/placeholder1x1.png", TITLE: "", CREATOR: "", RELEASEDATE: "" })
+    row.appendChild(n)
+  end for
+  dest.appendChild(row)
+end sub
+
+' Remove a trailing placeholder row if present
+sub clearLoadingPlaceholderRow()
+  if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then return
+  dest = m.videoGrid.content
+  if dest.getChildCount() = 0 then return
+  last = dest.getChild(dest.getChildCount()-1)
+  if not IsValid(last) or last.getChildCount() = 0 then return
+  firstNode = last.getChild(0)
+  if IsValid(firstNode) and IsValid(firstNode.itemType) and LCase(firstNode.itemType) = "placeholder"
+    ' Remove entire row
+    dest.removeChildIndex(dest.getChildCount()-1)
+  end if
+end sub
 sub init()
   'IF EVERYTHING IS BROKEN:
   'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
@@ -40,12 +74,24 @@ sub init()
   m.superChatBox = m.top.findNode("SuperChatBox")
   m.sidebarTrim = m.top.findNode("sidebartrim")
   m.sidebarBackground = m.top.findNode("sidebarbackground")
+  m.channelSidebarThumb = m.top.findNode("channelSidebarThumb")
   m.chatBackground = m.top.findNode("chatBackground")
   m.superChatBackground = m.top.findNode("SuperChatBackground")
   m.odyseeLogo = m.top.findNode("odyseelogo")
   m.video = m.top.findNode("Video")
   m.videoContent = createObject("roSGNode", "ContentNode")
   m.videoGrid = m.top.findNode("vgrid")
+  m.videoGrid.observeField("rowItemFocused", "onRowItemFocused")
+  m.currentCategoryPage = {}
+  m.loadingNextPage = {}
+  ' Channel and search paging state
+  m.currentChannelId = ""
+  m.currentChannelPage = 1
+  m.loadingChannelNext = false
+  m.searchActive = false
+  m.searchContext = { type: "", query: "", from: 0 }
+  m.loadingVideoSearch = false
+  m.loadingChannelSearch = false
   m.categorySelector = m.top.findNode("selector")
   m.categorySelectorEndIndicator = m.top.findNode("catselectorendindicator")
   m.searchKeyboard = m.top.findNode("searchKeyboard")
@@ -232,77 +278,608 @@ sub init()
   ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
   m.constantsTask.control = "RUN"
 end sub
+sub onRowItemFocused()
+  focusPos = m.videoGrid.rowItemFocused
+  if not IsValid(focusPos) or Type(focusPos) <> "roArray" then return
+  if focusPos.Count() < 2 then return
+  row = focusPos[0]: col = focusPos[1]
+  content = m.videoGrid.content
+  if not IsValid(content) then return
+  ' Trigger when focusing near the end of the last row
+  lastRow = content.getChildCount() - 1
+  visibleRows = 4
+  try
+    visibleRows = m.videoGrid.numRows
+  catch e
+    visibleRows = 4
+  end try
+  ' Prefetch when: content rows fewer than viewport, or user is within one viewport of the end
+  shouldPrefetch = false
+  if content.getChildCount() < visibleRows then shouldPrefetch = true
+  prefetchTriggerRow = lastRow - visibleRows + 1
+  if row >= prefetchTriggerRow then shouldPrefetch = true
+  ' Also, if user is near end of a row (3rd+ tile), start early
+  if col >= 1 and row >= lastRow - 1 then shouldPrefetch = true
+  if shouldPrefetch
+    ' Safe prefetch debug
+    sa$ = "false": if m.searchActive then sa$ = "true"
+    ch$ = "": if IsValid(m.currentChannelId) then ch$ = m.currentChannelId
+    ? "[Prefetch] row=" + Str(row) + "/" + Str(lastRow) + " col=" + Str(col) + " searchActive=" + sa$ + " channelId=" + ch$
+    ' Prefer channel paging when viewing a channel
+    if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+      if m.loadingChannelNext = true then return
+      m.loadingChannelNext = true
+      nextChPage = m.currentChannelPage + 1
+      ct = CreateObject("roSGNode","getChannelNextPage")
+      ct.setFields({ constants: m.constants, channel: m.currentChannelId, page: nextChPage, uid: m.uid })
+      ct.observeField("output","onChannelNextPageLoaded")
+      ct.control = "RUN"
+      m.currentChannelPage = nextChPage
+      ? "[Channel] Prefetch dispatch page=" + Str(nextChPage)
+      ensureLoadingPlaceholderRow()
+      return
+    end if
+    ' Determine current category name from selector
+    if m.categorySelector.visible = true
+      catIndex = m.categorySelector.itemFocused
+      if catIndex < 0 then return
+      catName = m.categorySelectordata[catIndex].trueName
+      if not IsValid(catName) then return
+      ? "AutoLoad focus row=" + Str(row) + "/" + Str(lastRow) + " col=" + Str(col) + " cat=" + catName
+      ' Stop paging if we've reached the end for this category
+      if not IsValid(m.noMoreCategoryPages) then m.noMoreCategoryPages = {}
+      if IsValid(m.noMoreCategoryPages[catName]) and m.noMoreCategoryPages[catName] = true then return
+      if not IsValid(m.currentCategoryPage[catName]) then m.currentCategoryPage[catName] = 1
+      nextPage = m.currentCategoryPage[catName] + 1
+      ' Special-case FAVORITES: autoload using followed channels even if not in channelIDs map
+      if catName = "FAVORITES"
+        if m.loadingNextPage.DoesExist(catName) and m.loadingNextPage[catName] = true then return
+        m.loadingNextPage[catName] = true
+        t = CreateObject("roSGNode","getCategoryNextPage")
+        userBlocked = []
+        if IsValid(m.preferences) and IsValid(m.preferences.blocked) then userBlocked = m.preferences.blocked
+        fieldsAA = { constants: m.constants, page: nextPage, uid: m.uid, blocked: userBlocked, excluded: [], rawname: catName, channels: m.preferences.following }
+        t.setFields(fieldsAA)
+        t.observeField("output","onNextPageLoaded")
+        t.control = "RUN"
+        m.currentCategoryPage[catName] = nextPage
+        ? "[FAVORITES] Prefetch dispatch page=" + Str(nextPage) + " channels=" + Str(m.preferences.following.Count())
+        ensureLoadingPlaceholderRow()
+      else if IsValid(m.channelIDs[catName])
+        t = CreateObject("roSGNode","getCategoryNextPage")
+        catData = m.channelIDs[catName]
+        excluded = []
+        if catName = "wildwest" and IsValid(catData.excludedChannelIds)
+          if Type(catData.excludedChannelIds) = "roArray" or Type(catData.excludedChannelIds) = "Array"
+            excluded = catData.excludedChannelIds
+          end if
+        end if
+        userBlocked = []
+        if IsValid(m.preferences) and IsValid(m.preferences.blocked) then userBlocked = m.preferences.blocked
+        chs = invalid
+        if catName = "FAVORITES" and IsValid(m.preferences) and IsValid(m.preferences.following)
+          chs = m.preferences.following
+        else if IsValid(catData["channelIds"]) and (Type(catData["channelIds"]) = "roArray" or Type(catData["channelIds"]) = "Array")
+          chs = catData["channelIds"]
+        end if
+        if IsValid(m.loadingNextPage[catName]) and m.loadingNextPage[catName] = true then return
+        m.loadingNextPage[catName] = true
+        ? "AutoLoad dispatch page=" + Str(nextPage) + " cat=" + catName
+        ' For Wild West, pass no channels (task handles trending-only claim_search); else pass list
+        fieldsAA = { constants: m.constants, page: nextPage, uid: m.uid, blocked: userBlocked, excluded: excluded, rawname: catName }
+        if IsValid(chs) and chs.Count() > 0 then fieldsAA["channels"] = chs
+        t.setFields(fieldsAA)
+        t.observeField("output","onNextPageLoaded")
+        t.control = "RUN"
+        m.currentCategoryPage[catName] = nextPage
+        ensureLoadingPlaceholderRow()
+      end if
+    else if m.searchActive = true
+      if m.searchContext.type = "video"
+        if m.loadingVideoSearch = true then return
+        m.loadingVideoSearch = true
+        nextFrom = m.searchContext.from + 48
+        vt = CreateObject("roSGNode","getVideoSearchNextPage")
+        vt.setFields({ constants: m.constants, search: m.searchContext.query, from: nextFrom, uid: m.uid })
+        vt.observeField("output","onVideoSearchNextPageLoaded")
+        vt.control = "RUN"
+        m.searchContext.from = nextFrom
+        ? "[Search:Video] Prefetch dispatch from=" + Str(nextFrom)
+        ensureLoadingPlaceholderRow()
+      else if m.searchContext.type = "channel"
+        if m.loadingChannelSearch = true then return
+        m.loadingChannelSearch = true
+        nextFromC = m.searchContext.from + 48
+        ct2 = CreateObject("roSGNode","getChannelSearchNextPage")
+        if not IsValid(ct2)
+          ? "ChannelSearchNextPage component not available; canceling load"
+          m.loadingChannelSearch = false
+          return
+        end if
+        ' Ensure search term always present by falling back to lastChannelSearchQuery
+        chQuery = m.searchContext.query
+        if not IsValid(chQuery) or chQuery = "" then chQuery = m.lastChannelSearchQuery
+        ' Pass fallback in constants for task-level fallback too
+        cst = m.constants: cst["__lastChannelQuery"] = chQuery
+        ct2.setFields({ constants: cst, search: chQuery, from: nextFromC, uid: m.uid, authtoken: m.authtoken, accessToken: m.accessToken })
+        ct2.observeField("output","onChannelSearchNextPageLoaded")
+        ct2.control = "RUN"
+        m.searchContext.from = nextFromC
+        ? "[Search:Channel] Prefetch dispatch from=" + Str(nextFromC)
+        ensureLoadingPlaceholderRow()
+      end if
+    end if
+  end if
+end sub
+
+sub refreshAllLive()
+  if not IsValid(m.allLiveTask) then return
+  if m.allLiveTask.state = "run" then return ' avoid overlapping
+  m.allLiveTask.setField("constants", m.constants)
+  m.allLiveTask.control = "RUN"
+end sub
+
+function buildLiveRowsForChannels(channelIds as Object, limit as Integer) as Object
+  liveNodes = createObject("RoSGNode", "ContentNode")
+  if not IsValid(m.allLive) or not IsValid(m.allLive.items) then return liveNodes
+  if not (Type(channelIds) = "roArray" or Type(channelIds) = "Array") then return liveNodes
+  ? "[Live] buildLiveRowsForChannels channelIds=" + Str(channelIds.Count())
+  claimsIndex = {}
+  if IsValid(m.allLive.claims) and (Type(m.allLive.claims) = "roArray" or Type(m.allLive.claims) = "Array")
+    for each cl in m.allLive.claims
+      if IsValid(cl) and IsValid(cl.claim_id) then
+        claimsIndex.addReplace(cl.claim_id, cl)
+      end if
+    end for
+  end if
+  counter = 0: currow = invalid: pushed = 0
+  ' Prefer direct byChannel lookups for followed channel IDs
+  if IsValid(m.allLive.byChannel)
+    for each cid in channelIds
+      if IsValid(cid) and IsValid(m.allLive.byChannel[cid])
+        liveMeta = m.allLive.byChannel[cid]
+        cId = invalid
+        try: cId = liveMeta.ActiveClaim.ClaimID : catch e: cId = invalid : end try
+        if IsValid(cId)
+          cl = claimsIndex[cId]
+          if IsValid(cl)
+            lv = parseLiveData(cid, liveMeta, cl)
+            if counter < 4
+              if IsValid(currow) <> true then currow = createObject("RoSGNode", "ContentNode")
+              n = createObject("RoSGNode", "ContentNode")
+              n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+              n.setFields(lv)
+              currow.appendChild(n)
+              counter += 1
+            else
+              liveNodes.appendChild(currow)
+              currow = createObject("RoSGNode", "ContentNode")
+              n = createObject("RoSGNode", "ContentNode")
+              n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+              n.setFields(lv)
+              currow.appendChild(n)
+              counter = 1
+            end if
+            pushed += 1
+            if limit > 0 and pushed >= limit then exit for
+          end if
+        end if
+      end if
+    end for
+  end if
+  if IsValid(currow) and currow.getChildCount() > 0 then
+    liveNodes.appendChild(currow)
+  end if
+  ? "[Live] buildLiveRowsForChannels done; rows=" + Str(liveNodes.getChildCount())
+  return liveNodes
+end function
+
+' Build top-N live rows across ALL live items (viewer-sorted by API)
+function buildTopLiveRows(limit as Integer) as Object
+  liveNodes = createObject("RoSGNode", "ContentNode")
+  if not IsValid(m.allLive) or not IsValid(m.allLive.items) then return liveNodes
+  ' Index claims by claim_id for fast lookup
+  claimsIndex = {}
+  if IsValid(m.allLive.claims) and (Type(m.allLive.claims) = "roArray" or Type(m.allLive.claims) = "Array")
+    for each cl in m.allLive.claims
+      if IsValid(cl) and IsValid(cl.claim_id) then claimsIndex.addReplace(cl.claim_id, cl)
+    end for
+  end if
+  maxItems = 8
+  if limit > 0 and limit < 8 then maxItems = limit
+  totalAvailable = 0
+  try: totalAvailable = m.allLive.items.Count() : catch e: totalAvailable = 0 : end try
+  counter = 0: currow = invalid: pushed = 0
+  for each liveItem in m.allLive.items
+    if pushed >= maxItems then exit for
+    if IsValid(liveItem)
+      cId = invalid
+      validId = false
+      try
+        cId = liveItem.ActiveClaim.ClaimID
+        if IsValid(cId) then validId = true
+      catch e
+        validId = false
+      end try
+      if validId
+        cl = claimsIndex[cId]
+        if IsValid(cl)
+          chId = ""
+          if IsValid(cl.signing_channel) and IsValid(cl.signing_channel.claim_id) then chId = cl.signing_channel.claim_id
+          lv = parseLiveData(chId, liveItem, cl)
+          if counter < 4
+            if IsValid(currow) <> true then currow = createObject("RoSGNode", "ContentNode")
+            n = createObject("RoSGNode", "ContentNode")
+            n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+            n.setFields(lv)
+            currow.appendChild(n)
+            counter = counter + 1
+          else
+            liveNodes.appendChild(currow)
+            currow = createObject("RoSGNode", "ContentNode")
+            n = createObject("RoSGNode", "ContentNode")
+            n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+            n.setFields(lv)
+            currow.appendChild(n)
+            counter = 1
+          end if
+          pushed = pushed + 1
+        end if
+      end if
+    end if
+  end for
+  if IsValid(currow) and currow.getChildCount() > 0 then liveNodes.appendChild(currow)
+  ? "[Live] buildTopLiveRows available=" + Str(totalAvailable) + " builtTiles=" + Str(pushed) + " rows=" + Str(liveNodes.getChildCount())
+  return liveNodes
+end function
+
+function stripLeadingLiveRows(content as Object) as Object
+  vod = createObject("RoSGNode", "ContentNode")
+  if not IsValid(content) then return vod
+  ' Move rows safely: always take index 0 to avoid skipping when moving nodes
+  while content.getChildCount() > 0
+    r = content.getChild(0)
+    keep = true
+    if IsValid(r) and r.getChildCount() > 0
+      first = r.getChild(0)
+      if IsValid(first) and IsValid(first.itemType) and first.itemType = "livestream" then keep = false
+    end if
+    if keep
+      vod.appendChild(r) ' moves from content
+    else
+      content.removeChildIndex(0) ' drop old live row
+    end if
+  end while
+  return vod
+end function
+
+sub mergeLiveIntoCategory(catName as String, channelIds as Object, liveLimit as Integer)
+  if not IsValid(m.categories) then return
+  if not IsValid(m.categories[catName]) then return
+  chCount = 0
+  if IsValid(channelIds)
+    try
+      chCount = channelIds.Count()
+    catch e
+      chCount = 0
+    end try
+  end if
+  ? "[Live] mergeLiveIntoCategory cat=" + catName + " channels=" + Str(chCount)
+  vodOnly = stripLeadingLiveRows(m.categories[catName])
+  ' Cap rows for categories if needed
+  effLimit = liveLimit
+  liveRows = createObject("RoSGNode", "ContentNode")
+  if catName = "wildwest"
+    ' Always take top 8 across ALL live items for Wild West
+    if liveLimit = 0 or liveLimit > 8 then effLimit = 8
+    liveRows = buildTopLiveRows(effLimit)
+    if liveRows.getChildCount() < 2 and IsValid(m.allLive) and IsValid(m.allLive.items)
+      ' Fallback: if fewer than 2 rows, pad from remaining live items skipping ones already included
+      included = {}
+      for i = 0 to liveRows.getChildCount() - 1
+        r = liveRows.getChild(i)
+        for j = 0 to r.getChildCount() - 1
+          n = r.getChild(j)
+          if IsValid(n) and IsValid(n.guid) and n.guid <> "" then included.addReplace(n.guid, true)
+        end for
+      end for
+      ' Index claims for fallback
+      claimsIndex = {}
+      if IsValid(m.allLive.claims) and (Type(m.allLive.claims) = "roArray" or Type(m.allLive.claims) = "Array")
+        for each cl in m.allLive.claims
+          if IsValid(cl) and IsValid(cl.claim_id) then claimsIndex.addReplace(cl.claim_id, cl)
+        end for
+      end if
+      counter = 0: currow = invalid
+      for each liveItem in m.allLive.items
+        cId = invalid
+        ok = false
+        try: cId = liveItem.ActiveClaim.ClaimID : catch e: cId = invalid : end try
+        if IsValid(cId)
+          if not IsValid(included[cId])
+            cl = claimsIndex[cId]
+            if IsValid(cl)
+              chId = ""
+              if IsValid(cl.signing_channel) and IsValid(cl.signing_channel.claim_id) then chId = cl.signing_channel.claim_id
+              lv = parseLiveData(chId, liveItem, cl)
+              if counter < 4
+                if IsValid(currow) <> true then currow = createObject("RoSGNode", "ContentNode")
+                n = createObject("RoSGNode", "ContentNode")
+                n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+                n.setFields(lv)
+                currow.appendChild(n)
+                counter = counter + 1
+              else
+                liveRows.appendChild(currow)
+                currow = createObject("RoSGNode", "ContentNode")
+                n = createObject("RoSGNode", "ContentNode")
+                n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
+                n.setFields(lv)
+                currow.appendChild(n)
+                counter = 1
+              end if
+              included.addReplace(cId, true)
+              ' stop when we have at least 2 rows
+              if liveRows.getChildCount() >= 2 then exit for
+            end if
+          end if
+        end if
+      end for
+      if IsValid(currow) and currow.getChildCount() > 0 then liveRows.appendChild(currow)
+    end if
+  else
+    ' Other categories: per-channel lives, optional cap
+    liveRows = buildLiveRowsForChannels(channelIds, effLimit)
+  end if
+  liveCount = liveRows.getChildCount()
+  vodCount = vodOnly.getChildCount()
+  ? "[Live] built live rows=" + Str(liveCount)
+  if liveCount = 0 then return
+  merged = createObject("RoSGNode", "ContentNode")
+  ' Move rows safely without skipping by always taking index 0
+  while liveRows.getChildCount() > 0
+    merged.appendChild(liveRows.getChild(0))
+  end while
+  while vodOnly.getChildCount() > 0
+    merged.appendChild(vodOnly.getChild(0))
+  end while
+  ? "[Live] merged rows live=" + Str(liveCount) + " vod=" + Str(vodCount) + " totalRows=" + Str(merged.getChildCount()) + " totalTiles=" + Str(countTiles(merged))
+  m.categories.addReplace(catName, merged)
+  if IsValid(m.categorySelector) and IsValid(m.categorySelectorData)
+    if IsValid(m.categorySelector.itemFocused) and m.categorySelector.itemFocused >= 0 and m.categorySelector.itemFocused < m.categorySelectorData.Count()
+      cur = m.categorySelectorData[m.categorySelector.itemFocused]
+      if IsValid(cur) and IsValid(cur.trueName) and cur.trueName = catName
+        if IsValid(m.videoGrid) then m.videoGrid.content = merged
+      end if
+    end if
+  end if
+end sub
+sub onNextPageLoaded(evt as object)
+  if type(evt) <> "roSGNodeEvent" then return
+  data = evt.getData()
+  ' Append new rows to the current grid
+  if IsValid(data) and IsValid(data.content)
+    clearLoadingPlaceholderRow()
+    appendRowsFillingPartial(data.content)
+  end if
+  ' Cleanup
+  t = evt.getRoSGNode()
+  if IsValid(t)
+    t.unobserveField("output")
+    t.control = "STOP"
+  end if
+  ' If no items returned, mark no-more-pages for this category to avoid endless paging
+  if IsValid(t) and IsValid(data)
+    isEmpty = true
+    if IsValid(data.items)
+      if data.items.Count() > 0 then isEmpty = false
+    end if
+    if isEmpty = true and IsValid(t.rawname)
+      if not IsValid(m.noMoreCategoryPages) then m.noMoreCategoryPages = {}
+      m.noMoreCategoryPages[t.rawname] = true
+      clearLoadingPlaceholderRow()
+    end if
+  end if
+  ' Clear in-flight flag for this category
+  if IsValid(t) and IsValid(t.rawname)
+    m.loadingNextPage[t.rawname] = false
+  end if
+end sub
+
+sub onChannelNextPageLoaded(evt as object)
+  if type(evt) <> "roSGNodeEvent" then return
+  data = evt.getData()
+  ' If we've navigated away from channel view, ignore this result
+  if m.categorySelector.visible = true or m.searchActive = true or (not IsValid(m.currentChannelId) or m.currentChannelId = "")
+    t = evt.getRoSGNode()
+    if IsValid(t)
+      t.unobserveField("output")
+      t.control = "STOP"
+    end if
+    m.loadingChannelNext = false
+    return
+  end if
+  if IsValid(data) and IsValid(data.content)
+    clearLoadingPlaceholderRow()
+    if IsValid(m.videoGrid) and IsValid(m.videoGrid.content)
+      appendRowsFillingPartial(data.content)
+    end if
+  end if
+  t = evt.getRoSGNode()
+  if IsValid(t)
+    t.unobserveField("output")
+    t.control = "STOP"
+  end if
+  m.loadingChannelNext = false
+end sub
+
+sub onVideoSearchNextPageLoaded(evt as object)
+  if type(evt) <> "roSGNodeEvent" then return
+  data = evt.getData()
+  if IsValid(data) and IsValid(data.content)
+    clearLoadingPlaceholderRow()
+    appendRowsFillingPartial(data.content)
+  end if
+  t = evt.getRoSGNode()
+  if IsValid(t)
+    t.unobserveField("output")
+    t.control = "STOP"
+  end if
+  m.loadingVideoSearch = false
+end sub
+
+sub onChannelSearchNextPageLoaded(evt as object)
+  if type(evt) <> "roSGNodeEvent" then return
+  data = evt.getData()
+  if IsValid(data) and IsValid(data.content)
+    clearLoadingPlaceholderRow()
+    appendRowsFillingPartial(data.content)
+  end if
+  t = evt.getRoSGNode()
+  if IsValid(t)
+    t.unobserveField("output")
+    t.control = "STOP"
+  end if
+  m.loadingChannelSearch = false
+end sub
+
+' Append rows to m.videoGrid.content, filling any partial last row up to 4 items first
+sub appendRowsFillingPartial(newContent as object)
+  if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then return
+  dest = m.videoGrid.content
+  rowSize = 4
+  ' 1) Flatten all incoming items into a queue by moving nodes out of newContent
+  queue = []
+  if IsValid(newContent)
+    for i = 0 to newContent.getChildCount() - 1
+      r = newContent.getChild(i)
+      if IsValid(r)
+        while r.getChildCount() > 0
+          n = r.getChild(0)
+          if IsValid(n)
+            ' Skip placeholders entirely
+            if IsValid(n.itemType) and n.itemType = "placeholder"
+              ' drop
+            else
+              queue.push(n)
+            end if
+          end if
+          ' Remove from source row to avoid infinite loop
+          r.removeChildIndex(0)
+        end while
+      end if
+    end for
+  end if
+  qIndex = 0
+  qCount = queue.Count()
+  ' 2) Fill existing last row if partial
+  if dest.getChildCount() > 0
+    last = dest.getChild(dest.getChildCount() - 1)
+    if IsValid(last)
+      ' Remove any placeholders in last row first
+      for i = last.getChildCount() - 1 to 0 step -1
+        ch = last.getChild(i)
+        if IsValid(ch) and IsValid(ch.itemType) and ch.itemType = "placeholder" then last.removeChildIndex(i)
+      end for
+      while last.getChildCount() < rowSize and qIndex < qCount
+        last.appendChild(queue[qIndex])
+        qIndex = qIndex + 1
+      end while
+    end if
+  end if
+  ' 3) Append complete new rows built from the remaining queue
+  while qIndex < qCount
+    row = CreateObject("roSGNode", "ContentNode")
+    itemsAdded = 0
+    while itemsAdded < rowSize and qIndex < qCount
+      row.appendChild(queue[qIndex])
+      qIndex = qIndex + 1
+      itemsAdded = itemsAdded + 1
+    end while
+    dest.appendChild(row)
+  end while
+  lastCount = 0
+  if dest.getChildCount() > 0 then
+    lastCount = dest.getChild(dest.getChildCount()-1).getChildCount()
+  end if
+  ? "[Append] dest rows=" + Str(dest.getChildCount()) + " last count=" + Str(lastCount)
+end sub
+
+' Utility: count total tiles across all rows in a ContentNode grid
+function countTiles(grid as object) as integer
+  total = 0
+  if not IsValid(grid) then return 0
+  for i = 0 to grid.getChildCount() - 1
+    r = grid.getChild(i)
+    if IsValid(r) then total = total + r.getChildCount()
+  end for
+  return total
+end function
 
 sub gotAllLive(msg as object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
     m.allLiveTask.control = "STOP"
     m.allLive = data ' store: items (all live), claims, byChannel
-    ' Update current visible category grid in place if focused on video grid
-    if m.focusedItem = 2 and isValid(m.categorySelector) and m.categorySelector.itemFocused > 1
-      catIndex = m.categorySelector.itemFocused
-      catName = m.categorySelectordata[catIndex].trueName
-      if isValid(catName) and isValid(m.categories[catName])
-        ' Re-run merge logic for this category only
-        vodContent = m.categories[catName]
-        mergedContent = vodContent
-        if isValid(m.channelIDs[catName])
-          catChannels = m.channelIDs[catName]["channelIds"]
-          catMap = {}
-          for each cid in catChannels: catMap.addReplace(cid, true): end for
-          liveClaimsForCat = []
-          for each liveItem in m.allLive.items
-            if isValid(catMap[liveItem.ChannelClaimID]) then liveClaimsForCat.push(liveItem.ActiveClaim.ClaimID)
-          end for
-          if liveClaimsForCat.Count() > 0 and isValid(m.allLive.claims)
-            claimsIndex = {}
-            for each cl in m.allLive.claims: claimsIndex.addReplace(cl.claim_id, cl): end for
-            liveNodes = createObject("RoSGNode", "ContentNode")
-            counter = 0: currow = invalid
-            for each cId in liveClaimsForCat
-              cl = claimsIndex[cId]
-              if IsValid(cl)
-                ' Compute channel claim id from the live map; fall back to signing_channel.claim_id
-                chId = ""
-                try
-                  chId = m.allLive.byChannel.Keys()[0] 'placeholder to satisfy parser
-                catch e
-                  chId = ""
-                end try
-                ' Prefer cl.signing_channel.claim_id when available
-                if IsValid(cl.signing_channel) and IsValid(cl.signing_channel.claim_id)
-                  chId = cl.signing_channel.claim_id
-                end if
-                lv = parseLiveData(chId, m.allLive.byChannel[chId], cl)
-                if counter < 4
-                  if IsValid(currow) <> true then currow = createObject("RoSGNode", "ContentNode")
-                  n = createObject("RoSGNode", "ContentNode")
-                  n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "" })
-                  n.setFields(lv)
-                  currow.appendChild(n)
-                  counter += 1
-                else
-                  liveNodes.appendChild(currow)
-                  currow = createObject("RoSGNode", "ContentNode")
-                  n = createObject("RoSGNode", "ContentNode")
-                  n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "" })
-                  n.setFields(lv)
-                  currow.appendChild(n)
-                  counter = 1
-                end if
-              end if
-            end for
-            if IsValid(currow) and currow.getChildCount() > 0 then liveNodes.appendChild(currow)
-            if liveNodes.getChildCount() > 0
-              merged = createObject("RoSGNode", "ContentNode")
-              for i = 0 to liveNodes.getChildCount() - 1: merged.appendChild(liveNodes.getChild(i)): end for
-              for i = 0 to vodContent.getChildCount() - 1: merged.appendChild(vodContent.getChild(i)): end for
-              mergedContent = merged
-            end if
-          end if
+    ' Update the currently visible page in place (category, wildwest, channel, or FAVORITES)
+    if m.focusedItem = 2
+      ' Determine active context
+      context = ""
+      catName = invalid
+      if isValid(m.categorySelector) and m.categorySelector.visible = true and m.categorySelector.itemFocused > 1
+        catIndex = m.categorySelector.itemFocused
+        catName = m.categorySelectordata[catIndex].trueName
+        context = catName
+      else if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+        context = "channel"
+      else if isValid(m.categorySelector) and m.categorySelector.visible = true and m.categorySelector.itemFocused = 1
+        context = "FAVORITES"
+      end if
+      ' Rebuild live rows based on context and replace leading live rows only
+      if context = "wildwest" and IsValid(m.categories["wildwest"]) then
+        vod = stripLeadingLiveRows(m.categories["wildwest"]) ' remove old lives
+        liveRows = buildTopLiveRows(8)
+        merged = createObject("RoSGNode", "ContentNode")
+        while liveRows.getChildCount() > 0: merged.appendChild(liveRows.getChild(0)): end while
+        while vod.getChildCount() > 0: merged.appendChild(vod.getChild(0)): end while
+        m.categories.addReplace("wildwest", merged)
+        if m.videoGrid.visible then m.videoGrid.content = merged
+      else if context = "FAVORITES" and IsValid(m.categories["FAVORITES"]) then
+        vod = stripLeadingLiveRows(m.categories["FAVORITES"]) ' remove old lives
+        liveRows = buildLiveRowsForChannels(m.preferences.following, 0) ' uncapped
+        merged = createObject("RoSGNode", "ContentNode")
+        while liveRows.getChildCount() > 0: merged.appendChild(liveRows.getChild(0)): end while
+        while vod.getChildCount() > 0: merged.appendChild(vod.getChild(0)): end while
+        m.categories.addReplace("FAVORITES", merged)
+        if m.videoGrid.visible then m.videoGrid.content = merged
+      else if context = "channel" and IsValid(m.videoGrid) and IsValid(m.videoGrid.content) then
+        ' Channel page: rebuild the first row if currently live/not live changed
+        grid = m.videoGrid.content
+        rebuilt = createObject("RoSGNode", "ContentNode")
+        ' Build new leading live row for this channel if active
+        liveRow = buildLiveRowsForChannels([m.currentChannelId], 4)
+        for i = 0 to liveRow.getChildCount() - 1: rebuilt.appendChild(liveRow.getChild(i)): end for
+        ' Append existing VOD rows stripped of any old live rows
+        vodOnly = stripLeadingLiveRows(grid)
+        for i = 0 to vodOnly.getChildCount() - 1: rebuilt.appendChild(vodOnly.getChild(i)): end for
+        m.videoGrid.content = rebuilt
+      else if IsValid(catName) and IsValid(m.categories[catName]) then
+        vod = stripLeadingLiveRows(m.categories[catName])
+        if IsValid(m.channelIDs[catName]) and IsValid(m.channelIDs[catName]["channelIds"]) then
+          liveRows = buildLiveRowsForChannels(m.channelIDs[catName]["channelIds"], 0)
+          merged = createObject("RoSGNode", "ContentNode")
+          while liveRows.getChildCount() > 0: merged.appendChild(liveRows.getChild(0)): end while
+          while vod.getChildCount() > 0: merged.appendChild(vod.getChild(0)): end while
+          m.categories.addReplace(catName, merged)
+          if m.videoGrid.visible then m.videoGrid.content = merged
         end if
-        m.categories.addReplace(catName, mergedContent)
-        if m.videoGrid.visible then m.videoGrid.content = mergedContent
+      end if
+    end if
+    ' Also refresh Following (FAVORITES) live rows if logged in and following exists
+    if isValid(m.preferences) and isValid(m.preferences.following)
+      if m.preferences.following.Count() > 0
+        ? "[Live] gotAllLive: merging into FAVORITES; following=" + Str(m.preferences.following.Count())
+        mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
       end if
     end if
   end if
@@ -329,6 +906,15 @@ sub gotConstants()
     ' Kick off one-shot live fetch for merging across categories
     m.allLiveTask.setField("constants", m.constants)
     m.allLiveTask.control = "RUN"
+    ' Schedule background refresh of live data every 5 minutes
+    if not IsValid(m.liveRefreshTimer)
+      m.liveRefreshTimer = CreateObject("roSGNode", "Timer")
+      m.liveRefreshTimer.duration = 300 ' seconds
+      m.liveRefreshTimer.repeat = true
+      m.liveRefreshTimer.observeField("fire", "refreshAllLive")
+      m.top.appendChild(m.liveRefreshTimer)
+      m.liveRefreshTimer.control = "start"
+    end if
     ?"Constants are done, running auth"
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     ' If a refresh token exists from a prior session, skip legacy Phase 0
@@ -554,9 +1140,11 @@ sub gotCIDS()
           ?"found following"
           ?formatJson(m.preferences["following"])
           thread = CreateObject("roSGNode", "getSinglePage")
-          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
+          thread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: false })
           thread.observeField("output", "threadDone")
           m.threads.push(thread)
+          ' Also merge any live items for Following (no cap)
+          mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
           m.favoritesLoaded = false 'Not yet.
         else
           m.favoritesLoaded = false
@@ -585,7 +1173,7 @@ sub gotCIDS()
         end if
       end if
       categoryExcluded = []
-      if category = "wildwest"
+        if category = "wildwest"
         catorder="trending"
         if IsValid(excludedChannelIds)
           categoryExcluded = excludedChannelIds
@@ -658,87 +1246,23 @@ sub threadDone(msg as object)
       ' If all-live exists, prepend live rows (special-case wildwest: top 8 overall)
       mergedContent = thread.output.content
       if IsValid(m.allLive) and IsValid(m.allLive.items)
-        liveClaimsForCat = []
+        liveNodes = invalid
         if thread.rawname = "wildwest"
-          ' Wild West: take top 8 active lives from /all (already sorted)
-          if Type(m.allLive.items) = "roArray" or Type(m.allLive.items) = "Array"
-            count = 0
-            for each liveItem in m.allLive.items
-              if IsValid(liveItem) and IsValid(liveItem.ActiveClaim) and IsValid(liveItem.ActiveClaim.ClaimID)
-                liveClaimsForCat.push(liveItem.ActiveClaim.ClaimID)
-                count += 1
-                if count >= 8 then exit for
-              end if
-            end for
-          end if
+          ' Wild West: always use top 8 global lives
+          liveNodes = buildTopLiveRows(8)
         else if IsValid(m.channelIDs[thread.rawname]) and IsValid(m.channelIDs[thread.rawname]["channelIds"]) and (Type(m.channelIDs[thread.rawname]["channelIds"]) = "roArray" or Type(m.channelIDs[thread.rawname]["channelIds"]) = "Array")
           catChannels = m.channelIDs[thread.rawname]["channelIds"]
-          ' build filter map for category channels
-          catMap = {}
-          for each cid in catChannels
-            catMap.addReplace(cid, true)
-          end for
-          ' collect live claim IDs for these channels, preserving sort by viewer count from API
-          if Type(m.allLive.items) = "roArray" or Type(m.allLive.items) = "Array"
-            for each liveItem in m.allLive.items
-              if IsValid(liveItem) and IsValid(liveItem.ChannelClaimID) and IsValid(liveItem.ActiveClaim) and IsValid(liveItem.ActiveClaim.ClaimID)
-                if IsValid(catMap[liveItem.ChannelClaimID])
-                  liveClaimsForCat.push(liveItem.ActiveClaim.ClaimID)
-                end if
-              end if
-            end for
-          end if
+          liveNodes = buildLiveRowsForChannels(catChannels, 0)
         end if
-        if liveClaimsForCat.Count() > 0 and isValid(m.allLive.claims)
-          ' index claims by claim_id
-          claimsIndex = {}
-          for each cl in m.allLive.claims
-            claimsIndex.addReplace(cl.claim_id, cl)
-          end for
-          ' build live ContentNode rows-of-4
-          liveNodes = createObject("RoSGNode", "ContentNode")
-          counter = 0: currow = invalid
-          for each cId in liveClaimsForCat
-            cl = claimsIndex[cId]
-            if IsValid(cl)
-              chId = ""
-              if IsValid(cl.signing_channel) and IsValid(cl.signing_channel.claim_id)
-                chId = cl.signing_channel.claim_id
-              end if
-              ' prefer byClaim map to source the live API fields (ThumbnailURL, ViewerCount)
-              liveMeta = invalid
-              if IsValid(m.allLive.byClaim) and IsValid(m.allLive.byClaim[cId])
-                liveMeta = m.allLive.byClaim[cId]
-              else if IsValid(m.allLive.byChannel) and IsValid(m.allLive.byChannel[chId])
-                liveMeta = m.allLive.byChannel[chId]
-              end if
-              lv = parseLiveData(chId, liveMeta, cl)
-              if counter < 4
-                if IsValid(currow) <> true then currow = createObject("RoSGNode", "ContentNode")
-                n = createObject("RoSGNode", "ContentNode")
-                n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
-                n.setFields(lv)
-                currow.appendChild(n)
-                counter += 1
-              else
-                liveNodes.appendChild(currow)
-                currow = createObject("RoSGNode", "ContentNode")
-                n = createObject("RoSGNode", "ContentNode")
-                n.addFields({ creator: "", itemType: "", Channel: "", ChannelIcon: "", reposted: false, repostedBy: "", rawCreator: "", videoLength: "", viewerDisplay: "", viewers: 0 })
-                n.setFields(lv)
-                currow.appendChild(n)
-                counter = 1
-              end if
-            end if
-          end for
-          if IsValid(currow) and currow.getChildCount() > 0 then liveNodes.appendChild(currow)
-          ' merge live rows before vod
-          if liveNodes.getChildCount() > 0
-            merged = createObject("RoSGNode", "ContentNode")
-            for i = 0 to liveNodes.getChildCount() - 1: merged.appendChild(liveNodes.getChild(i)): end for
-            for i = 0 to mergedContent.getChildCount() - 1: merged.appendChild(mergedContent.getChild(i)): end for
-            mergedContent = merged
-          end if
+        if IsValid(liveNodes) and liveNodes.getChildCount() > 0
+          merged = createObject("RoSGNode", "ContentNode")
+          while liveNodes.getChildCount() > 0
+            merged.appendChild(liveNodes.getChild(0))
+          end while
+          while mergedContent.getChildCount() > 0
+            merged.appendChild(mergedContent.getChild(0))
+          end while
+          mergedContent = merged
         end if
       end if
       m.categories.addReplace(thread.rawname, mergedContent)
@@ -805,19 +1329,19 @@ sub threadDoneLive(msg as object)
       vodContent = m.categories[rawname]
       liveContent = thread.output.content
       merged = createObject("RoSGNode", "ContentNode")
-      ' First add live rows
-      for i = 0 to liveContent.getChildCount() - 1
-        merged.appendChild(liveContent.getChild(i))
-      end for
-      ' Then add existing vod rows
-      for i = 0 to vodContent.getChildCount() - 1
-        merged.appendChild(vodContent.getChild(i))
-      end for
+      ' First add live rows (safe move: pop child 0)
+      while liveContent.getChildCount() > 0
+        merged.appendChild(liveContent.getChild(0))
+      end while
+      ' Then add existing vod rows (safe move: pop child 0)
+      while vodContent.getChildCount() > 0
+        merged.appendChild(vodContent.getChild(0))
+      end while
       m.categories.addReplace(rawname, merged)
     end if
     thread.unObserveField("output")
     thread.control = "STOP"
-  end if
+    end if
 end sub
 
 sub finishInit()
@@ -1222,6 +1746,11 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
           if isValid(itemNode) and isValid(itemNode.CHANNEL) and itemNode.CHANNEL <> ""
             curChannel = itemNode.CHANNEL
+            m.pendingChannelId = curChannel
+            ' Seed channel paging context immediately so autoload can run even before content arrives
+            m.currentChannelId = curChannel
+            m.currentChannelPage = 1
+            m.loadingChannelNext = false
             if not isValid(m.channelResolver)
               m.channelResolver = createObject("roSGNode", "getSingleChannel")
               m.channelResolver.observeField("cookies", "gotCookies")
@@ -1230,10 +1759,12 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.channelResolver.observeField("output", "gotResolvedChannel")
             m.channelResolver.control = "RUN"
             m.taskRunning = True
+            ' Show quick hint while resolving
+            m.loadingText.visible = true
+            m.loadingText.text = "Opening channel… (press ← to go back)"
             m.videoGrid.setFocus(false)
             m.videoGrid.visible = false
-            m.loadingText.visible = true
-            m.loadingText.text = "Resolving Channel..."
+            ' Sidebar thumbnail will be shown in gotResolvedChannel
           end if
         end if
       end if
@@ -1607,6 +2138,13 @@ sub categorySelectorFocusChanged(msg)
             m.videoGrid.visible = true
             m.loadingText.visible = false
             m.oauthLogoutButton.visible = true
+            ' Hook: ensure lives appear immediately when entering Following
+            if isValid(m.preferences) and isValid(m.preferences.following)
+              if m.preferences.following.Count() > 0
+                ? "[Live] entering FAVORITES: merging lives now"
+                mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
+              end if
+            end if
           end if
         else
           m.videoGrid.visible = false
@@ -2535,6 +3073,8 @@ sub execSearch(search, searchType)
   end if
   if searchType = "channel"
     ?"will run channel search."
+    ' Persist last channel search term for paging
+    m.lastChannelSearchQuery = search
     if m.wasLoggedIn
       m.channelSearch.setFields({ constants: m.constants, search: search, uid: m.uid, authtoken: m.authtoken, accessToken: m.accessToken, authToken: "", cookies: m.cookies, rawname: "CSEARCH" })
     else
@@ -2542,6 +3082,12 @@ sub execSearch(search, searchType)
     end if
     m.channelSearch.observeField("output", "gotChannelSearch")
     m.channelSearch.control = "RUN"
+    ' Make channel rows taller to avoid follower text overlap
+    try
+      m.videoGrid.rowItemSize = [[410,420]]
+      m.videoGrid.itemSize = [1920,440]
+    catch e
+    end try
     m.taskRunning = True
     m.searchKeyboard.visible = False
     m.searchHistoryDialog.visible = False
@@ -2560,12 +3106,25 @@ sub gotVideoSearch(msg as object)
       m.videoSearch.unobserveField("output")
       ' Render Lighthouse-backed grid immediately
       if isValid(data.result) and isValid(data.result.content)
-        m.videoGrid.content = data.result.content
+      m.videoGrid.content = data.result.content
       end if
       m.videoSearch.control = "STOP"
       m.taskRunning = False
       m.videoGrid.visible = true
       m.loadingText.visible = false
+      ' Set search context for autoload
+      m.searchActive = true
+      m.searchContext = { type: "video": query: m.searchKeyboard.text: from: 0 }
+      ' Restore standard row heights for video search
+      try
+        m.videoGrid.rowItemSize = [[410,380]]
+        m.videoGrid.itemSize = [1920,400]
+      catch e
+      end try
+      ' Clear any channel paging context
+      m.currentChannelId = ""
+      m.currentChannelPage = 1
+      m.loadingChannelNext = false
       m.focusedItem = 2 '[video grid]
       if isValid(m.uiLayers[m.uiLayers.Count() - 1])
         previousData = m.uiLayers[m.uiLayers.Count() - 1]
@@ -2628,6 +3187,20 @@ sub gotChannelSearch(msg as object)
       m.taskRunning = False
       m.videoGrid.visible = true
       m.loadingText.visible = false
+      ' Set search context for autoload (use last query to support history selection)
+      m.searchActive = true
+      if not IsValid(m.lastChannelSearchQuery) or m.lastChannelSearchQuery = "" then m.lastChannelSearchQuery = m.searchKeyboard.text
+      m.searchContext = { type: "channel": query: m.lastChannelSearchQuery: from: 0 }
+      ' Ensure taller rows for channel search tiles
+      try
+        m.videoGrid.rowItemSize = [[410,420]]
+        m.videoGrid.itemSize = [1920,440]
+      catch e
+      end try
+      ' Clear any channel paging context
+      m.currentChannelId = ""
+      m.currentChannelPage = 1
+      m.loadingChannelNext = false
       m.focusedItem = 2 '[video grid]
       if isValid(m.uiLayers[m.uiLayers.Count() - 1])
         previousData = m.uiLayers[m.uiLayers.Count() - 1]
@@ -2662,6 +3235,7 @@ sub gotResolvedChannel(msg as object)
       m.channelResolver.unobserveField("output")
       m.channelResolver.control = "STOP"
       m.taskRunning = false
+      ? "[Channel] resolve error; showing fallback"
       if m.uiLayers.Count() > 0
         m.videoGrid.content = m.uiLayers[0]
         failedSearch(m.channelresolver.output.errorType)
@@ -2673,10 +3247,63 @@ sub gotResolvedChannel(msg as object)
       m.loadingText.visible = false
       resetVideoGrid()
       m.channelResolver.unobserveField("output")
+      ' Seed channel context from pending ID, in case parse yields empty
+      if IsValid(m.pendingChannelId) and m.pendingChannelId <> ""
+        m.currentChannelId = m.pendingChannelId
+      end if
+      if isValid(data.content) and data.content.getChildCount() > 0
       m.videoGrid.content = data.content
+      else
+        ? "[Channel] empty content; showing hint"
+        hint = createObject("roSGNode","ContentNode")
+        row = createObject("roSGNode","ContentNode")
+        item = createObject("roSGNode","ContentNode")
+        item.addFields({ TITLE: "No items found", itemType: "channel" })
+        row.appendChild(item)
+        hint.appendChild(row)
+        m.videoGrid.content = hint
+        ' If we know the channel ID, proactively prefetch next page to avoid blank grid
+        if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+          if m.loadingChannelNext = false
+            m.loadingChannelNext = true
+            nextChPage = 2
+            ct = CreateObject("roSGNode","getChannelNextPage")
+            ct.setFields({ constants: m.constants, channel: m.currentChannelId, page: nextChPage, uid: m.uid })
+            ct.observeField("output","onChannelNextPageLoaded")
+            ct.control = "RUN"
+            m.currentChannelPage = nextChPage
+            ? "[Channel] Prefetch dispatch page=" + Str(nextChPage)
+          end if
+        end if
+      end if
       m.channelResolver.control = "STOP"
       m.taskRunning = False
       m.focusedItem = 2 '[video grid]
+      ' Record channel context for autoload; prefer pending ID, then parsed content
+      if not IsValid(m.currentChannelId) or m.currentChannelId = ""
+        if IsValid(m.pendingChannelId) and m.pendingChannelId <> ""
+          m.currentChannelId = m.pendingChannelId
+        end if
+      end if
+      try
+        if isValid(data.content) and data.content.getChildCount() > 0
+          r0 = data.content.getChild(0)
+          if isValid(r0) and r0.getChildCount() > 0
+            it0 = r0.getChild(0)
+            if isValid(it0) and IsValid(it0.Channel) and it0.Channel <> ""
+              m.currentChannelId = it0.Channel
+            end if
+          end if
+        end if
+      catch e
+      end try
+      ch$ = "": if IsValid(m.currentChannelId) then ch$ = m.currentChannelId
+      ? "[Channel] context channelId=" + ch$
+      m.currentChannelPage = 1
+      m.loadingChannelNext = false
+      ' Exiting any prior search context when entering a channel
+      m.searchActive = false
+      m.searchContext = { type: "": query: "": from: 0 }
       if isValid(m.uiLayers[m.uiLayers.Count() - 1])
         ? "last layer is valid"
         previousData = m.uiLayers[m.uiLayers.Count() - 1]
@@ -2715,6 +3342,22 @@ sub gotResolvedChannel(msg as object)
         hideCategorySelector()
       end if
       m.videoGrid.setFocus(true)
+      ' Show channel thumbnail in the sidebar for context
+      try
+        thumb = m.channelResolver.ChannelIcon
+        if isValid(thumb) and thumb <> ""
+          if Left(thumb, 4) = "http"
+            m.channelSidebarThumb.uri = thumb
+          else
+            m.channelSidebarThumb.uri = m.constants["CHANNEL_ICON_PROCESSOR"] + thumb
+          end if
+          m.channelSidebarThumb.visible = true
+        else
+          m.channelSidebarThumb.visible = false
+        end if
+      catch e
+        m.channelSidebarThumb.visible = false
+      end try
     end if
   end if
 end sub
@@ -2816,6 +3459,7 @@ sub hideCategorySelector()
   m.categorySelector.visible = false
   m.sidebarTrim.visible = false
   m.sidebarBackground.visible = false
+  if isValid(m.channelSidebarThumb) then m.channelSidebarThumb.visible = false
   m.categorySelectorEndIndicator.visible = false
   m.videoGrid.translation = [110, 120]
 end sub
@@ -2826,6 +3470,7 @@ sub showCategorySelector()
     m.categorySelector.visible = true
     m.sidebarTrim.visible = true
     m.sidebarBackground.visible = true
+    if isValid(m.channelSidebarThumb) then m.channelSidebarThumb.visible = false
     if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
       m.categorySelectorEndIndicator.visible = true
     else

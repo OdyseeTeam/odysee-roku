@@ -279,14 +279,14 @@ function getBulkPageData(claimIDs)
             return emptyData
         end if
         claimSearchURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-        if claimIDs.Count() > 45
+        if claimIDs.Count() > 48
             if claimIDs.Count() <= 2047
-                dataQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 45, "order_by": "release_time", "fee_amount": "<=0", "claim_type": ["channel"], "any_tags": [], "claim_ids": claimIDs, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                dataQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 48, "order_by": "release_time", "fee_amount": "<=0", "claim_type": ["channel"], "any_tags": [], "claim_ids": claimIDs, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
                 bulkData = postJSON(dataQueryJSON, claimSearchURL, invalid)
                 totalDataPages = bulkData["result"]["total_pages"]
                 if totalDataPages > 1
                     for curPage = 2 to totalDataPages
-                        dataQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 45, "order_by": "release_time", "page": curPage, "fee_amount": "<=0", "claim_type": ["channel"], "any_tags": [], "claim_ids": claimIDs, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
+                        dataQueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 48, "order_by": "release_time", "page": curPage, "fee_amount": "<=0", "claim_type": ["channel"], "any_tags": [], "claim_ids": claimIDs, "include_purchase_receipt": false, "include_is_my_output": false, "include_sent_supports": false, "include_sent_tips": false, "include_received_tips": false }, "id": m.top.uid })
                         dataQueryPage = postJSON(dataQueryJSON, claimSearchURL, invalid)
                         bulkData["result"]["items"].Append(dataQueryPage["result"]["items"])
                     end for

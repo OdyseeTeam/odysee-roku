@@ -341,11 +341,22 @@ function urlencode(data)
     return encoded
   end if
   for each subitem in data
+    ' BrightScript lowercases AA keys on iteration; fix known case-sensitive param names
+    keyName = subitem
+    if subitem = "claimtype" then keyName = "claimType"
+    val = data[subitem]
+    ' Safely coerce non-strings to strings before encoding
+    if Type(val) <> "roString" and Type(val) <> "String" then
+      try: val = val.ToStr() : catch e: val = "" : end try
+    end if
+    if keyName = "s" then
+      ? "[HTTP:urlencode] s='" + val + "'"
+    end if
     if beginning
-      encoded+="?"+subitem+"="+(data[subitem].EncodeUriComponent())
+      encoded+="?"+keyName+"="+(val.EncodeUriComponent())
       beginning = False
     else
-      encoded+="&"+subitem+"="+(data[subitem].EncodeUriComponent())
+      encoded+="&"+keyName+"="+(val.EncodeUriComponent())
     end if
   end for
   '? encoded 'debug

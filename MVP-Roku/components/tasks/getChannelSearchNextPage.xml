@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="getChannelSearchNextPage" extends="Task">
+    <interface>
+        <field id="constants" type="assocarray"/>
+        <field id="search" type="string"/>
+        <field id="from" type="int"/>
+        <field id="uid" type="Int"/>
+        <field id="authtoken" type="String"/>
+        <field id="accessToken" type="String"/>
+        <field id="output" type="assocarray"/>
+        <field id="error" type="bool"/>
+        <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/getChannelSearchNextPage.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>
+
+

@@ -61,6 +61,15 @@
         translation="[65,130]" 
         visible = "false" 
          />
+    <!-- Channel thumbnail shown when viewing a channel page -->
+    <Poster
+        id="channelSidebarThumb"
+        uri="pkg:/images/generic/bad_icon_requires_usage_rights.png"
+        width="100"
+        height="100"
+        translation="[10,180]"
+        visible="false"
+    />
     <Poster
         id="odyseelogo"
         uri="pkg:/images/generic/odysee.png"

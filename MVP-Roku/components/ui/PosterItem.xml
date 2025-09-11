@@ -15,6 +15,8 @@
         color="0x1f1f1f" />
         <Poster id="poster" loadDisplayMode="limitSize" loadWidth="390" loadHeight="220" translation="[10,10]">
         </Poster>
+        <!-- Placeholder overlay for pulsing animation while loading -->
+        <Rectangle id="placeholderOverlay" color="0x3a3a3a" width="390" height="220" translation="[10,10]" visible="false" opacity="0.5" />
         <Rectangle id="liveDotBg" color="0x000000AA" width="28" height="28" translation="[10,10]" visible="false" />
         <Rectangle id="liveDot" color="0xFF0000FF" width="12" height="12" translation="[18,18]" visible="false" />
         <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,240]" wrap = "true" numLines = "2" lineSpacing = "0" text="title">
@@ -53,7 +55,7 @@
         height="29"
         translation="[10,185]"
         visible="false" />
-        <Poster id="viewersIcon" width="16" height="16" translation="[12,186]" vertAlign="center" visible="false"/>
+        <Poster id="viewersIcon" width="16" height="16" translation="[12,186]" visible="false"/>
         <Label id="viewers" width="130" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[32,182]" horizAlign="left" vertAlign="center" numLines = "1" text="">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
@@ -69,5 +71,9 @@
         <Label id="repostedBy" width="250" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[40,12]" horizAlign="center" vertAlign="center" numLines = "1" text="user" visible="false">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="20"/>
         </Label>
+        <!-- Pulse animation for placeholder overlay -->
+        <Animation id="placeholderPulse" duration="1.4" repeat="true">
+            <FloatFieldInterpolator fieldToInterp="placeholderOverlay.opacity" key="[0.0, 0.5, 1.0]" keyValue="[0.35, 0.75, 0.35]"/>
+        </Animation>
     </children>
 </component>

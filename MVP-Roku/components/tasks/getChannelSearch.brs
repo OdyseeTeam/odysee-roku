@@ -13,7 +13,8 @@ sub master()
 end sub
 function getLighthouseResult(search)
     queryURL = m.top.constants["LIGHTHOUSE_API"]
-    queryRAW = { s: m.top.search, size: "50", from: "0", "claimType": "channel", nsfw: "false", free_only: "true" }
+    queryRAW = { s: m.top.search, size: "48", from: "0", "claimType": "channel", nsfw: "false", free_only: "true" }
+    ? "[Search:Channel] Lighthouse request:" + FormatJson(queryRAW)
     claimIds = []
     failcount = 0
     m.errorType = "noResults"
@@ -21,8 +22,7 @@ function getLighthouseResult(search)
         queryResult = getURLEncoded(queryRAW, queryURL, [])
         if type(queryResult) = "roArray" OR type(queryResult) = "Array"
             if queryResult.Count() > 0
-                ?"got" + Str(queryResult.Count() * 4) + " channels from Odysee (Channel Search)"
-                ?"valid"
+                ? "[Search:Channel] Lighthouse results: " + Str(queryResult.Count())
                 exit while
             else
                 failcount += 1
@@ -41,6 +41,7 @@ function getLighthouseResult(search)
     end while
     if type(queryResult) = "roArray" OR type(queryResult) = "Array"
         if queryResult.Count() > 0
+            ? "[Search:Channel] Lighthouse results:" + Str(queryResult.Count())
             ?"valid"
             return ClaimsToChannelGrid(queryResult)
         else
@@ -64,42 +65,69 @@ function ClaimsToChannelGrid(claims)
         channelList.push(claim.claimId)
     end for
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 50, "fee_amount": "<=0", "claim_type": "stream", "stream_types": ["video"], "media_types": ["video/mp4"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "vagina", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "channel_ids": channelList, "not_channel_ids": [], "order_by": ["release_time"], "has_no_source": false, "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true, "limit_claims_per_channel": 1 }, "id": m.top.uid })
+    queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": 48, "claim_type": ["channel"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "claim_ids": channelList, "not_channel_ids": [], "order_by": ["trending_group", "trending_mixed"] }, "id": m.top.uid })
     cresponse = postJSON(queryJSON, queryURL, invalid)
+    ' Follower counts are optional; skip gracefully if unauthenticated
     if isValid(m.top.accessToken) AND m.top.accessToken <> ""
         subCountsURL = m.top.constants["ROOT_API"] + "/subscription/sub_count?claim_id=" + channelList.Join(",")
         baseHeaders = { "Authorization": "Bearer " + m.top.accessToken }
+        subCountsRawData = getRawTextAuthenticated(subCountsURL, baseHeaders).replace(Chr(10), "").replace(" ", "")
+        if InStr(1, subCountsRawData, "[") > 0 and InStr(1, subCountsRawData, "]") > 0
+            subCountsData = subCountsRawData.split("[")[1].split("]")[0].split(",")
+            for i = 0 to channelList.Count()-1
+                numFollowers = 0
+                if i < subCountsData.Count() then numFollowers = Val(subCountsData[i])
+                if numFollowers = 1
+                    followers = Left(numFollowers.ToStr(), 3)+" Follower"
+                else if numFollowers >= 0 AND numFollowers < 999
+                    followers = Left(numFollowers.ToStr(), 3)+" Followers"
+                else if numFollowers >= 1000 AND numFollowers < 999999
+                    followers = Left((numFollowers/1000).ToStr(), 3)+"K Followers"
+                else if numFollowers >= 1000000 AND numFollowers < 999999999
+                    followers = Left((numFollowers/1000000).ToStr(), 3)+"M Followers"
+                else if numFollowers >= 1000000000 AND numFollowers < 999999999999
+                    followers = Left((numFollowers/1000000000).ToStr(), 3)+"B Followers"
+                else if numFollowers >= 1000000000000 AND numFollowers < 999999999999
+                    followers = Left((numFollowers/1000000000000).ToStr(), 3)+"T Followers"
+                else
+                    followers = "Followers"
+                end if 
+                subCountsAA.addReplace(channelList[i], followers)
+            end for
+        end if
     else if isValid(m.top.authToken) AND m.top.authToken <> ""
         subCountsURL = m.top.constants["ROOT_API"] + "/subscription/sub_count?auth_token=" + m.top.authToken + "&claim_id=" + channelList.Join(",")
         baseHeaders = {}
+        subCountsRawData = getRawTextAuthenticated(subCountsURL, baseHeaders).replace(Chr(10), "").replace(" ", "")
+        if InStr(1, subCountsRawData, "[") > 0 and InStr(1, subCountsRawData, "]") > 0
+            subCountsData = subCountsRawData.split("[")[1].split("]")[0].split(",")
+            for i = 0 to channelList.Count()-1
+                numFollowers = 0
+                if i < subCountsData.Count() then numFollowers = Val(subCountsData[i])
+                if numFollowers = 1
+                    followers = Left(numFollowers.ToStr(), 3)+" Follower"
+                else if numFollowers >= 0 AND numFollowers < 999
+                    followers = Left(numFollowers.ToStr(), 3)+" Followers"
+                else if numFollowers >= 1000 AND numFollowers < 999999
+                    followers = Left((numFollowers/1000).ToStr(), 3)+"K Followers"
+                else if numFollowers >= 1000000 AND numFollowers < 999999999
+                    followers = Left((numFollowers/1000000).ToStr(), 3)+"M Followers"
+                else if numFollowers >= 1000000000 AND numFollowers < 999999999999
+                    followers = Left((numFollowers/1000000000).ToStr(), 3)+"B Followers"
+                else if numFollowers >= 1000000000000 AND numFollowers < 999999999999
+                    followers = Left((numFollowers/1000000000000).ToStr(), 3)+"T Followers"
+                else
+                    followers = "Followers"
+                end if 
+                subCountsAA.addReplace(channelList[i], followers)
+            end for
+        end if
     else
-        return { result: {}, success: false } 'failure: no authToken or accessToken
+        for i = 0 to channelList.Count()-1
+            subCountsAA.addReplace(channelList[i], "Followers")
+        end for
     end if
-    subCountsRawData = getRawTextAuthenticated(subCountsURL, baseHeaders).replace(Chr(10), "").replace(" ", "")
-    subCountsData = subCountsRawData.split("[")[1].split("]")[0].split(",")
-    for i = 0 to channelList.Count()-1
-            numFollowers = Val(subCountsData[i])
-            if numFollowers = 1
-                followers = Left(numFollowers.ToStr(), 3)+" Follower"
-            end if
-            if numFollowers >= 0 AND numFollowers < 999
-                followers = Left(numFollowers.ToStr(), 3)+" Followers"
-            end if
-            if numFollowers >= 1000 AND numFollowers < 999999
-                followers = Left((numFollowers/1000).ToStr(), 3)+"K Followers"
-            end if
-            if numFollowers >= 1000000 AND numFollowers < 999999999
-                followers = Left((numFollowers/1000000).ToStr(), 3)+"M Followers"
-            end if
-            if numFollowers >= 1000000000 AND numFollowers < 999999999999
-                followers = Left((numFollowers/1000000000).ToStr(), 3)+"B Followers"
-            end if
-            if numFollowers >= 1000000000000 AND numFollowers < 999999999999
-                followers = Left((numFollowers/1000000000000).ToStr(), 3)+"T Followers"
-            end if 
-        subCountsAA.addReplace(channelList[i], followers)
-    end for
-    ?cresponse
+    ' ?cresponse
     retries = 0
     while true
         if IsValid(cresponse.error)
@@ -114,12 +142,11 @@ function ClaimsToChannelGrid(claims)
         end if
     end while
     if Type(cresponse) = "roAssociativeArray"
-        if cresponse.result.items.Count() >= 1
+        if isValid(cresponse.result) and isValid(cresponse.result.items) and cresponse.result.items.Count() >= 1
             for each channel in cresponse.result.items
-                if isValid(channel.signing_channel)
-                    if isValid(channel.signing_channel.address)
-                        validChannels.push(channel.signing_channel)
-                    end if
+                ' For channel claims, the claim itself is the channel; do not expect signing_channel
+                if isValid(channel) and isValid(channel.claim_id)
+                    validChannels.push(channel)
                 end if
             end for
         end if
