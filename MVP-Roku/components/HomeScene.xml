@@ -228,8 +228,7 @@
         <MarkupGrid 
         id="videoButtons"
         itemComponentName="horizontalButton"
-        itemSpacing="[20, 20]"
-        columnSpacings="[0, 200, 0, 0, 200, 0]"
+        itemSpacing="[36, 20]"
         numRows="1"
         translation="[300,83]"
         drawFocusFeedback="false"

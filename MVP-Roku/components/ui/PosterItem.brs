@@ -20,13 +20,25 @@ sub Init()
     m.placeholderPulse = m.top.findNode("placeholderPulse")
 end sub
 sub itemContentChanged()
-    m.Poster.uri = m.top.itemContent.HDPOSTERURL
+    ' Ensure nodes exist (onChange can fire before init)
+    if not isValid(m.Poster) then m.Poster = m.top.findNode("poster")
+    if not isValid(m.ChannelIcon) then m.ChannelIcon = m.top.findNode("channelIcon")
+    if not isValid(m.Background) then m.Background = m.top.findNode("ibackground")
+    if not isValid(m.Title) then m.Title = m.top.findNode("title")
+    if not isValid(m.Creator) then m.Creator = m.top.findNode("creator")
+    if not isValid(m.Published) then m.Published = m.top.findNode("published")
+    if not isValid(m.videoLength) then m.videoLength = m.top.findNode("videoLength")
+    if not isValid(m.videoLengthBackground) then m.videoLengthBackground = m.top.findNode("lbackground")
+
+    if isValid(m.Poster) and isValid(m.top.itemContent) then m.Poster.uri = m.top.itemContent.HDPOSTERURL
     ' Always show channel icons when provided; URIs are pre-optimized via CHANNEL_ICON_PROCESSOR
-    if isValid(m.top.itemContent.ChannelIcon) and m.top.itemContent.ChannelIcon <> ""
-        m.ChannelIcon.uri = m.top.itemContent.ChannelIcon
-        m.ChannelIcon.visible = true
+    if isValid(m.top.itemContent) and isValid(m.top.itemContent.ChannelIcon) and m.top.itemContent.ChannelIcon <> ""
+        if isValid(m.ChannelIcon)
+            m.ChannelIcon.uri = m.top.itemContent.ChannelIcon
+            m.ChannelIcon.visible = true
+        end if
     else
-        m.ChannelIcon.visible = false
+        if isValid(m.ChannelIcon) then m.ChannelIcon.visible = false
     end if
     m.Title.text = m.top.itemContent.TITLE
     m.Creator.text = m.top.itemContent.CREATOR

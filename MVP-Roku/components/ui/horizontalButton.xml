@@ -115,6 +115,10 @@
         m.itemFocusBackground.color = bgBase+"AA"
       end if
     end if
+    ' Re-apply focus styling after content updates so the active red box persists
+    if isValid(m.top.isFocused) and m.top.isFocused then
+      gotFocus()
+    end if
   end function
 
   function itemFocus()
@@ -152,7 +156,7 @@
   <Rectangle id="focusBackground" translation="[2,2]"/>
   <Rectangle id="background" translation="[2,2]"/>
   <Poster id="itemImage" width="30" height="30" visible="false" loadDisplayMode="scaleToFill" translation="[2,2]"/>
-  <Label id="itemText" width="150" height="50" visible="false" horizAlign="center" vertAlign="center" translation="[2,2]">
+  <Label id="itemText" width="180" height="50" visible="false" horizAlign="center" vertAlign="center" translation="[2,2]">
     <Font role="font"/>
   </Label>
 </children>

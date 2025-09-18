@@ -1,3 +1,197 @@
+' Safe seek helper: clamps to [0, totalLen]
+sub safeSeek(newPos as integer)
+  if not IsValid(m.video) then return
+  totalLen = getCurrentContentLength()
+  if newPos < 0 then newPos = 0
+  if totalLen > 0 and newPos > totalLen then newPos = totalLen
+  try
+    m.video.seek = newPos
+    m.lastKnownVideoPos = newPos
+  catch e
+  end try
+end sub
+
+function getCurrentContentLength() as integer
+  duration = 0
+  if IsValid(m.video)
+    try: duration = m.video.duration : catch e: duration = 0 : end try
+  end if
+  if duration <= 0 and IsValid(m.urlResolver)
+    if IsValid(m.urlResolver.output)
+      try: duration = m.urlResolver.output.length : catch e: duration = 0 : end try
+    end if
+  end if
+  return duration
+end function
+
+sub resetProgressUI(totalLen as integer)
+  if IsValid(m.videoProgressBar) then m.videoProgressBar.width = 0
+  if IsValid(m.videoProgressBarp1) then m.videoProgressBarp1.text = getvideoLength(0)
+  if IsValid(m.videoProgressBarp2)
+    if totalLen > 0
+      m.videoProgressBarp2.text = getvideoLength(totalLen)
+    else
+      m.videoProgressBarp2.text = "--:--"
+    end if
+  end if
+  m.scrubTarget = 0
+end sub
+
+
+' Skip helpers for fast-forward/rewind buttons
+sub skipVideo(delta as integer)
+  if not IsValid(m.video) then return
+  if not IsValid(m.videoContent) or m.videoContent.Live then return
+
+  cur = 0
+  if IsValid(m.scrubTarget) then cur = m.scrubTarget
+  if IsValid(m.lastKnownVideoPos) and cur = 0 then cur = m.lastKnownVideoPos
+  if cur < 0 then cur = 0
+  if cur = 0 then
+    try
+      cur = m.video.position
+    catch e
+      cur = 0
+    end try
+  end if
+
+  target = cur + delta
+  totalLen = getCurrentContentLength()
+  if totalLen > 0 then
+    if target < 0 then target = 0
+    if target > totalLen then target = totalLen
+  else
+    if target < 0 then target = 0
+  end if
+  if target = cur then return
+
+  safeSeek(target)
+  m.scrubTarget = target
+  updateScrubUI()
+  showVideoOverlay()
+end sub
+
+sub updatePlaybackRateButtonLabel(label as string)
+  if IsValid(m.standardButtonsLoggedIn)
+    for i = 0 to m.standardButtonsLoggedIn.Count() - 1
+      if m.standardButtonsLoggedIn[i].itemID = "playbackRate"
+        m.standardButtonsLoggedIn[i].item = label
+      end if
+    end for
+  end if
+  if IsValid(m.standardButtonsLoggedOut)
+    for i = 0 to m.standardButtonsLoggedOut.Count() - 1
+      if m.standardButtonsLoggedOut[i].itemID = "playbackRate"
+        m.standardButtonsLoggedOut[i].item = label
+      end if
+    end for
+  end if
+end sub
+
+sub updatePlaybackRateUI(label as string)
+  if IsValid(m.videoButtonsRate)
+    m.videoButtonsRate.labelText = label
+  end if
+  info = captureVideoButtonsFocus()
+  if info.hadFocus and info.index >= 0 then
+    restoreVideoButtonFocus(info.index)
+  end if
+end sub
+
+sub setPlaybackRateByIndex(index as integer)
+  if not IsValid(m.playbackRateValues) or not IsValid(m.playbackRateLabels) then return
+  if index < 0 or index >= m.playbackRateValues.Count() then return
+  m.playbackRateIndex = index
+  m.playbackRate = m.playbackRateValues[index]
+  ? "[RATE] set index=" + m.playbackRateIndex.ToStr() + " speed=" + m.playbackRate.ToStr()
+  label = m.playbackRateLabels[index]
+  updatePlaybackRateButtonLabel(label)
+  updatePlaybackRateUI(label)
+  ' Mark that this change came from user action so we can force-apply while playing
+  m.rateChangePending = true
+  applyPlaybackRate()
+end sub
+
+sub cyclePlaybackRate()
+  if not IsValid(m.playbackRateValues) then return
+  nextIndex = (m.playbackRateIndex + 1) mod m.playbackRateValues.Count()
+  info = captureVideoButtonsFocus()
+  focusIndex = info.index
+  try: ? "[RATE] cycle focus index before=" + Str(focusIndex) : catch e: end try
+  setPlaybackRateByIndex(nextIndex)
+  if IsValid(m.videoButtons) then
+    m.videoButtons.setFocus(true)
+    if focusIndex >= 0 then
+      try: m.videoButtons.jumpToItem = focusIndex : catch e: end try
+    end if
+  end if
+  restoreVideoButtonFocus(focusIndex)
+end sub
+
+sub restoreVideoButtonFocus(index as integer)
+  if not IsValid(m.videoButtons) then return
+  if not IsValid(m.videoOverlayGroup) or not m.videoOverlayGroup.visible then return
+  if not m.video.visible then return
+
+  if index >= 0 then
+    m.videoButtons.setFocus(true)
+    try: m.videoButtons.jumpToItem = index : catch e: end try
+    buttonNode = invalid
+    try: buttonNode = m.videoButtons.content.getChildren(-1, 0)[index] : catch e: buttonNode = invalid : end try
+    if IsValid(buttonNode) then
+      try: buttonNode.focusPercent = 1.0 : catch e: end try
+      try: buttonNode.isFocused = true : catch e: end try
+    end if
+  else
+    ' Keep transport skip actions focused on the video playback surface
+    try: m.video.setFocus(true) : catch e: end try
+  end if
+end sub
+
+sub applyPlaybackRate()
+  if not IsValid(m.video) then return
+  hasSpeed = false
+  try: hasSpeed = m.video.doesExist("playbackSpeed") : catch e: hasSpeed = false : end try
+  desired = m.playbackRate
+  if desired <= 0 then desired = 1.0
+  live = IsValid(m.videoContent) and m.videoContent.Live
+  if live then desired = 1.0
+  liveStr = "false"
+  if live then liveStr = "true"
+  availStr = "false"
+  if hasSpeed then availStr = "true"
+  ? "[RATE] apply request speed=" + desired.ToStr() + " live=" + liveStr
+  ? "[RATE] playbackSpeed available? " + availStr
+  if not hasSpeed then
+    if not m.playbackRateFieldsLogged then
+      m.playbackRateFieldsLogged = true
+      ? "[RATE] video node lacks playbackSpeed field"
+    end if
+    return
+  end if
+  try
+    m.video.playbackSpeed = desired
+    actual = desired
+    try: actual = m.video.playbackSpeed : catch err: actual = desired : end try
+    ? "[RATE] playbackSpeed set, current=" + actual.ToStr()
+
+    ' Force the new rate to take effect immediately if we're currently playing
+    ' Some Roku builds only apply playbackSpeed changes on a play/resume boundary
+    stateNow = ""
+    try: stateNow = m.video.state : catch e: stateNow = "" : end try
+    if m.rateChangePending = true and stateNow = "playing" then
+      try
+        m.video.control = "pause"
+        m.video.control = "resume"
+      catch e
+      end try
+      m.rateChangePending = false
+    end if
+  catch err
+    ? "[RATE] failed to set playbackSpeed"
+  end try
+end sub
+
 ' Insert a single placeholder row (4 tiles) that will pulse while loading
 sub ensureLoadingPlaceholderRow()
   if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then return
@@ -27,11 +221,81 @@ sub clearLoadingPlaceholderRow()
   last = dest.getChild(dest.getChildCount()-1)
   if not IsValid(last) or last.getChildCount() = 0 then return
   firstNode = last.getChild(0)
-  if IsValid(firstNode) and IsValid(firstNode.itemType) and LCase(firstNode.itemType) = "placeholder"
+  if IsValid(firstNode) and IsValid(firstNode.itemType) and LCase(firstNode.itemType) = "placeholder" then
     ' Remove entire row
     dest.removeChildIndex(dest.getChildCount()-1)
   end if
 end sub
+
+' Update progress bar/labels to reflect current scrub target without seeking
+sub updateScrubUI()
+  if not IsValid(m.videoOverlayGroup) then return
+  totalLen = getCurrentContentLength()
+  if totalLen <= 0 then return
+  if IsValid(m.videoProgressBar)
+    if m.scrubTarget > 0
+      m.videoProgressBar.width = 1290 * (m.scrubTarget / totalLen)
+    else
+      m.videoProgressBar.width = 0
+    end if
+  end if
+  if IsValid(m.videoProgressBarp1)
+    m.videoProgressBarp1.text = getvideoLength(m.scrubTarget)
+  end if
+  if IsValid(m.videoProgressBarp2)
+    remaining = totalLen - m.scrubTarget
+    if remaining < 0 then remaining = 0
+    m.videoProgressBarp2.text = getvideoLength(remaining)
+  end if
+end sub
+
+function captureVideoButtonsFocus() as object
+  info = { index: -1, hadFocus: false }
+  if not IsValid(m.videoButtons) then return info
+  try: info.hadFocus = m.videoButtons.hasFocus() : catch e: info.hadFocus = false : end try
+  focusVal = invalid
+  try: focusVal = m.videoButtons.itemFocused : catch e: focusVal = invalid : end try
+  if Type(focusVal) = "roInt" or Type(focusVal) = "Integer" then
+    info.index = focusVal
+  else if Type(focusVal) = "roArray" and focusVal.Count() > 1 then
+    info.index = focusVal[1]
+  end if
+  return info
+end function
+
+sub restartCurrentVideo()
+  if not IsValid(m.video) then return
+  if not m.video.visible then return
+  if not IsValid(m.videoContent) or m.videoContent.Live then return
+  safeSeek(0)
+  m.scrubTarget = 0
+  updateScrubUI()
+  showVideoOverlay()
+  if isValid(m.currentVideoClaimID)
+    resumeKey = "resume-" + m.currentVideoClaimID
+    SetRegistry("resumeRegistry", resumeKey, "0")
+  end if
+end sub
+
+' Find [row, col] of an item in the current grid by its guid; returns invalid if not found
+function findGridIndexByGuid(targetGuid as string) as object
+  if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then return invalid
+  if not IsValid(targetGuid) or targetGuid = "" then return invalid
+  rows = m.videoGrid.content.getChildCount()
+  for r = 0 to rows - 1
+    rowNode = m.videoGrid.content.getChild(r)
+    if IsValid(rowNode)
+      cols = rowNode.getChildCount()
+      for c = 0 to cols - 1
+        item = rowNode.getChild(c)
+        if IsValid(item) and IsValid(item.guid)
+          if item.guid = targetGuid then return [r, c]
+        end if
+      end for
+    end if
+  end for
+  return invalid
+end function
 sub init()
   'IF EVERYTHING IS BROKEN:
   'TODO: instr expects 3 arguements instead of 2. API docs change or actual OS change?
@@ -53,6 +317,9 @@ sub init()
   m.videoTransitionState = 0 '0=None, -1=Rewind, 1=FastForward....
   m.videoTransitionStateLimit = 5 'How many times does the user have to press RW/FF before coarse scrubbing?
   m.videoVP = 0 'Virtual Video Position for ff/rw, because video's position doesn't change until the video has buffered.
+  m.scrubTarget = 0
+  m.skipHoldDirection = 0
+  m.skipHoldCount = 0
   m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
   m.searchType = "channel" 'changed to either video or channel
   m.searchKeyboardItemArray = [5, 11, 17, 23, 29, 35, 38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
@@ -62,6 +329,9 @@ sub init()
   m.videoButtonSelected = "none"
   m.searchKeyboardCanTransition = false 'searchKeyboard can transition after confirmation if true
   m.moveAttemptsRow = 0 'searchKeyboard double press confirmation
+  m.lastKnownVideoPos = 0
+  m.playbackRateFieldsLogged = false
+  m.rateChangePending = false
 
   'UI Items
   m.errorText = m.top.findNode("warningtext")
@@ -79,6 +349,7 @@ sub init()
   m.superChatBackground = m.top.findNode("SuperChatBackground")
   m.odyseeLogo = m.top.findNode("odyseelogo")
   m.video = m.top.findNode("Video")
+  try: m.video.seekMode = "accurate" : catch e: end try
   m.videoContent = createObject("roSGNode", "ContentNode")
   m.videoGrid = m.top.findNode("vgrid")
   m.videoGrid.observeField("rowItemFocused", "onRowItemFocused")
@@ -102,20 +373,29 @@ sub init()
   m.videoOverlayGroup = m.top.findNode("videoOverlayGroup")
   m.ffrwTimer = m.top.findNode("ffrwTimer")
   m.videoUITimer = m.top.findNode("videoUITimer")
-  m.videoProgressBarp1 = m.videoOverlayGroup.getChildren(-1, 0)[1]
-  m.videoProgressBarp2 = m.videoOverlayGroup.getChildren(-1, 0)[2]
-  m.videoProgressBar = m.videoOverlayGroup.getChildren(-1, 0)[4]
-  m.videoButtons = m.videoOverlayGroup.getChildren(-1, 0)[5]
-  m.videoButtons.itemSize = [128, 128]
-  m.standardButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }]
-  m.standardButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }]
+  m.videoProgressBarp1 = m.videoOverlayGroup.findNode("beginningProgress")
+  m.videoProgressBarp2 = m.videoOverlayGroup.findNode("endingProgress")
+  m.videoProgressBar = m.videoOverlayGroup.findNode("bar")
+  m.videoButtons = m.videoOverlayGroup.findNode("videoButtons")
+  m.videoButtons.itemSize = [180, 128]
+  m.videoButtons.itemSpacing = "[36, 20]"
+  m.skipStep = 10 'seconds to skip on single-tap FF/RW and hold increments
+  m.playbackRateValues = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
+  m.playbackRateLabels = ["1.0x", "1.25x", "1.5x", "1.75x", "2.0x", "2.5x", "3.0x"]
+  m.playbackRateIndex = 0
+  m.playbackRate = m.playbackRateValues[m.playbackRateIndex]
+  rateLabel = m.playbackRateLabels[m.playbackRateIndex]
+  m.loopEnabled = false
+  m.standardButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["replay"], itemID: "restart" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }, { item: rateLabel, itemID: "playbackRate" }, { item: "Loop", itemID: "loop" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }]
+  m.standardButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["replay"], itemID: "restart" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }, { item: rateLabel, itemID: "playbackRate" }, { item: "Loop", itemID: "loop" }]
   m.liveButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }, { item: Chr(61729), itemID: "toggleChat" }]
   m.liveButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: Chr(61729), itemID: "toggleChat" }]
   m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
   m.videoButtons.observeField("itemFocused", "videoButtonFocused")
-  m.standardVideoButtonNameTable = { "channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "playPause": "videoButtonsPlayIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon" }
+  m.standardVideoButtonNameTable = { "channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "previousItem": "videoButtonsPrev", "restart": "videoButtonsRestart", "playPause": "videoButtonsPlayIcon", "nextItem": "videoButtonsNext", "playbackRate": "videoButtonsRate", "loop": "videoButtonsLoop", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon" }
   m.liveVideoButtonNameTable = { "channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle" }
   regenerateNormalButtonRefs()
+  setPlaybackRateByIndex(m.playbackRateIndex)
   m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
   m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
   m.currentVideoClaimID = "" 'Current claim ID for Video
@@ -1405,6 +1685,14 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       if key = "OK"
         if m.video.visible = true and m.videoOverlayGroup.visible = true
           if m.videoButtonSelected <> "none"
+            focusVal = invalid
+            focusIndex = -1
+            try: focusVal = m.videoButtons.itemFocused : catch e: focusVal = invalid : end try
+            if Type(focusVal) = "roInt" or Type(focusVal) = "Integer" then
+              focusIndex = focusVal
+            else if Type(focusVal) = "roArray" and focusVal.Count() > 1 then
+              focusIndex = focusVal[1]
+            end if
             ? "Current Button:"
             ? m.videoButtonSelected
             if m.videoButtonSelected = "channelButton"
@@ -1457,6 +1745,14 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                   resolveEvaluatedVideo(curItem)
                 end if
               end if
+            else if m.videoButtonSelected = "restart"
+              restartCurrentVideo()
+            else if m.videoButtonSelected = "loop"
+              ' Toggle loop for VODs only
+              if isValid(m.videoContent) and m.videoContent.Live = false
+                m.loopEnabled = not m.loopEnabled
+                ' optional UI feedback: briefly bump focus stays on same button
+              end if
             else if m.videoButtonSelected = "playPause"
               'Play Button
               if m.video.visible
@@ -1485,25 +1781,32 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 end if
               end if
             else if m.videoButtonSelected = "nextItem"
-              'Forward Button/Next Video
-              ? m.currentVideoPosition
-              if m.currentVideoPosition[1] = 3 'Last video in row, move down.
-                if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0))
-                  curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0)
-                  returnToUIPage()
-                  m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0] + 1, 0]
-                  m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
-                  resolveEvaluatedVideo(curItem)
-                end if
-              else 'Not the last, move forward
-                if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1))
-                  curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1)
-                  returnToUIPage()
-                  m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
-                  m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
-                  resolveEvaluatedVideo(curItem)
+              ' Move to the next item in the grid
+              if isValid(m.currentVideoPosition)
+                if m.currentVideoPosition[1] = 3
+                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0))
+                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0)
+                    returnToUIPage()
+                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0] + 1, 0]
+                    m.currentVideoPosition = [m.currentVideoPosition[0] + 1, 0]
+                    resolveEvaluatedVideo(curItem)
+                  end if
+                else
+                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1))
+                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1)
+                    returnToUIPage()
+                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
+                    m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
+                    resolveEvaluatedVideo(curItem)
+                  end if
                 end if
               end if
+            else if m.videoButtonSelected = "playbackRate"
+              ' Keep the focus highlight on the same control when cycling rate
+              info = captureVideoButtonsFocus()
+              focusIndex = info.index
+              cyclePlaybackRate()
+              restoreVideoButtonFocus(focusIndex)
             else if m.videoButtonSelected = "like"
               ' Like
               ? "like"
@@ -1538,6 +1841,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 m.chatBox.visible = true
               end if
             end if
+            restoreVideoButtonFocus(focusIndex)
           end if
         end if
       end if
@@ -1654,7 +1958,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             else if m.video.state = "paused"
               m.video.control = "resume"
             end if
-          else
+                    else
             m.ffrwTimer.control = "stop"
             m.ffrwTimer.unobserveField("fire")
             m.videoTransitionState = 0
@@ -1666,55 +1970,36 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               m.video.control = "pause"
               m.video.control = "resume"
             end if
-          end if
+                    end if
         end if
       end if
       if key = "rewind"
-        ?m.video.visible
-        ?m.ffrwTimer.control
-        ?m.ffrwTimer.duration
-        ?m.videoVP
         if m.video.visible and m.videoContent.Live = false
+          focusInfo = captureVideoButtonsFocus()
+          focusIdx = -1
+          if focusInfo.hadFocus then focusIdx = focusInfo.index
           showVideoOverlay()
-          if m.videoTransitionState >= 0
-            m.ffrwTimer.duration = .7
-            m.videoTransitionState = -1 'Reset to RW, stage1
-          else
-            m.videoTransitionState -= 1 'use VTS to track numPressed
+          if press = true then
+            skipVideo(-m.skipStep)
+            restoreVideoButtonFocus(focusIdx)
           end if
-          m.video.control = "stop" 'it's better to stop the video and perform prebuffering after
-          ?m.ffrwTimer.control
-          if m.ffrwTimer.control = "start" and abs(m.videoTransitionState) > m.videoTransitionStateLimit
-            m.ffrwTimer.duration = m.ffrwTimer.duration / 2
-            m.ffrwTimer.observeField("fire", "changeVideoPosition")
-          else
-            m.ffrwTimer.duration = .7
-            m.ffrwTimer.observeField("fire", "changeVideoPosition")
-            m.ffrwTimer.control = "start"
-          end if
+          return true
         end if
       end if
 
       if key = "fastforward"
         if isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live = false
+          focusInfo = captureVideoButtonsFocus()
+          focusIdx = -1
+          if focusInfo.hadFocus then focusIdx = focusInfo.index
           showVideoOverlay()
-          if m.videoTransitionState <= 0
-            m.ffrwTimer.duration = .7
-            m.videoTransitionState = 1 'Reset to FF, stage1
-          else
-            m.videoTransitionState += 1 'use VTS to track numPressed
+          if press = true then
+            skipVideo(m.skipStep)
+            restoreVideoButtonFocus(focusIdx)
           end if
-          m.video.control = "stop" 'better not to prebuffer at all.
-          if m.ffrwTimer.control = "start" and abs(m.videoTransitionState) > m.videoTransitionStateLimit
-            m.ffrwTimer.observeField("fire", "changeVideoPosition")
-            m.ffrwTimer.duration = m.ffrwTimer.duration / 2
-          else
-            m.ffrwTimer.duration = .7
-            m.ffrwTimer.observeField("fire", "changeVideoPosition")
-            m.ffrwTimer.control = "start"
-          end if
+          return true
         end if
-        if isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live
+        if press = true and isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live
           'TODO: change toggleChat video button's image.
           if m.chatBox.visible
             m.chatBackground.visible = false
@@ -1724,6 +2009,13 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.chatBox.visible = true
           end if
         end if
+      end if
+
+      if key = "instantreplay" or key = "instantReplay" then
+        if press = true then
+          restartCurrentVideo()
+        end if
+        return true
       end if
 
       if key = "options"
@@ -2082,6 +2374,8 @@ sub videoButtonFocused(msg)
     if isValid(m.videoButtons.content.getChildren(-1, 0)[mData].itemID)
       m.videoButtonSelected = m.videoButtons.content.getChildren(-1, 0)[mData].itemID
       showVideoOverlay()
+      ' Immediately ensure new focused item shows red outline
+      restoreVideoButtonFocus(mData)
     end if
   end if
 end sub
@@ -2221,6 +2515,12 @@ sub showVideoOverlay()
   m.videoUITimer.observeField("fire", "hideVideoOverlay")
   m.videoUITimer.control = "start"
   m.videoOverlayGroup.visible = true
+  info = captureVideoButtonsFocus()
+  if info.hadFocus and info.index >= 0 then
+    restoreVideoButtonFocus(info.index)
+  else
+    try: m.video.setFocus(true) : catch e: end try
+  end if
 end sub
 
 sub hideVideoOverlay()
@@ -2459,6 +2759,8 @@ sub resolveVideo(url = invalid)
       if incomingData.Count() > 1
         m.currentVideoPosition = incomingData
         curItem = m.videoGrid.content.getChild(incomingData[0]).getChild(incomingData[1])
+        ' Capture current item guid for robust return
+        if IsValid(curItem) and IsValid(curItem.guid) then m.currentVideoGuid = curItem.guid
         if curItem.itemType = "video"
           resolveEvaluatedVideo(curItem) 'used for this AND next video/previous video
         end if
@@ -2488,8 +2790,7 @@ sub resolveVideo(url = invalid)
           isFollowed = false
           if m.wasLoggedIn
             m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, m.videoButtons.itemSize)
-            m.videoButtons.itemSpacing = "[20, 20]"
-            m.videoButtons.columnSpacings = "[0,656,0,0,0]"
+            m.videoButtons.itemSpacing = "[36, 20]"
             m.videoButtons.animateToItem = 2
             getReactions(curItem.guid)
             m.videoButtons.animateToItem = 3
@@ -2504,6 +2805,7 @@ sub resolveVideo(url = invalid)
               end if
             end if
             regenerateLiveButtonRefs()
+            m.videoButtonsRate = invalid
             if isFollowed
               m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
             else
@@ -2511,10 +2813,10 @@ sub resolveVideo(url = invalid)
             end if
           else
             m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedOut, m.videoButtons.itemSize)
-            m.videoButtons.itemSpacing = "[20, 20]"
-            m.videoButtons.columnSpacings = "[1040]"
+            m.videoButtons.itemSpacing = "[36, 20]"
             m.videoButtons.animateToItem = 2
             regenerateLiveButtonRefs()
+            m.videoButtonsRate = invalid
           end if
           m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
           isFollowed = invalid
@@ -2522,6 +2824,9 @@ sub resolveVideo(url = invalid)
           m.videoContent.streamFormat = curItem.streamFormat
           m.videoContent.title = curItem.description
           m.videoContent.Live = true
+          m.lastKnownVideoPos = 0
+          updatePlaybackRateUI("")
+          applyPlaybackRate()
           m.video.content = m.videoContent
           m.video.visible = true
           m.videoProgressBar.visible = false 'its live, we don't need progress updates.
@@ -2560,17 +2865,20 @@ sub resolveVideo(url = invalid)
     ?"Resolving a Video (deeplink direct)"
     if m.wasLoggedIn
       m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
-      m.videoButtons.itemSpacing = "[20, 20]"
-      m.videoButtons.columnSpacings = "[0, 200, 0, 0, 200, 0]"
+      m.videoButtons.itemSpacing = "[36, 20]"
       m.videoButtons.animateToItem = 3
       regenerateNormalButtonRefs()
-    else
-      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
-      m.videoButtons.itemSpacing = "[20, 20]"
-      m.videoButtons.columnSpacings = "[328, 0, 0]"
-      m.videoButtons.animateToItem = 2
-      regenerateNormalButtonRefs()
-    end if
+  else
+    m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
+    m.videoButtons.itemSpacing = "[36, 20]"
+    m.videoButtons.animateToItem = 3
+    regenerateNormalButtonRefs()
+  end if
+    resetProgressUI(0)
+    m.lastKnownVideoPos = 0
+    m.scrubTarget = 0
+    m.skipHoldCount = 0
+    m.skipHoldDirection = 0
     if m.wasLoggedIn
       m.urlResolver.setFields({ constants: m.constants, url: url, title: "deeplink video", uid: m.uid, cookies: m.cookies, accesstoken: m.accessToken, authtoken: "" })
     else
@@ -2588,13 +2896,22 @@ sub resolveEvaluatedVideo(curItem)
   m.currentVideoChannelIcon = curitem.channelicon
   m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
   m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
+  m.currentVideoGuid = curItem.guid ' For grid restoration
   isFollowed = false
   if m.wasLoggedIn
-    m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
-    m.videoButtons.itemSpacing = "[20, 20]"
-    m.videoButtons.columnSpacings = "[0, 200, 0, 0, 200, 0]"
-    getReactions(curItem.guid)
-    m.videoButtons.animateToItem = 3
+    ' Choose live vs VOD button sets; exclude restart/loop on livestreams
+    if isValid(curItem.streamFormat) and LCase(curItem.streamFormat) = "hls"
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, m.videoButtons.itemSize)
+      m.videoButtons.itemSpacing = "[36, 20]"
+      m.videoButtons.animateToItem = 2
+      regenerateLiveButtonRefs()
+    else
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
+      m.videoButtons.itemSpacing = "[36, 20]"
+      getReactions(curItem.guid)
+      m.videoButtons.animateToItem = 4
+      regenerateNormalButtonRefs()
+    end if
     if m.preferences.Count() > 0 and isValid(m.preferences.following)
       if m.preferences.following.Count() > 0
         for each claimID in m.preferences.following
@@ -2612,17 +2929,28 @@ sub resolveEvaluatedVideo(curItem)
       m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
     end if
   else
-    m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
-    m.videoButtons.itemSpacing = "[20, 20]"
-    m.videoButtons.columnSpacings = "[328, 0, 0]"
-    m.videoButtons.animateToItem = 2
-    regenerateNormalButtonRefs()
+    if isValid(curItem.streamFormat) and LCase(curItem.streamFormat) = "hls"
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedOut, m.videoButtons.itemSize)
+      m.videoButtons.itemSpacing = "[36, 20]"
+      m.videoButtons.animateToItem = 2
+      regenerateLiveButtonRefs()
+    else
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
+      m.videoButtons.itemSpacing = "[36, 20]"
+      m.videoButtons.animateToItem = 3
+      regenerateNormalButtonRefs()
+    end if
   end if
   if m.wasLoggedIn
     m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: m.accessToken, authToken: "", cookies: m.cookies })
   else
     m.urlResolver.setFields({ constants: m.constants, url: curitem.URL, title: curItem.TITLE, uid: m.uid, accesstoken: "", authToken: m.authToken, cookies: m.cookies })
   end if
+  resetProgressUI(0)
+  m.lastKnownVideoPos = 0
+  m.scrubTarget = 0
+  m.skipHoldCount = 0
+  m.skipHoldDirection = 0
   m.urlResolver.observeField("output", "playResolvedVideo")
   m.urlResolver.control = "RUN"
   m.taskRunning = True
@@ -2653,6 +2981,8 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
 end sub
 
 sub videoPositionChanged()
+  try: m.lastKnownVideoPos = m.video.position : catch e: end try
+  m.scrubTarget = m.lastKnownVideoPos
   if m.global.constants.enableStatistics 'if position/duration changes, report if vStats are turned on.
     if m.vStatsTimer.TotalSeconds() > 5
       ' Avoid flooding the watchman task; only run if it is not already running
@@ -2811,6 +3141,11 @@ sub playResolvedVideo(msg as object)
       ?"VPLAYDEBUG:"
       ?formatJSON(data)
       'preset video length in UI
+      resetProgressUI(data.length)
+      m.lastKnownVideoPos = 0
+      m.scrubTarget = 0
+      m.skipHoldCount = 0
+      m.skipHoldDirection = 0
       if m.videoEndingTimeSet = false
         m.videoProgressBarp2.text = getvideoLength(data.length)
         m.videoEndingTimeSet = true
@@ -2829,6 +3164,8 @@ sub playResolvedVideo(msg as object)
       m.video.setFocus(false)
       m.videoButtons.setFocus(true)
       m.focusedItem = 7 '[video player/overlay]
+      updatePlaybackRateUI(m.playbackRateLabels[m.playbackRateIndex])
+      applyPlaybackRate()
       m.video.control = "play"
       ' Attempt to resume from saved position
       m.pendingResume = -1
@@ -2926,6 +3263,12 @@ function onVideoStateChanged(msg as object)
         resumeKey = "resume-" + m.currentVideoClaimID
         SetRegistry("resumeRegistry", resumeKey, "0")
       end if
+      if m.loopEnabled = true and isValid(m.videoContent) and m.videoContent.Live = false
+        ' Loop current video: seek to 0 and play again
+        try: m.video.seek = 0 : catch e: end try
+        m.video.control = "play"
+        return invalid
+      end if
       m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       m.videoProgressBar.width = 0
@@ -2944,6 +3287,7 @@ function onVideoStateChanged(msg as object)
       end if
       if state = "playing"
         deleteSpinner()
+        applyPlaybackRate()
         'm.videoTransitionState = 0
       else if state = "buffering"
         addSpinner()
@@ -3005,17 +3349,46 @@ sub returnToUIPage()
   m.videoUITimer.unobserveField("fire")
   m.video.visible = false 'Hide video
   m.video.control = "stop" 'Stop video from playing
+  resetProgressUI(0)
+  m.lastKnownVideoPos = 0
+  m.scrubTarget = 0
+  m.skipHoldCount = 0
+  m.skipHoldDirection = 0
   deleteSpinner()
-  if m.wasLoggedIn and isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() > 0 and m.focusedItem = 7
+  if m.focusedItem = 7
     m.videoEndingTimeSet = false
     m.video.unObserveField("position")
-    m.videoGrid.setFocus(true)
-    m.focusedItem = 2 '[video grid]
-  else if m.focusedItem = 7
-    m.videoEndingTimeSet = false
-    m.video.unObserveField("position")
-    m.categorySelector.setFocus(true)
-    m.focusedItem = 1 '[selector]
+    if IsValid(m.videoGrid)
+      m.loadingText.visible = false
+      m.videoGrid.visible = true
+      m.videoGrid.setFocus(true)
+      m.focusedItem = 2 '[video grid]
+      ' Try to jump back by GUID first (robust to paging/refresh)
+      jumpPos = invalid
+      if IsValid(m.currentVideoGuid)
+        jumpPos = findGridIndexByGuid(m.currentVideoGuid)
+      end if
+      if not IsValid(jumpPos)
+        jumpPos = m.currentVideoPosition
+      end if
+      if IsValid(jumpPos) and Type(jumpPos) = "roArray" and jumpPos.Count() >= 2
+        row = jumpPos[0]
+        col = jumpPos[1]
+        if row >= 0 and col >= 0 and IsValid(m.videoGrid.content)
+          if m.videoGrid.content.getChildCount() > row
+            rnode = m.videoGrid.content.getChild(row)
+            if IsValid(rnode) and rnode.getChildCount() > col
+              m.videoGrid.jumpToRowItem = [row, col]
+            end if
+          end if
+        end if
+      end if
+    else
+      if IsValid(m.categorySelector)
+        m.categorySelector.setFocus(true)
+        m.focusedItem = 1 '[selector]
+      end if
+    end if
   end if
 end sub
 
@@ -3411,12 +3784,18 @@ function createBothItemsIdentified(buttons, items, itemSize) as object
       dataItem["itemID"] = item.itemid
     else
       dataItem = data.CreateChild("horizontalButtonItemData")
-      if item.item.split("").Count() < 2
+      fontScale = itemSize[1] / 64
+      if fontScale <= 0 then fontScale = 1
+      if Len(item.item) = 1
         dataItem.fontUrl = "pkg:/components/generic/fonts/VideoJS.ttf"
-        dataItem.fontSize = (itemSize[1] / 64) * 60
+        dataItem.fontSize = fontScale * 60
       else
         dataItem.fontUrl = "pkg:/components/generic/fonts/Inter-Emoji.otf"
-        dataItem.fontSize = (itemSize[1] / 64) * 35
+        if Len(item.item) <= 3
+          dataItem.fontSize = fontScale * 42
+        else
+          dataItem.fontSize = fontScale * 30
+        end if
       end if
       dataItem.posterUrl = ""
       dataItem.width = itemSize[0]
@@ -3661,11 +4040,19 @@ end sub
 'These relink the references to the buttons when switching between Live and VOD
 
 sub regenerateNormalButtonRefs()
+  if not IsValid(m.videoButtons) or not IsValid(m.videoButtons.content) then return
+  for each key in m.standardVideoButtonNameTable
+    name = m.standardVideoButtonNameTable[key]
+    m[name] = invalid
+  end for
   for each child in m.videoButtons.content.getChildren(-1, 0)
     if isValid(m.standardVideoButtonNameTable[child.itemID])
       m[m.standardVideoButtonNameTable[child.itemID]] = child
     end if
   end for
+  if IsValid(m.playbackRateLabels)
+    updatePlaybackRateUI(m.playbackRateLabels[m.playbackRateIndex])
+  end if
 end sub
 
 sub regenerateLiveButtonRefs()

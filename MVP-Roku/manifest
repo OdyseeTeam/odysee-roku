@@ -8,3 +8,4 @@ splash_screen_hd=pkg:/images/channel-splash-hd.png
 splash_screen_fhd=pkg:/images/channel-splash-fhd.png
 ui_resolutions=fhd
 supports_input_launch=1
+rsg_version=1.2
