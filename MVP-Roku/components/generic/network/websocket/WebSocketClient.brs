@@ -600,6 +600,7 @@ function WebSocketClient() as object
             port = match[3]
             path = match[4]
             m._hostname = host
+            ? "[WSClient] open url="; url
             ' Port
             if port <> ""
                 port = val(port, 10)
@@ -626,7 +627,12 @@ function WebSocketClient() as object
                 protocols = protocols.left(len(protocols) - 2)
             end if
             handshake =  "GET " + path + " HTTP/1.1" +m._NL
-            handshake += "Host: " + host + ":" + port.toStr() + m._NL
+            ' Only include ":port" when a non-default port is used
+            hostHeader = host
+            if (ws_type = "ws" and port <> 80) or (ws_type = "wss" and port <> 443)
+                hostHeader = host + ":" + port.toStr()
+            end if
+            handshake += "Host: " + hostHeader + m._NL
             handshake += "Upgrade: websocket" + m._NL
             handshake += "Connection: Upgrade" + m._NL
             handshake += "Sec-WebSocket-Key: " + m._sec_ws_key + m._NL
@@ -638,6 +644,7 @@ function WebSocketClient() as object
             handshake += m._get_parsed_user_headers()
             handshake += m._NL
             m._handshake = handshake
+            ? "[WSClient] handshake host="; hostHeader
             ' Create socket
             m._state(m.STATE.CONNECTING)
             address = createObject("roSocketAddress")

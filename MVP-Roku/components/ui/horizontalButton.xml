@@ -139,12 +139,38 @@
       m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"99"
     end if
   end function
+  function onKeyEvent(key as string, press as boolean) as boolean
+    ' Intercept FF/RW when a control button has focus to prevent MarkupGrid edge-jumps
+    if press = true
+      if key = "fastforward" or key = "rewind"
+        dir = 0
+        if key = "fastforward" then dir = 1 else dir = -1
+        ' Swallow the next directional key the platform may emit alongside FF/RW
+        if key = "fastforward" then m.swallowNextNavKey = "right" else m.swallowNextNavKey = "left"
+        scn = invalid
+        try: scn = m.top.getScene() : catch e: scn = invalid : end try
+        if isValid(scn)
+          ' Try to call a handler on the scene; ignore if not present
+          try: scn.callFunc("skipFromControlBar", dir) : catch e: end try
+        end if
+        return true
+      end if
+      if (key = "left" or key = "right") and isValid(m.swallowNextNavKey)
+        if m.swallowNextNavKey = key
+          m.swallowNextNavKey = invalid
+          return true
+        end if
+      end if
+    end if
+    return false
+  end function
   function init() 
     m.itemImage = m.top.findNode("itemImage")
     m.itemText = m.top.findNode("itemText")
     m.itemOutline = m.top.findNode("outline")
     m.itemBackground = m.top.findNode("background")
     m.itemFocusBackground = m.top.findNode("focusBackground")
+    m.swallowNextNavKey = invalid
   end function
 
 ]]>

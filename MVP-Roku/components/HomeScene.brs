@@ -68,7 +68,75 @@ sub skipVideo(delta as integer)
   safeSeek(target)
   m.scrubTarget = target
   updateScrubUI()
-  showVideoOverlay()
+end sub
+
+' Return index of a control-bar item by its itemID; -1 if not found
+function findVideoButtonIndexById(targetId as string) as integer
+  if not IsValid(m.videoButtons) then return -1
+  if not IsValid(m.videoButtons.content) then return -1
+  total = m.videoButtons.content.getChildCount()
+  for i = 0 to total - 1
+    child = m.videoButtons.content.getChild(i)
+    if IsValid(child) and IsValid(child.itemID)
+      if child.itemID = targetId then return i
+    end if
+  end for
+  return -1
+end function
+
+' Compute best index to keep active on control bar
+function getPreferredVideoButtonsIndex() as integer
+  idx = -1
+  ' Prefer last known
+  t = Type(m.videoButtonsLastIndex)
+  if (t = "roInt" or t = "Integer") and m.videoButtonsLastIndex >= 0 then idx = m.videoButtonsLastIndex
+  if idx < 0 then idx = findVideoButtonIndexById("playPause")
+  if idx < 0 then idx = findVideoButtonIndexById("restart")
+  if idx < 0 then idx = 0
+  return idx
+end function
+
+' Return true if the control bar currently has focus
+function isVideoButtonsFocused() as boolean
+  has = false
+  if IsValid(m.videoButtons)
+    try
+      has = m.videoButtons.hasFocus()
+    catch e
+      has = false
+    end try
+  end if
+  return has
+end function
+
+' Select a control bar item index without changing focus ownership
+sub selectVideoButtonIndex(index as integer)
+  if not IsValid(m.videoButtons) then return
+  total = -1
+  if IsValid(m.videoButtons.content) then total = m.videoButtons.content.getChildCount()
+  if total <= 0 then return
+  if index >= total then index = total - 1
+  if index < 0 then index = 0
+  try: m.videoButtons.jumpToItem = index : catch e: end try
+  m.videoButtonsLastIndex = index
+  if IsValid(m.videoButtons.content)
+    if index >= 0 and index < total
+      node = m.videoButtons.content.getChild(index)
+      if IsValid(node) and IsValid(node.itemID)
+        m.videoButtonSelected = node.itemID
+      end if
+    end if
+  end if
+end sub
+
+' Ensure we have a sane default focused index on the control bar
+sub ensureDefaultVideoButtonsIndex()
+  if not IsValid(m.videoButtons) then return
+  if not IsValid(m.videoButtons.content) then return
+  idx = findVideoButtonIndexById("playPause")
+  if idx < 0 then idx = findVideoButtonIndexById("restart")
+  if idx < 0 then idx = 0
+  m.videoButtonsLastIndex = idx
 end sub
 
 sub updatePlaybackRateButtonLabel(label as string)
@@ -120,7 +188,8 @@ sub cyclePlaybackRate()
   try: ? "[RATE] cycle focus index before=" + Str(focusIndex) : catch e: end try
   setPlaybackRateByIndex(nextIndex)
   if IsValid(m.videoButtons) then
-    m.videoButtons.setFocus(true)
+    ' Keep controls selection, but do not force focus away from Video here
+    ' m.videoButtons.setFocus(true)
     if focusIndex >= 0 then
       try: m.videoButtons.jumpToItem = focusIndex : catch e: end try
     end if
@@ -133,19 +202,33 @@ sub restoreVideoButtonFocus(index as integer)
   if not IsValid(m.videoOverlayGroup) or not m.videoOverlayGroup.visible then return
   if not m.video.visible then return
 
-  if index >= 0 then
-    m.videoButtons.setFocus(true)
-    try: m.videoButtons.jumpToItem = index : catch e: end try
-    buttonNode = invalid
-    try: buttonNode = m.videoButtons.content.getChildren(-1, 0)[index] : catch e: buttonNode = invalid : end try
-    if IsValid(buttonNode) then
-      try: buttonNode.focusPercent = 1.0 : catch e: end try
-      try: buttonNode.isFocused = true : catch e: end try
-    end if
-  else
-    ' Keep transport skip actions focused on the video playback surface
+  ' While forcibly restoring focus, don't allow itemFocused to change selection
+  m.blockVideoButtonsFocusEvents = true
+  if index < 0 then index = m.videoButtonsLastIndex
+  if index < 0 then index = 0
+  total = -1
+  if IsValid(m.videoButtons.content) then total = m.videoButtons.content.getChildCount()
+  if total <= 0 then
     try: m.video.setFocus(true) : catch e: end try
+    m.blockVideoButtonsFocusEvents = false
+    return
   end if
+  if index >= total then index = total - 1
+  if index < 0 then index = 0
+  ' Set selection and ensure MarkupGrid has focus so arrows work
+  try: m.videoButtons.setFocus(true) : catch e: end try
+  try: m.videoButtons.jumpToItem = index : catch e: end try
+  m.videoButtonsLastIndex = index
+  ' Sync selected id so OK works immediately, even with focus events suppressed
+  selNode = invalid
+  if IsValid(m.videoButtons.content) and index >= 0 and index < total
+    selNode = m.videoButtons.content.getChild(index)
+    if IsValid(selNode) and IsValid(selNode.itemID)
+      m.videoButtonSelected = selNode.itemID
+    end if
+  end if
+  ' Allow subsequent itemFocused events
+  m.blockVideoButtonsFocusEvents = false
 end sub
 
 sub applyPlaybackRate()
@@ -253,6 +336,11 @@ function captureVideoButtonsFocus() as object
   info = { index: -1, hadFocus: false }
   if not IsValid(m.videoButtons) then return info
   try: info.hadFocus = m.videoButtons.hasFocus() : catch e: info.hadFocus = false : end try
+  if info.hadFocus then
+    overlayVisible = false
+    if IsValid(m.videoOverlayGroup) then overlayVisible = m.videoOverlayGroup.visible
+    if not overlayVisible then info.hadFocus = false
+  end if
   focusVal = invalid
   try: focusVal = m.videoButtons.itemFocused : catch e: focusVal = invalid : end try
   if Type(focusVal) = "roInt" or Type(focusVal) = "Integer" then
@@ -260,6 +348,8 @@ function captureVideoButtonsFocus() as object
   else if Type(focusVal) = "roArray" and focusVal.Count() > 1 then
     info.index = focusVal[1]
   end if
+  btnType = Type(m.videoButtonsLastIndex)
+  if info.index < 0 and (btnType = "roInt" or btnType = "Integer") and m.videoButtonsLastIndex >= 0 then info.index = m.videoButtonsLastIndex
   return info
 end function
 
@@ -267,15 +357,44 @@ sub restartCurrentVideo()
   if not IsValid(m.video) then return
   if not m.video.visible then return
   if not IsValid(m.videoContent) or m.videoContent.Live then return
+  ' Normalize state around restart to ensure seek is honored across firmware variants
+  try: m.video.control = "pause" : catch e: end try
   safeSeek(0)
   m.scrubTarget = 0
   updateScrubUI()
+  ' Clear any FF/RW transition state
+  m.videoTransitionState = 0
+  ' Resume if we were playing before
+  stateNow = ""
+  try: stateNow = m.video.state : catch e: stateNow = "" : end try
+  if stateNow = "paused" or stateNow = "buffering" or stateNow = "playing"
+    try: m.video.control = "resume" : catch e: end try
+  end if
   showVideoOverlay()
   if isValid(m.currentVideoClaimID)
     resumeKey = "resume-" + m.currentVideoClaimID
     SetRegistry("resumeRegistry", resumeKey, "0")
   end if
 end sub
+
+' Skip from control bar without changing selection/focus
+function skipFromControlBar(dir as integer) as void
+  if not IsValid(m.video) then return
+  if not IsValid(m.videoContent) or m.videoContent.Live then return
+  info = captureVideoButtonsFocus()
+  focusIdx = info.index
+  ' Prevent any focus-changed side-effects
+  m.blockVideoButtonsFocusEvents = true
+  ' Keep overlay visible; preserve button focus
+  showVideoOverlay(true)
+  if dir > 0 then
+    skipVideo(m.skipStep)
+  else if dir < 0 then
+    skipVideo(-m.skipStep)
+  end if
+  if focusIdx >= 0 then restoreVideoButtonFocus(focusIdx)
+  m.blockVideoButtonsFocusEvents = false
+end function
 
 ' Find [row, col] of an item in the current grid by its guid; returns invalid if not found
 function findGridIndexByGuid(targetGuid as string) as object
@@ -320,6 +439,12 @@ sub init()
   m.scrubTarget = 0
   m.skipHoldDirection = 0
   m.skipHoldCount = 0
+  m.videoButtonsLastIndex = -1
+  ' One-shot suppression of a following LEFT/RIGHT that some remotes emit with FF/RW
+  m.swallowNavKey = ""
+  ' Prevent control bar focus from jumping on FF/RW (while true, ignore itemFocused events)
+  m.blockVideoButtonsFocusEvents = false
+  m.videoButtonsIndexBeforeSkip = -1
   m.focusedItem = 1 '[selector]  'actually, this works better than what I was doing before.
   m.searchType = "channel" 'changed to either video or channel
   m.searchKeyboardItemArray = [5, 11, 17, 23, 29, 35, 38] ' Corresponds to a MiniKeyboard's rightmost items. Used for transition.
@@ -359,7 +484,11 @@ sub init()
   m.currentChannelId = ""
   m.currentChannelPage = 1
   m.loadingChannelNext = false
-  m.searchActive = false
+  m.channelReturnRowCol = invalid
+  m.channelReturnContext = ""
+  m.preChannelSearchActive = false
+  m.preChannelSearchContext = { type: "", query: "", from: 0 }
+   m.searchActive = false
   m.searchContext = { type: "", query: "", from: 0 }
   m.loadingVideoSearch = false
   m.loadingChannelSearch = false
@@ -391,6 +520,7 @@ sub init()
   m.liveButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }, { item: Chr(61729), itemID: "toggleChat" }]
   m.liveButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: Chr(61729), itemID: "toggleChat" }]
   m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
+  ensureDefaultVideoButtonsIndex()
   m.videoButtons.observeField("itemFocused", "videoButtonFocused")
   m.standardVideoButtonNameTable = { "channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "previousItem": "videoButtonsPrev", "restart": "videoButtonsRestart", "playPause": "videoButtonsPlayIcon", "nextItem": "videoButtonsNext", "playbackRate": "videoButtonsRate", "loop": "videoButtonsLoop", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon" }
   m.liveVideoButtonNameTable = { "channelButton": "videoButtonsChannelIcon", "following": "videoButtonsFollowingIcon", "like": "videoButtonsLikeIcon", "dislike": "videoButtonsDislikeIcon", "toggleChat": "videoButtonsChatToggle" }
@@ -409,6 +539,10 @@ sub init()
   m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
   m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
   m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
+  ' Expose a callable for control buttons/grid to request a skip without changing selection
+  m.top.skipFromControlBar = sub(dir as integer)
+    skipFromControlBar(dir)
+  end sub
   m.oauthHeader = m.top.findNode("oauth-header")
   m.oauthCode = m.top.findNode("oauth-code")
   m.oauthFooter = m.top.findNode("oauth-footer")
@@ -1697,6 +1831,17 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             ? m.videoButtonSelected
             if m.videoButtonSelected = "channelButton"
               ? "Go to channel"
+              ' remember grid focus to restore after returning from channel
+              if IsValid(m.currentVideoPosition) and Type(m.currentVideoPosition) = "roArray" and m.currentVideoPosition.Count() >= 2
+                m.channelReturnRowCol = m.currentVideoPosition
+                if m.searchActive
+                  m.channelReturnContext = "search"
+                  m.preChannelSearchActive = m.searchActive
+                  m.preChannelSearchContext = m.searchContext
+                else
+                  m.channelReturnContext = "category"
+                end if
+              end if
               returnToUIPage()
               curChannel = m.currentVideoChannelID
               if not isValid(m.channelResolver)
@@ -1844,6 +1989,27 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             restoreVideoButtonFocus(focusIndex)
           end if
         end if
+        ' Enter category from sidebar with OK (same behavior as Right)
+        if m.focusedItem = 1 '[selector]
+          if m.categorySelector.itemFocused = 0
+            m.categorySelector.setFocus(false)
+            m.searchKeyboard.setFocus(true)
+            m.focusedItem = 3 '[search keyboard]
+          else if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.favoritesUIFlag and m.focusedItem <> 7
+            m.categorySelector.setFocus(false)
+            m.videoGrid.setFocus(true)
+            m.focusedItem = 2 '[video grid]
+          else if m.categorySelector.itemFocused = 1 and m.oauthLogoutButton.visible = true
+            m.videoGrid.setFocus(false)
+            m.oauthLogoutButton.setFocus(true)
+            m.focusedItem = 8 '[oauth logout button]
+          else if m.categorySelector.itemFocused > 1 and m.focusedItem <> 7
+            m.categorySelector.setFocus(false)
+            m.videoGrid.setFocus(true)
+            m.focusedItem = 2 '[video grid]
+          end if
+          return true
+        end if
       end if
 
       if key = "back" 'If the back button is pressed
@@ -1917,6 +2083,32 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             'VGM02
             showCategorySelector()
           end if
+          ' If backing out of a channel page, restore prior grid/search focus and context
+          if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+            if m.channelReturnContext = "search"
+              ' Restore search mode
+              m.searchActive = true
+              m.searchContext = m.preChannelSearchContext
+              ' Re-show search results content if available in uiLayers
+              if m.uiLayers.Count() > 0
+                m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
+              end if
+            else
+              ' Ensure category mode
+              m.searchActive = false
+            end if
+            if IsValid(m.channelReturnRowCol) and Type(m.channelReturnRowCol) = "roArray" and m.channelReturnRowCol.Count() >= 2
+              m.videoGrid.jumpToRowItem = m.channelReturnRowCol
+            end if
+            m.videoGrid.setFocus(true)
+            m.focusedItem = 2 '[video grid]
+            ' Clear channel context and return data
+            m.channelReturnRowCol = invalid
+            m.channelReturnContext = ""
+            m.preChannelSearchActive = false
+            m.preChannelSearchContext = { type: "", query: "", from: 0 }
+            m.currentChannelId = ""
+          end if
           return true
         else if m.uiLayer = 0 'is the first UI layer occupying vgrid? (FALLBACK)
           'this means we have no layers to fall back to, so by default, we should set focus to selector
@@ -1976,12 +2168,30 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       if key = "rewind"
         if m.video.visible and m.videoContent.Live = false
           focusInfo = captureVideoButtonsFocus()
-          focusIdx = -1
-          if focusInfo.hadFocus then focusIdx = focusInfo.index
-          showVideoOverlay()
+          focusIdx = focusInfo.index
+          keepFocus = isVideoButtonsFocused()
+          ' Always move focus off the control bar so it cannot react to RW
+          m.blockVideoButtonsFocusEvents = true
+          m.videoButtonsIndexBeforeSkip = -1
+          if keepFocus = true then m.videoButtonsIndexBeforeSkip = focusIdx
+          ' Some devices also emit LEFT with RW; swallow the next LEFT if controls were focused
+          if keepFocus = true then m.swallowNavKey = "left"
+          ' Temporarily disable grid navigation to prevent any internal key handling
+          try: m.videoButtons.focusable = false : catch e: end try
+          try: m.videoButtons.setFocus(false) : catch e: end try
+          try: m.video.setFocus(true) : catch e: end try
+          ' Show overlay without changing focus ownership
+          showVideoOverlay(false)
           if press = true then
             skipVideo(-m.skipStep)
-            restoreVideoButtonFocus(focusIdx)
+            if keepFocus and focusIdx >= 0 then restoreVideoButtonFocus(focusIdx)
+            ' Re-enable itemFocused events after the skip completes
+            m.blockVideoButtonsFocusEvents = false
+            try: m.videoButtons.focusable = true : catch e: end try
+          else
+            ' Key release path: ensure we don't leave events blocked
+            m.blockVideoButtonsFocusEvents = false
+            try: m.videoButtons.focusable = true : catch e: end try
           end if
           return true
         end if
@@ -1990,12 +2200,30 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       if key = "fastforward"
         if isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live = false
           focusInfo = captureVideoButtonsFocus()
-          focusIdx = -1
-          if focusInfo.hadFocus then focusIdx = focusInfo.index
-          showVideoOverlay()
+          focusIdx = focusInfo.index
+          keepFocus = isVideoButtonsFocused()
+          ' Always move focus off the control bar so it cannot react to FF
+          m.blockVideoButtonsFocusEvents = true
+          m.videoButtonsIndexBeforeSkip = -1
+          if keepFocus = true then m.videoButtonsIndexBeforeSkip = focusIdx
+          ' Some devices also emit RIGHT with FF; swallow the next RIGHT if controls were focused
+          if keepFocus = true then m.swallowNavKey = "right"
+          ' Temporarily disable grid navigation to prevent any internal key handling
+          try: m.videoButtons.focusable = false : catch e: end try
+          try: m.videoButtons.setFocus(false) : catch e: end try
+          try: m.video.setFocus(true) : catch e: end try
+          ' Show overlay without changing focus ownership
+          showVideoOverlay(false)
           if press = true then
             skipVideo(m.skipStep)
-            restoreVideoButtonFocus(focusIdx)
+            if keepFocus and focusIdx >= 0 then restoreVideoButtonFocus(focusIdx)
+            ' Re-enable itemFocused events after the skip completes
+            m.blockVideoButtonsFocusEvents = false
+            try: m.videoButtons.focusable = true : catch e: end try
+          else
+            ' Key release path: ensure we don't leave events blocked
+            m.blockVideoButtonsFocusEvents = false
+            try: m.videoButtons.focusable = true : catch e: end try
           end if
           return true
         end if
@@ -2018,6 +2246,16 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         return true
       end if
 
+      ' Some remotes send "replay" for the physical replay key
+      if key = "replay" then
+        if isValid(m.video) and m.video.visible
+          if press = true then
+            restartCurrentVideo()
+          end if
+          return true
+        end if
+      end if
+
       if key = "options"
         if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
           'VGM01
@@ -2026,6 +2264,18 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           if isValid(m.videoGrid) and isValid(m.videoGrid.rowItemFocused) and Type(m.videoGrid.rowItemFocused) = "roArray" and m.videoGrid.rowItemFocused.Count() >= 2
             row = m.videoGrid.rowItemFocused[0]
             col = m.videoGrid.rowItemFocused[1]
+          end if
+          if row >= 0 and col >= 0
+            m.channelReturnRowCol = [row, col]
+          else
+            m.channelReturnRowCol = invalid
+          end if
+          if m.searchActive
+            m.channelReturnContext = "search"
+            m.preChannelSearchActive = m.searchActive
+            m.preChannelSearchContext = m.searchContext
+          else
+            m.channelReturnContext = "category"
           end if
           itemNode = invalid
           if isValid(m.videoGrid) and isValid(m.videoGrid.content) and row >= 0 and col >= 0
@@ -2036,27 +2286,45 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               end if
             end if
           end if
-          if isValid(itemNode) and isValid(itemNode.CHANNEL) and itemNode.CHANNEL <> ""
-            curChannel = itemNode.CHANNEL
-            m.pendingChannelId = curChannel
-            ' Seed channel paging context immediately so autoload can run even before content arrives
-            m.currentChannelId = curChannel
-            m.currentChannelPage = 1
-            m.loadingChannelNext = false
-            if not isValid(m.channelResolver)
-              m.channelResolver = createObject("roSGNode", "getSingleChannel")
-              m.channelResolver.observeField("cookies", "gotCookies")
+          ? "[Options] row="; row; " col="; col
+          if isValid(itemNode)
+            ' Extract channel claim id from item node (handle field casing variants)
+            itemTypeStr = ""
+            if isValid(itemNode.ITEMTYPE) and itemNode.ITEMTYPE <> "" then itemTypeStr = itemNode.ITEMTYPE
+            if itemTypeStr = "" and isValid(itemNode.itemType) and itemNode.itemType <> "" then itemTypeStr = itemNode.itemType
+            ? "[Options] itemType="; itemTypeStr
+            ? "[Options] Channel fields => Channel="; itemNode.Channel; " CHANNEL="; itemNode.CHANNEL; " channel="; itemNode.channel
+            curChannel = invalid
+            if isValid(itemNode.Channel) and itemNode.Channel <> ""
+              curChannel = itemNode.Channel
+            else if isValid(itemNode.CHANNEL) and itemNode.CHANNEL <> ""
+              curChannel = itemNode.CHANNEL
+            else if isValid(itemNode.channel) and itemNode.channel <> ""
+              curChannel = itemNode.channel
             end if
-            m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, cookies: m.cookies })
-            m.channelResolver.observeField("output", "gotResolvedChannel")
-            m.channelResolver.control = "RUN"
-            m.taskRunning = True
-            ' Show quick hint while resolving
-            m.loadingText.visible = true
-            m.loadingText.text = "Opening channel… (press ← to go back)"
-            m.videoGrid.setFocus(false)
-            m.videoGrid.visible = false
-            ' Sidebar thumbnail will be shown in gotResolvedChannel
+            ? "[Options] selected curChannel="; curChannel
+            if isValid(curChannel) and curChannel <> ""
+              m.pendingChannelId = curChannel
+              ' Seed channel paging context immediately so autoload can run even before content arrives
+              m.currentChannelId = curChannel
+              m.currentChannelPage = 1
+              m.loadingChannelNext = false
+              if not isValid(m.channelResolver)
+                m.channelResolver = createObject("roSGNode", "getSingleChannel")
+                m.channelResolver.observeField("cookies", "gotCookies")
+              end if
+              ? "[Options] getSingleChannel.setFields channel="; curChannel
+              m.channelResolver.setFields({ constants: m.constants, channel: curChannel, uid: m.uid, cookies: m.cookies })
+              m.channelResolver.observeField("output", "gotResolvedChannel")
+              m.channelResolver.control = "RUN"
+              m.taskRunning = True
+              ' Show quick hint while resolving
+              m.loadingText.visible = true
+              m.loadingText.text = "Opening channel… (press ← to go back)"
+              m.videoGrid.setFocus(false)
+              m.videoGrid.visible = false
+              ' Sidebar thumbnail will be shown in gotResolvedChannel
+            end if
           end if
         end if
       end if
@@ -2150,6 +2418,21 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "up"
         if m.video.visible
+          ' If controls are focused, let grid handle navigation
+          if m.focusedItem = 7 and IsValid(m.videoButtons)
+            handled = false
+            if IsValid(m.videoButtons)
+              result = false
+              try
+                result = m.videoButtons.hasFocus()
+              catch e
+                result = false
+              end try
+              if result = true
+                return false
+              end if
+            end if
+          end if
           showVideoOverlay()
         end if
         if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
@@ -2181,6 +2464,21 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "down"
         if m.video.visible
+          ' If controls are focused, let grid handle navigation
+          if m.focusedItem = 7 and IsValid(m.videoButtons)
+            handled = false
+            if IsValid(m.videoButtons)
+              result = false
+              try
+                result = m.videoButtons.hasFocus()
+              catch e
+                result = false
+              end try
+              if result = true
+                return false
+              end if
+            end if
+          end if
           hideVideoOverlay()
         end if
         if m.focusedItem = 3 '[search keyboard]
@@ -2209,8 +2507,25 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "left"
+        ' Swallow a synthetic LEFT following RW to prevent selection jump
+        if m.swallowNavKey = "left"
+          m.swallowNavKey = ""
+          return true
+        end if
         if m.video.visible
           showVideoOverlay()
+        end if
+        ' When control bar is active, let MarkupGrid handle left/right navigation
+        if m.focusedItem = 7 and IsValid(m.videoButtons) then
+          result = false
+          try
+            result = m.videoButtons.hasFocus()
+          catch e
+            result = false
+          end try
+          if result = true
+            return false
+          end if
         end if
         if m.focusedItem = 2 '[video grid]
           if m.categorySelector.itemFocused = 0
@@ -2286,8 +2601,25 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "right"
+        ' Swallow a synthetic RIGHT following FF to prevent selection jump
+        if m.swallowNavKey = "right"
+          m.swallowNavKey = ""
+          return true
+        end if
         if m.video.visible
           showVideoOverlay()
+        end if
+        ' When control bar is active, let MarkupGrid handle left/right navigation
+        if m.focusedItem = 7 and IsValid(m.videoButtons) then
+          result = false
+          try
+            result = m.videoButtons.hasFocus()
+          catch e
+            result = false
+          end try
+          if result = true
+            return false
+          end if
         end if
         if m.focusedItem = 1 and m.categorySelector.itemFocused = 0 '[selector]
           m.focusedItem = 3 '[search keyboard]
@@ -2370,13 +2702,50 @@ end function
 
 sub videoButtonFocused(msg)
   mData = msg.getData()
+  ' If FF/RW handling is actively managing focus, ignore transient itemFocused events
+  if m.blockVideoButtonsFocusEvents = true then return
   if Type(mData) = "roInt"
+    total = -1
+    if IsValid(m.videoButtons.content) then total = m.videoButtons.content.getChildCount()
+    prevIdxType = Type(m.videoButtonsLastIndex)
+    prevIdx = -1
+    if (prevIdxType = "roInt" or prevIdxType = "Integer") then prevIdx = m.videoButtonsLastIndex
+    newIdx = mData
+    ' Detect unnatural edge jumps (likely caused by FF/RW at grid level)
+    isEdge = false
+    if total > 0 then isEdge = (newIdx = 0 or newIdx = total - 1)
+    bigJump = false
+    if prevIdx >= 0 and total > 0 then
+      if Abs(newIdx - prevIdx) > 1 then bigJump = true
+    end if
+    if isEdge and bigJump
+      ' Immediately revert to previous index to neutralize the grid's FF/RW handling
+      if prevIdx >= 0 and prevIdx < total
+        m.blockVideoButtonsFocusEvents = true
+        try: m.videoButtons.jumpToItem = prevIdx : catch e: end try
+        ' keep selection stable
+        nodePrev = invalid
+        try: nodePrev = m.videoButtons.content.getChild(prevIdx) : catch e: nodePrev = invalid : end try
+        if IsValid(nodePrev) and IsValid(nodePrev.itemID)
+          m.videoButtonSelected = nodePrev.itemID
+        end if
+        ' Also perform the intended skip immediately based on which edge was hit
+        if newIdx = 0 then
+          skipVideo(-m.skipStep)
+        else if total > 0 and newIdx = total - 1 then
+          skipVideo(m.skipStep)
+        end if
+        m.blockVideoButtonsFocusEvents = false
+        return
+      end if
+    end if
+    ' Normal focus update
     if isValid(m.videoButtons.content.getChildren(-1, 0)[mData].itemID)
       m.videoButtonSelected = m.videoButtons.content.getChildren(-1, 0)[mData].itemID
-      showVideoOverlay()
-      ' Immediately ensure new focused item shows red outline
-      restoreVideoButtonFocus(mData)
     end if
+    m.videoButtonsLastIndex = newIdx
+    ' Keep overlay visible but do not force re-focus here
+    showVideoOverlay(true)
   end if
 end sub
 
@@ -2506,7 +2875,7 @@ sub categorySelectorFocusChanged(msg)
   end if
 end sub
 
-sub showVideoOverlay()
+sub showVideoOverlay(keepButtonFocus = true as boolean)
   m.chatBackground.height = "780"
   m.chatBox.height = "780"
   m.videoUITimer.control = "stop"
@@ -2514,12 +2883,38 @@ sub showVideoOverlay()
   m.videoUITimer.duration = 5
   m.videoUITimer.observeField("fire", "hideVideoOverlay")
   m.videoUITimer.control = "start"
-  m.videoOverlayGroup.visible = true
-  info = captureVideoButtonsFocus()
-  if info.hadFocus and info.index >= 0 then
-    restoreVideoButtonFocus(info.index)
-  else
+  restoreIndex = -1
+  shouldRestore = false
+  if keepButtonFocus then
+    info = captureVideoButtonsFocus()
+    if info.hadFocus and info.index >= 0 then
+      restoreIndex = info.index
+      shouldRestore = true
+    end if
+  end if
+  if IsValid(m.videoOverlayGroup) then m.videoOverlayGroup.visible = true
+  if shouldRestore then
+    restoreVideoButtonFocus(restoreIndex)
+    m.focusedItem = 7 '[video player/overlay]
+  else if not keepButtonFocus then
+    if IsValid(m.videoButtons) then
+      try: m.videoButtons.setFocus(false) : catch e: end try
+    end if
     try: m.video.setFocus(true) : catch e: end try
+  else
+    ' No prior focused button but caller wants button focus: move focus to preferred index
+    idx = getPreferredVideoButtonsIndex()
+    restoreVideoButtonFocus(idx)
+    m.focusedItem = 7 '[video player/overlay]
+    ' Ensure current selection is set so OK works immediately
+    if IsValid(m.videoButtons) and IsValid(m.videoButtons.content)
+      if idx >= 0 and idx < m.videoButtons.content.getChildCount()
+        node = m.videoButtons.content.getChild(idx)
+        if IsValid(node) and IsValid(node.itemID)
+          m.videoButtonSelected = node.itemID
+        end if
+      end if
+    end if
   end if
 end sub
 
@@ -2633,11 +3028,14 @@ sub resolveError()
   m.videoGrid.setFocus(false)
   m.videoGrid.visible = False
   m.errorText.text = "Error: Could Not Resolve Claim"
-  m.errorSubtext.text = "Please e-mail help@odysee.com."
+  m.errorSubtext.text = "This video may be newly uploaded or temporarily unavailable. Try again."
   m.errorText.visible = true
   m.errorSubtext.visible = true
   m.errorButton.visible = true
-  m.errorButton.observeField("buttonSelected", "resolveerrorDismissed")
+  ' Present a retry option for resolve failures
+  m.errorButton.text = "Retry"
+  m.errorButton.unobserveField("buttonSelected")
+  m.errorButton.observeField("buttonSelected", "retryResolve")
   m.errorButton.setFocus(true)
 end sub
 
@@ -2688,11 +3086,67 @@ sub resolveErrorDismissed()
   end if
   m.errorButton.setFocus(false)
   m.errorButton.unobserveField("buttonSelected")
+  m.errorButton.text = "OK"
   m.errorText.visible = false
   m.errorSubtext.visible = false
   m.errorButton.visible = false
   m.videoGrid.visible = True
   m.videoGrid.setFocus(true)
+end sub
+
+' Re-run the video URL resolver after a temporary resolve failure
+sub retryResolve()
+  ' Hide error UI and restore default button text
+  m.errorButton.setFocus(false)
+  m.errorButton.unobserveField("buttonSelected")
+  m.errorButton.text = "OK"
+  m.errorText.visible = false
+  m.errorSubtext.visible = false
+  m.errorButton.visible = false
+
+  url = ""
+  title = ""
+  ' Prefer the last resolver URL if available
+  if isValid(m.urlResolver) and isValid(m.urlResolver.url)
+    url = m.urlResolver.url
+  end if
+  if (not isValid(url)) or url = ""
+    ' Fallback: derive from current grid selection
+    if isValid(m.currentVideoPosition) and Type(m.currentVideoPosition) = "roArray" and m.currentVideoPosition.Count() >= 2
+      row = m.currentVideoPosition[0]
+      col = m.currentVideoPosition[1]
+      if isValid(m.videoGrid) and isValid(m.videoGrid.content)
+        if m.videoGrid.content.getChildCount() > row
+          rnode = m.videoGrid.content.getChild(row)
+          if isValid(rnode) and rnode.getChildCount() > col
+            itemNode = rnode.getChild(col)
+            if isValid(itemNode) and isValid(itemNode.URL)
+              url = itemNode.URL
+              if isValid(itemNode.TITLE) then title = itemNode.TITLE
+            end if
+          end if
+        end if
+      end if
+    end if
+  end if
+  if (not isValid(url)) or url = ""
+    ' Nothing to retry; dismiss error
+    resolveErrorDismissed()
+    return
+  end if
+
+  ' Re-run the resolver with appropriate auth
+  if m.wasLoggedIn
+    m.urlResolver.setFields({ constants: m.constants, url: url, title: title, uid: m.uid, accesstoken: m.accessToken, authToken: "", cookies: m.cookies })
+  else
+    m.urlResolver.setFields({ constants: m.constants, url: url, title: title, uid: m.uid, accesstoken: "", authToken: m.authToken, cookies: m.cookies })
+  end if
+  m.urlResolver.observeField("output", "playResolvedVideo")
+  m.urlResolver.control = "RUN"
+  m.taskRunning = True
+  m.loadingText.visible = true
+  m.loadingText.text = "Retrying…"
+  m.videoGrid.setFocus(false)
 end sub
 
 sub cleanupToUIPage() 'more aggressive returnToUIPage, until I recreate the UI loop
@@ -2832,7 +3286,7 @@ sub resolveVideo(url = invalid)
           m.videoProgressBar.visible = false 'its live, we don't need progress updates.
           m.videoProgressBarp1.visible = false
           m.videoProgressBarp2.visible = false
-          m.videoButtons.setFocus(true)
+          ' Do not force focus here; the Video keeps focus on initial play
           m.focusedItem = 7 '[video player/overlay]
           m.video.control = "play"
           m.refreshes = 0
@@ -2847,13 +3301,47 @@ sub resolveVideo(url = invalid)
             "chat": "on_chat",
           "superchat": "on_superchat" })
           if isValid(m.preferences)
+            ' Build secure chat URL using canonical handle and short id from signing_channel
+            chatBase = m.constants["CHAT_API"]
+            catParam = ""
+            try
+              if isValid(curitem.chatCategory) and curitem.chatCategory <> ""
+                catParam = curitem.chatCategory
+              else
+                ' Fallback to @handle:shortId derived from channel id (first 1 char) if canonical missing
+                handle = ""
+                if isValid(curitem.rawCreator) and curitem.rawCreator <> "" then handle = curitem.rawCreator
+                sid = ""
+                if isValid(m.currentVideoChannelID) and m.currentVideoChannelID <> "" then sid = Left(m.currentVideoChannelID, 1)
+                if handle <> "" and sid <> "" then catParam = handle + ":" + sid
+              end if
+            catch e
+            end try
+            catEnc = catParam
+            try: catEnc = catParam.EncodeUriComponent() : catch e: end try
+            openUrl = chatBase + "/commentron?id=" + m.currentVideoClaimID + "&category=" + catEnc + "&sub_category=viewer"
+            ' Prepare WS headers as array pairs (Origin/Referer)
+            wsHeaders = []
+            try
+              origin$ = "https://odysee.com"
+              referer$ = "https://roku.odysee.com/"
+              if isValid(m.constants["ACCESS_HEADERS"]) and isValid(m.constants["ACCESS_HEADERS"]["origin"]) then origin$ = m.constants["ACCESS_HEADERS"]["origin"]
+              if isValid(m.constants["ACCESS_HEADERS"]) and isValid(m.constants["ACCESS_HEADERS"]["referer"]) then referer$ = m.constants["ACCESS_HEADERS"]["referer"]
+              wsHeaders = ["Origin", origin$, "Referer", referer$]
+            catch e
+              wsHeaders = []
+            end try
             if isValid(m.preferences.blocked)
-              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {}, uid: m.uid })
+              m.ws.setFields({ "blocked": m.preferences.blocked, "constants": m.constants, "open": openUrl, "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": wsHeaders, uid: m.uid })
             else
-              m.ws.setFields({ "constants": m.constants, "open": m.constants["CHAT_API"] + "/commentron?id=" + m.currentVideoClaimID + "&category=" + curitem.rawCreator + ":c&sub_category=viewer", "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": {}, "uid": m.uid })
+              m.ws.setFields({ "constants": m.constants, "open": openUrl, "streamclaim": m.currentVideoClaimID, "channelid": m.currentVideoChannelID, "protocols": [], "headers": wsHeaders, "uid": m.uid })
             end if
+            ? "[WS] built url="; openUrl
           end if
           ? m.ws.open
+          ? "[WS] open="; m.ws.open
+          ? "[WS] streamClaim="; m.currentVideoClaimID; " channelId="; m.currentVideoChannelID
+          ? "[WS] category param should be @handle:shortId"
           m.ws.control = "RUN"
           m.chatBox.visible = true
           m.chatBackground.visible = true
@@ -2868,10 +3356,12 @@ sub resolveVideo(url = invalid)
       m.videoButtons.itemSpacing = "[36, 20]"
       m.videoButtons.animateToItem = 3
       regenerateNormalButtonRefs()
+      ensureDefaultVideoButtonsIndex()
   else
     m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
     m.videoButtons.itemSpacing = "[36, 20]"
     m.videoButtons.animateToItem = 3
+    ensureDefaultVideoButtonsIndex()
     regenerateNormalButtonRefs()
   end if
     resetProgressUI(0)
@@ -2911,6 +3401,7 @@ sub resolveEvaluatedVideo(curItem)
       getReactions(curItem.guid)
       m.videoButtons.animateToItem = 4
       regenerateNormalButtonRefs()
+      ensureDefaultVideoButtonsIndex()
     end if
     if m.preferences.Count() > 0 and isValid(m.preferences.following)
       if m.preferences.following.Count() > 0
@@ -2939,6 +3430,7 @@ sub resolveEvaluatedVideo(curItem)
       m.videoButtons.itemSpacing = "[36, 20]"
       m.videoButtons.animateToItem = 3
       regenerateNormalButtonRefs()
+      ensureDefaultVideoButtonsIndex()
     end if
   end if
   if m.wasLoggedIn
@@ -2957,7 +3449,7 @@ sub resolveEvaluatedVideo(curItem)
   m.videoGrid.setFocus(false)
   m.videoGrid.visible = false
   m.loadingText.visible = true
-  m.loadingText.text = "Resolving Video..."
+  m.loadingText.text = "Loading Video..."
   ? "made it here"
 end sub
 
@@ -3161,8 +3653,9 @@ sub playResolvedVideo(msg as object)
       m.videoProgressBar.visible = true
       m.videoProgressBarp1.visible = true
       m.videoProgressBarp2.visible = true
-      m.video.setFocus(false)
-      m.videoButtons.setFocus(true)
+      ' Keep focus on Video; overlay will show without stealing focus
+      ' m.video.setFocus(false)
+      ' m.videoButtons.setFocus(true)
       m.focusedItem = 7 '[video player/overlay]
       updatePlaybackRateUI(m.playbackRateLabels[m.playbackRateIndex])
       applyPlaybackRate()
@@ -3649,6 +4142,8 @@ sub gotResolvedChannel(msg as object)
           end if
         end if
       end if
+      ' Always start channel pages at the first tile to avoid carrying prior grid position
+      try: m.videoGrid.jumpToRowItem = [0, 0] : catch e: end try
       m.channelResolver.control = "STOP"
       m.taskRunning = False
       m.focusedItem = 2 '[video grid]
@@ -3986,7 +4481,7 @@ sub Logout()
   end if
   if videoFocused = true
     m.focusedItem = 7
-    m.videoButtons.setFocus(true)
+    ' Keep any current focus; do not force control-bar focus here
     videofocused = invalid
   end if
   m.preferences = {}

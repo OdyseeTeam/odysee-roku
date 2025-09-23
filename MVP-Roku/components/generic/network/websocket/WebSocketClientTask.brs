@@ -23,6 +23,7 @@ end function
 function runtask() as void
     if isValid(m.top.streamClaim)
         if m.top.streamClaim <> "" and m.top.streamClaim <> "none"
+            ? "[WSC] streamClaim="; m.top.streamClaim; " channelId="; m.top.channelid
             'if isValid(m.top.blocked)
             '    if m.top.blocked.Count() > 0
             '    end if
@@ -71,7 +72,8 @@ function runtask() as void
             m.superchat = []
             m.rawChat = []
             m.parsedChat = []
-            for each superchatitem in superchatResponse.result.items
+            if isValid(superchatResponse) and isValid(superchatResponse.result) and Type(superchatResponse.result.items) = "roArray"
+                for each superchatitem in superchatResponse.result.items
                 message_supported = false
                 try 'check if supported
                     support_amount = superchatitem.support_amount
@@ -88,7 +90,8 @@ function runtask() as void
                     m.superchat.Push("[" + m.chatRegex.Replace(superchatitem["channel_name"] + "]: " + superchatitem["comment"].replace("\n", " ").Trim(), ""))
                     superChatLength += 1
                 end if
-            end for
+                end for
+            end if
             ? "WSC: Superchat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             ? m.superchat
             m.parseTimer.Mark()

@@ -8,9 +8,8 @@ function getLivestream(channel)
             lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_id": liveData["ActiveClaim"]["ClaimID"], "page": 1, "page_size": 1, "no_totals": true }, "id": m.top.uid })
             livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
             liveClaim = livestreamclaimquery["result"]["items"][0]
-            if getRawTextAuthenticated(liveData["VideoURL"], m.top.constants["ACCESS_HEADERS"]) = "{error: True}"
-                return { success: false }
-            end if
+            ' Do not gate on fetching VideoURL; CDN may return 4xx for HEAD/GET without token.
+            ' Trust the live API and proceed to build the livestream item.
             liveItem = parseLiveData(channel, liveData, liveClaim)
             return { liveItem: liveItem : success: true }
         else
@@ -199,7 +198,37 @@ function parseLiveData(channel, liveData, liveClaim)
             item.Creator = ""
         end try
     end try
-    item.Channel = channel
+    ' Raw creator (channel handle) used for chat category
+    try
+        item.rawCreator = liveClaim.signing_channel.name
+    catch e
+        item.rawCreator = ""
+    end try
+    ' Chat category from canonical_url: @handle:shortId
+    item.chatCategory = ""
+    try
+        canon = liveClaim.signing_channel.canonical_url
+        if IsValid(canon)
+            posAt = Instr(1, canon, "@")
+            posHash = Instr(1, canon, "#")
+            if posAt > 0 and posHash > posAt
+                handle = Mid(canon, posAt, posHash - posAt)
+                shortLen = Len(canon) - posHash
+                shortId = Mid(canon, posHash + 1, shortLen)
+                item.chatCategory = handle + ":" + shortId
+            end if
+        end if
+    catch e
+    end try
+    ' Prefer channel ID from signing_channel; fallback to API-provided ChannelClaimID
+    chanId = channel
+    try
+        if IsValid(liveClaim.signing_channel) and IsValid(liveClaim.signing_channel.claim_id)
+            chanId = liveClaim.signing_channel.claim_id
+        end if
+    catch e
+    end try
+    item.Channel = chanId
     item.ReleaseDate = startedAgo
     item.startUTC = streamStart 'for future use
     item.guid = ""
@@ -275,12 +304,15 @@ function parseLiveData(channel, liveData, liveClaim)
         chIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
     end if
     item.ChannelIcon = chIcon
+    ' For downstream handlers that read different casings, set all variants
+    item.CHANNEL = chanId
     item.url = liveData["VideoURL"]
     item.stream = { url: item.url }
     item.link = item.url
     item.streamFormat = "hls"
     item.source = "odysee"
     item.itemType = "livestream"
+    item.ITEMTYPE = "livestream"
     ' Ensure both cases for poster URL are set
     item.HDPOSTERURL = item.HDPosterURL
     ' Viewer count (raw and display)
