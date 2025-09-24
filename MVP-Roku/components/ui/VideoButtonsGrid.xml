@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <component name="VideoButtonsGrid" extends="MarkupGrid">
+  <interface>
+    <field id="skipRequest" type="integer" />
+  </interface>
   <script type="text/brightscript">
   <![CDATA[
     function IsValid(value as Dynamic) as Boolean
@@ -14,20 +17,8 @@
           if key = "fastforward" then dir = 1 else dir = -1
           scn = invalid
           try: scn = m.top.getScene() : catch e: scn = invalid : end try
-          if IsValid(scn)
-            handled = false
-            ' Prefer direct function if available
-            try
-              scn.skipFromControlBar(dir)
-              handled = true
-            catch e
-              handled = false
-            end try
-            if handled = false
-              ' Fallback to callFunc
-              try: scn.callFunc("skipFromControlBar", dir) : catch e: end try
-            end if
-          end if
+          ' Emit a skip request to be observed by the scene
+          m.top.skipRequest = dir
           return true
         end if
       end if

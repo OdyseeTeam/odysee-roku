@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
   xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 20 20"
+  viewBox="0 0 22 22"
   width="16"
   height="16"
   fill="none"
@@ -9,10 +9,10 @@
   stroke-width="2"
   stroke-linecap="round"
   stroke-linejoin="round"
-  class="icon icon--Gaming"
+  class="icon icon--Featured"
   aria-hidden="true">
   <g style="fill:none;stroke:#ffffff;stroke-opacity:1">
-    <path d="M18 5.49925L10.1096 10L18 14.5007C16.4248 17.1904 13.4811 19 10.1096 19C5.07849 19 1 14.9706 1 10C1 5.02944 5.07849 1 10.1096 1C13.4811 1 16.4248 2.80956 18 5.49925Z" />
+    <path d="M11 3L13.2627 8.73726L19 11L13.2627 13.2627L11 19L8.73726 13.2627L3 11L8.73726 8.73726L11 3Z" />
   </g>
 </svg>
 

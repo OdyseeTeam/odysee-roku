@@ -378,22 +378,33 @@ sub restartCurrentVideo()
 end sub
 
 ' Skip from control bar without changing selection/focus
-function skipFromControlBar(dir as integer) as void
-  if not IsValid(m.video) then return
-  if not IsValid(m.videoContent) or m.videoContent.Live then return
-  info = captureVideoButtonsFocus()
-  focusIdx = info.index
-  ' Prevent any focus-changed side-effects
+function skipFromControlBar(dir as integer, focusInfo = invalid as dynamic) as object
+  result = { hadFocus: false, index: -1 }
+  if dir = 0 then return result
+  if not IsValid(m.video) then return result
+  if not IsValid(m.videoContent) or m.videoContent.Live then return result
+
+  info = focusInfo
+  if not IsValid(info) then info = captureVideoButtonsFocus()
+
+  if IsValid(info)
+    had = false
+    idx = -1
+    try: had = info.hadFocus : catch e: had = false : end try
+    try: idx = info.index : catch e: idx = -1 : end try
+    result.hadFocus = had
+    result.index = idx
+  end if
+
   m.blockVideoButtonsFocusEvents = true
-  ' Keep overlay visible; preserve button focus
-  showVideoOverlay(true)
+  showVideoOverlay(false)
   if dir > 0 then
     skipVideo(m.skipStep)
   else if dir < 0 then
     skipVideo(-m.skipStep)
   end if
-  if focusIdx >= 0 then restoreVideoButtonFocus(focusIdx)
   m.blockVideoButtonsFocusEvents = false
+  return result
 end function
 
 ' Find [row, col] of an item in the current grid by its guid; returns invalid if not found
@@ -508,6 +519,8 @@ sub init()
   m.videoButtons = m.videoOverlayGroup.findNode("videoButtons")
   m.videoButtons.itemSize = [180, 128]
   m.videoButtons.itemSpacing = "[36, 20]"
+  ' Observe FF/RW skip requests from the control bar grid
+  try: m.videoButtons.observeField("skipRequest", "onControlBarSkip") : catch e: end try
   m.skipStep = 10 'seconds to skip on single-tap FF/RW and hold increments
   m.playbackRateValues = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
   m.playbackRateLabels = ["1.0x", "1.25x", "1.5x", "1.75x", "2.0x", "2.5x", "3.0x"]
@@ -539,10 +552,6 @@ sub init()
   m.searchHistoryDialog = m.top.findNode("searchHistoryDialog")
   m.searchHistoryContent = m.searchHistoryBox.findNode("searchHistoryContent")
   m.searchKeyboardGrid = m.searchKeyboard.getChildren(-1, 0)[0].getChildren(-1, 0)[1].getChildren(-1, 0)[0] 'Incredibly hacky VKBGrid access. Thanks Roku!
-  ' Expose a callable for control buttons/grid to request a skip without changing selection
-  m.top.skipFromControlBar = sub(dir as integer)
-    skipFromControlBar(dir)
-  end sub
   m.oauthHeader = m.top.findNode("oauth-header")
   m.oauthCode = m.top.findNode("oauth-code")
   m.oauthFooter = m.top.findNode("oauth-footer")
@@ -691,6 +700,54 @@ sub init()
   end if
   ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
   m.constantsTask.control = "RUN"
+end sub
+
+sub onControlBarSkip(evt as object)
+  if type(evt) = "roSGNodeEvent" and evt.getField() = "skipRequest"
+    dir = 0
+    try: dir = evt.getData() : catch e: dir = 0 : end try
+    if dir = 0 then return
+
+    focusInfo = captureVideoButtonsFocus()
+    hadFocus = false
+    focusIdx = -1
+    if IsValid(focusInfo)
+      try: hadFocus = focusInfo.hadFocus : catch e: hadFocus = false : end try
+      try: focusIdx = focusInfo.index : catch e: focusIdx = -1 : end try
+    end if
+
+    if hadFocus
+      if dir > 0 then
+        m.swallowNavKey = "right"
+      else if dir < 0
+        m.swallowNavKey = "left"
+      end if
+    end if
+
+    try: m.videoButtons.focusable = false : catch e: end try
+    skipResult = skipFromControlBar(dir, focusInfo)
+    try: m.videoButtons.focusable = true : catch e: end try
+
+    restoreNeeded = hadFocus
+    restoreIndex = focusIdx
+    if IsValid(skipResult)
+      tmpHad = restoreNeeded
+      tmpIdx = restoreIndex
+      try: tmpHad = skipResult.hadFocus : catch e: tmpHad = restoreNeeded : end try
+      try: tmpIdx = skipResult.index : catch e: tmpIdx = restoreIndex : end try
+      if tmpHad then
+        restoreNeeded = true
+        restoreIndex = tmpIdx
+      end if
+    end if
+
+    if restoreNeeded
+      restoreVideoButtonFocus(restoreIndex)
+    end if
+
+    ' Reset skipRequest so identical consecutive presses keep firing the observer
+    try: m.videoButtons.skipRequest = 0 : catch e: end try
+  end if
 end sub
 sub onRowItemFocused()
   focusPos = m.videoGrid.rowItemFocused
@@ -1689,8 +1746,6 @@ sub threadDone(msg as object)
         end if
       end for
         if m.authTask.authPhase > 0 and m.runningThreads.count() = 0 AND m.categories.count() > 0
-          ?m.categories
-          ?m.categories[m.categories.Keys()[0]]
           m.categorySelector.content = createObject("roSGNode", "ContentNode")
           for each category in m.categorySelectordata 'create categories for selector
             if isValid(category.trueName)
@@ -1808,6 +1863,21 @@ end sub
 'UI BACKBONE
 function onKeyEvent(key as string, press as boolean) as boolean 'Literally the backbone of the entire user interface
   'TODO: make more readable
+  ' High-priority Back handler: always allow exiting livestream, regardless of task state
+  if key = "back"
+    if press = true
+      vVisible = (IsValid(m.video) and m.video.visible)
+      isLive = (IsValid(m.videoContent) and IsValid(m.videoContent.Live) and m.videoContent.Live)
+      ? "[Back-top] press video.visible="; vVisible; " live="; isLive
+      if vVisible and isLive
+        try: m.ws.close = [1000, "user_back"] : catch e: end try
+        try: m.ws.control = "STOP" : catch e: end try
+        returnToUIPage()
+        ? "[Back-top] returnToUIPage() called"
+        return true
+      end if
+    end if
+  end if
   ?"task running state is:"
   ?m.taskRunning
   if m.taskRunning = False
@@ -2013,8 +2083,14 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "back" 'If the back button is pressed
+        ? "[Back] key received press="; press; " video.visible="; (IsValid(m.video) and m.video.visible); " live="; (IsValid(m.videoContent) and IsValid(m.videoContent.Live) and m.videoContent.Live)
         if m.video.visible
+          ? "[Back] tearing down WS and returning to UI"
+          ' Ensure WS/chat fully torn down so focus returns reliably
+          try: m.ws.close = [1000, "user_back"] : catch e: end try
+          try: m.ws.control = "STOP" : catch e: end try
           returnToUIPage()
+          ? "[Back] returnToUIPage() called"
           return true
         else if m.itemFocused = 20 '[error button]
           ErrorDismissed()
@@ -2434,6 +2510,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             end if
           end if
           showVideoOverlay()
+          return true
         end if
         if m.focusedItem = 4 '[confirm search]  'Search -> Keyboard
           m.searchKeyboardDialog.setFocus(false)
@@ -2480,6 +2557,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             end if
           end if
           hideVideoOverlay()
+          return true
         end if
         if m.focusedItem = 3 '[search keyboard]
           m.searchKeyboard.setFocus(false)
@@ -2514,6 +2592,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         end if
         if m.video.visible
           showVideoOverlay()
+          return true
         end if
         ' When control bar is active, let MarkupGrid handle left/right navigation
         if m.focusedItem = 7 and IsValid(m.videoButtons) then
@@ -2608,6 +2687,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         end if
         if m.video.visible
           showVideoOverlay()
+          return true
         end if
         ' When control bar is active, let MarkupGrid handle left/right navigation
         if m.focusedItem = 7 and IsValid(m.videoButtons) then
@@ -3317,9 +3397,8 @@ sub resolveVideo(url = invalid)
               end if
             catch e
             end try
-            catEnc = catParam
-            try: catEnc = catParam.EncodeUriComponent() : catch e: end try
-            openUrl = chatBase + "/commentron?id=" + m.currentVideoClaimID + "&category=" + catEnc + "&sub_category=viewer"
+            ' Do NOT URL-encode category; server expects raw @handle:shortId
+            openUrl = chatBase + "/commentron?id=" + m.currentVideoClaimID + "&category=" + catParam + "&sub_category=viewer"
             ' Prepare WS headers as array pairs (Origin/Referer)
             wsHeaders = []
             try
@@ -3327,7 +3406,18 @@ sub resolveVideo(url = invalid)
               referer$ = "https://roku.odysee.com/"
               if isValid(m.constants["ACCESS_HEADERS"]) and isValid(m.constants["ACCESS_HEADERS"]["origin"]) then origin$ = m.constants["ACCESS_HEADERS"]["origin"]
               if isValid(m.constants["ACCESS_HEADERS"]) and isValid(m.constants["ACCESS_HEADERS"]["referer"]) then referer$ = m.constants["ACCESS_HEADERS"]["referer"]
-              wsHeaders = ["Origin", origin$, "Referer", referer$]
+              ua$ = "Roku"
+              try: ua$ = m.constants["userAgent"] : catch e: ua$ = ua$ : end try
+              wsExt$ = "permessage-deflate; client_max_window_bits"
+              ' Header array must be [key, value, key, value, ...]
+              wsHeaders = [
+                "Origin", origin$,
+                "Referer", referer$,
+                "User-Agent", ua$,
+                "Sec-WebSocket-Extensions", wsExt$,
+                "Accept-Encoding", "gzip, deflate",
+                "Accept-Language", "en-US,en;q=0.9,pl-PL;q=0.8,pl;q=0.7"
+              ]
             catch e
               wsHeaders = []
             end try
@@ -3346,6 +3436,8 @@ sub resolveVideo(url = invalid)
           m.chatBox.visible = true
           m.chatBackground.visible = true
           m.videoGrid.setFocus(false)
+          ' Force scene to own key handling during live so back/overlay always work
+          try: m.top.setFocus(true) : catch e: end try
         end if
       end if
     end if

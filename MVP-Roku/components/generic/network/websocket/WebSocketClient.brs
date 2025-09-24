@@ -451,6 +451,11 @@ function WebSocketClient() as object
             return
         end if
         if status_line[2] <> "101"
+            ' Surface full response for troubleshooting
+            ? "[WSClient] Handshake failed:"
+            for i = 0 to lines.count() - 1
+                ? lines[i]
+            end for
             m._close()
             m._error(8, "Invalid handshake: HTTP status code is not 101: Received " + status_line[2])
             return
@@ -565,21 +570,18 @@ function WebSocketClient() as object
         end if
     end function
 
-    ' Generate a 20 character [A-Za-z0-9] random string and base64 encode it
-    ' @param self WebSocketClient
-    ' @return string random 20 character base64 encoded string
+    ' Generate a Sec-WebSocket-Key per RFC6455: base64-encoded 16-byte random value
+    ' @return string base64 of 16 random bytes
     ws._generate_sec_ws_key = function () as string
-        sec_ws_key = ""
-        for char_index = 0 to 19
-            char = m._CHARS[rnd(m._CHARS.count()) - 1]
-            if rnd(2) = 1
-                char = ucase(char)
-            end if
-            sec_ws_key += char
+        bytes = createObject("roByteArray")
+        for i = 0 to 15
+            ' rnd(256) returns 1..256 → subtract 1 to get 0..255
+            b = rnd(256) - 1
+            if b < 0 then b = 0
+            if b > 255 then b = 255
+            bytes.push(b)
         end for
-        ba = createObject("roByteArray")
-        ba.fromAsciiString(sec_ws_key)
-        return ba.toBase64String()
+        return bytes.toBase64String()
     end function
 
     ' Connect to the specified URL
@@ -641,7 +643,11 @@ function WebSocketClient() as object
             end if
             ' handshake += "Sec-WebSocket-Extensions: " + m._NL
             handshake += "Sec-WebSocket-Version: 13" + m._NL
+            ' Common server expectations
+            handshake += "Pragma: no-cache" + m._NL
+            handshake += "Cache-Control: no-cache" + m._NL
             handshake += m._get_parsed_user_headers()
+            ' Ensure Host header casing and Connection/Upgrade casing are standard
             handshake += m._NL
             m._handshake = handshake
             ? "[WSClient] handshake host="; hostHeader

@@ -14,7 +14,16 @@ sub master()
             userAPI = m.top.constants["ROOT_API"] + "/user"
             new = userAPI + "/new"
             existing = userAPI + "/me"
-            currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, { "Authorization": "Bearer " + m.top.accessToken })
+            ' Prefer Bearer verification when we have a valid access token; otherwise use legacy auth_token without headers
+            headers = {}
+            if isValid(m.top.accessToken) and m.top.accessToken <> ""
+                headers = { "Authorization": "Bearer " + m.top.accessToken }
+                currentUserStatus = getJSONAuthenticated(existing, headers)
+            else if isValid(m.top.authtoken) and m.top.authtoken <> ""
+                currentUserStatus = getURLEncoded({ auth_token: m.top.authtoken.Trim() }, existing, [])
+            else
+                currentUserStatus = invalid
+            end if
             ?FormatJSON(currentUserStatus)
             if isValid(currentUserStatus)
                 if currentUserStatus.success
@@ -23,7 +32,7 @@ sub master()
                     m.top.legacyAuthorized = true
                     m.top.authPhase = 1
                 else
-                    ?"FAILURE! (accessToken is invalid)"
+                    ?"FAILURE! (could not validate current user)"
                     newUserData = parseJSON(getRawText(new))
                     currentUserStatus = getURLEncoded({ auth_token: newUserData.data.auth_token.Trim() }, existing, [])
                     if currentUserStatus.success = false

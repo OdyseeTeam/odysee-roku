@@ -38,8 +38,8 @@ sub master()
                 if fileSystem.Exists("pkg:/images/png/" + category.icon.replace(" ", "") + ".png")
                     dataItem.posterUrl = "pkg:/images/png/" + category.icon.replace(" ", "") + ".png"
                 else
-                    if urlExists("https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png")
-                        dataItem.posterUrl = "https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/indev/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png"
+                    if urlExists("https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/latest-version/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png")
+                        dataItem.posterUrl = "https://raw.githubusercontent.com/OdyseeTeam/odysee-roku/latest-version/MVP-Roku/images/png/" + category.icon.replace(" ", "") + ".png"
                     else
                         dataItem.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
                     end if
