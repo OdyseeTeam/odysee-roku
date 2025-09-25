@@ -11,6 +11,12 @@ sub master()
             ?"Start 'Legacy'/older authentication"
             ?"Current Constants are:"
             ?m.top.constants
+            ?"[Boot][authTask] Phase 0 entry; tokens present?"
+            atp = false: rtp = false: lgt = false
+            try: atp = IsValid(m.top.accessToken) and m.top.accessToken <> "" : catch e: atp = false : end try
+            try: rtp = IsValid(m.top.refreshToken) and m.top.refreshToken <> "" : catch e: rtp = false : end try
+            try: lgt = IsValid(m.top.authtoken) and m.top.authtoken <> "" : catch e: lgt = false : end try
+            ?"[Boot][authTask] accessToken="+ (atp).ToStr() + ", refreshToken=" + (rtp).ToStr() + ", legacyAuthToken=" + (lgt).ToStr()
             userAPI = m.top.constants["ROOT_API"] + "/user"
             new = userAPI + "/new"
             existing = userAPI + "/me"
@@ -71,9 +77,11 @@ sub master()
             ' Then you poll the token endpoint with the returned device_code to get an access token.
             'https://sso.odysee.com/auth/realms/Users/protocol/openid-connect/token
             ?"authphase is 1: begin new auth"
+            ?"[Boot][authTask] Phase 1 entry; refresh token missing"
             initOAuthTokenBase()
         else if m.top.authPhase = 1 and m.top.refreshToken <> ""
             ?"got a valid Refresh Token from Registry"
+            ?"[Boot][authTask] Phase 1 entry; will refresh via token"
             m.authTimer.duration = 10
             m.authTimer.control = "start"
             checkRefresh()
