@@ -364,51 +364,100 @@ function urlencode(data)
 end function
 
 function getJSONAuthenticated(url, headers = invalid) as Object
-  http = httpPreSetup(url)
-  if IsValid(headers)
-    if headers.Count() > 0
-      http.SetHeaders(headers) 'in some cases, this is actually needed!
-    end if
-  end if
-  if http.AsyncGetToString() then
-    event = Wait(10000, http.GetPort())
-      if Type(event) = "roUrlEvent" Then
-        responseCode = event.GetResponseCode()
-        if responseCode <= 299 AND responseCode >= 200
-          m.top.cookies = http.getCookies("", "/")
-          response = parsejson(event.getString().replace("\n","|||||"))
+  response = {}
+  currentUrl = url
+  maxRetries = 5
+  maxRedirects = 5
+  retries = 0
+  backoffMs = 250
+  done = false
+
+  while done = false and retries <= maxRetries
+    redirects = 0
+    innerUrl = currentUrl
+
+    while redirects <= maxRedirects
+      http = httpPreSetup(innerUrl)
+      if IsValid(headers)
+        if headers.Count() > 0
+          http.SetHeaders(headers)
         end if
-        if responseCode <= 399 AND responseCode >= 300
-          lheaders = event.GetResponseHeaders()
-          redirect = lheaders.location
-          http.asynccancel()
-          return getJSONAuthenticated(redirect, headers)
-        end if
-        if responseCode <= 499 AND responseCode >= 400
-          try
+      end if
+
+      if http.AsyncGetToString() then
+        event = Wait(10000, http.GetPort())
+        if Type(event) = "roUrlEvent" Then
+          responseCode = event.GetResponseCode()
+
+          if responseCode >= 200 and responseCode <= 299
+            ' Success
             m.top.cookies = http.getCookies("", "/")
             response = parsejson(event.getString().replace("\n","|||||"))
-          catch e
-            return {success: False}
-          end try
-        end if
-        if responseCode <= 599 AND responseCode >= 500
+            done = true
+            exit while
+          else if responseCode >= 300 and responseCode <= 399
+            ' Redirect
+            lheaders = event.GetResponseHeaders()
+            redirect = lheaders.location
+            if IsValid(redirect) and redirect <> ""
+              innerUrl = redirect
+              redirects = redirects + 1
+              http.asynccancel()
+            else
+              ' Invalid redirect
+              done = true
+              response = {success: False, error: "Invalid redirect"}
+              exit while
+            end if
+          else if responseCode >= 400 and responseCode <= 499
+            ' Client error - don't retry
+            try
+              m.top.cookies = http.getCookies("", "/")
+              response = parsejson(event.getString().replace("\n","|||||"))
+            catch e
+              response = {success: False, error: "Client error"}
+            end try
+            done = true
+            exit while
+          else if responseCode >= 500 and responseCode <= 599
+            ' Server error - retry with backoff
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          else
+            ' Unexpected response code
+            http.asynccancel()
+            retries = retries + 1
+            exit while
+          end if
+        else if event = invalid then
+          ' Timeout or connection error - retry
           http.asynccancel()
-          return getJSONAuthenticated(url, headers)
+          retries = retries + 1
+          exit while
+        else
+          ? "[LBRY_HTTP] AsyncGetToString unknown event"
+          done = true
+          response = {success: False, error: "Unknown event"}
+          exit while
         end if
-        if event <> invalid AND responseCode < 100 OR event <> invalid AND responseCode > 599
-          http.asynccancel()
-          return getJSONAuthenticated(url, headers)
-        end if
-      else if event = invalid then
-        http.asynccancel()
-        return getJSONAuthenticated(url, headers)
-      Else
-        ? "[LBRY_HTTP] AsyncGetToString unknown event"
+      else
+        ' Failed to start async request
+        done = true
+        response = {success: False, error: "Failed to start request"}
+        exit while
+      end if
+    end while
+
+    ' Apply backoff before retry
+    if done = false and retries <= maxRetries
+      Sleep(backoffMs)
+      if backoffMs < 2000 then backoffMs = backoffMs * 2
     end if
-  end if
-cleanup()
-return response
+  end while
+
+  cleanup()
+  return response
 end function
 
 function getJSON(url) as Object
