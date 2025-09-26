@@ -145,8 +145,6 @@
       if key = "fastforward" or key = "rewind"
         dir = 0
         if key = "fastforward" then dir = 1 else dir = -1
-        ' Swallow the next directional key the platform may emit alongside FF/RW
-        if key = "fastforward" then m.swallowNextNavKey = "right" else m.swallowNextNavKey = "left"
         scn = invalid
         try: scn = m.top.getScene() : catch e: scn = invalid : end try
         if isValid(scn)
@@ -154,12 +152,6 @@
           try: scn.callFunc("skipFromControlBar", dir) : catch e: end try
         end if
         return true
-      end if
-      if (key = "left" or key = "right") and isValid(m.swallowNextNavKey)
-        if m.swallowNextNavKey = key
-          m.swallowNextNavKey = invalid
-          return true
-        end if
       end if
     end if
     return false
@@ -170,7 +162,6 @@
     m.itemOutline = m.top.findNode("outline")
     m.itemBackground = m.top.findNode("background")
     m.itemFocusBackground = m.top.findNode("focusBackground")
-    m.swallowNextNavKey = invalid
   end function
 
 ]]>

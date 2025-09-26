@@ -1,4 +1,4 @@
-' Safe seek helper: clamps to [0, totalLen]
+﻿' Safe seek helper: clamps to [0, totalLen]
 sub safeSeek(newPos as integer)
   if not IsValid(m.video) then return
   totalLen = getCurrentContentLength()
@@ -163,6 +163,20 @@ sub updatePlaybackRateUI(label as string)
   info = captureVideoButtonsFocus()
   if info.hadFocus and info.index >= 0 then
     restoreVideoButtonFocus(info.index)
+  end if
+end sub
+
+' Update the Loop button visual based on m.loopEnabled
+sub updateLoopButtonUI()
+  btn = invalid
+  try: btn = m.videoButtonsLoop : catch e: btn = invalid : end try
+  if not IsValid(btn) then return
+  if m.loopEnabled = true then
+    ' Green fill when loop is active
+    btn.backgroundColor = "0x00C853"
+  else
+    ' Default dark background when inactive
+    btn.backgroundColor = "0x000000"
   end if
 end sub
 
@@ -396,6 +410,15 @@ function skipFromControlBar(dir as integer, focusInfo = invalid as dynamic) as o
     result.index = idx
   end if
 
+  ' No nav-key swallowing; rely on temporary focus disable and focus restore
+
+  ' Temporarily disable the control bar's focusability so it cannot react to
+  ' any synthetic nav keypress while we perform the seek
+  hadFocusBefore = result.hadFocus
+  idxBefore = result.index
+  try: m.videoButtons.focusable = false : catch e: end try
+  try: m.videoButtons.setFocus(false) : catch e: end try
+
   m.blockVideoButtonsFocusEvents = true
   showVideoOverlay(false)
   if dir > 0 then
@@ -404,6 +427,13 @@ function skipFromControlBar(dir as integer, focusInfo = invalid as dynamic) as o
     skipVideo(-m.skipStep)
   end if
   m.blockVideoButtonsFocusEvents = false
+
+  ' Re-enable the control bar and restore prior focus/index if it had focus before
+  try: m.videoButtons.focusable = true : catch e: end try
+  if hadFocusBefore = true and idxBefore >= 0 then
+    restoreVideoButtonFocus(idxBefore)
+  end if
+
   return result
 end function
 
@@ -453,6 +483,7 @@ sub init()
   m.videoButtonsLastIndex = -1
   ' One-shot suppression of a following LEFT/RIGHT that some remotes emit with FF/RW
   m.swallowNavKey = ""
+  m.swallowNavKeyExpiry = 0
   ' Prevent control bar focus from jumping on FF/RW (while true, ignore itemFocused events)
   m.blockVideoButtonsFocusEvents = false
   m.videoButtonsIndexBeforeSkip = -1
@@ -708,42 +739,9 @@ sub onControlBarSkip(evt as object)
     try: dir = evt.getData() : catch e: dir = 0 : end try
     if dir = 0 then return
 
-    focusInfo = captureVideoButtonsFocus()
-    hadFocus = false
-    focusIdx = -1
-    if IsValid(focusInfo)
-      try: hadFocus = focusInfo.hadFocus : catch e: hadFocus = false : end try
-      try: focusIdx = focusInfo.index : catch e: focusIdx = -1 : end try
-    end if
-
-    if hadFocus
-      if dir > 0 then
-        m.swallowNavKey = "right"
-      else if dir < 0
-        m.swallowNavKey = "left"
-      end if
-    end if
-
-    try: m.videoButtons.focusable = false : catch e: end try
-    skipResult = skipFromControlBar(dir, focusInfo)
-    try: m.videoButtons.focusable = true : catch e: end try
-
-    restoreNeeded = hadFocus
-    restoreIndex = focusIdx
-    if IsValid(skipResult)
-      tmpHad = restoreNeeded
-      tmpIdx = restoreIndex
-      try: tmpHad = skipResult.hadFocus : catch e: tmpHad = restoreNeeded : end try
-      try: tmpIdx = skipResult.index : catch e: tmpIdx = restoreIndex : end try
-      if tmpHad then
-        restoreNeeded = true
-        restoreIndex = tmpIdx
-      end if
-    end if
-
-    if restoreNeeded
-      restoreVideoButtonFocus(restoreIndex)
-    end if
+    ' Centralized handling performs swallow, disables focus, performs seek,
+    ' and restores prior selection/focus when appropriate.
+    skipFromControlBar(dir)
 
     ' Reset skipRequest so identical consecutive presses keep firing the observer
     try: m.videoButtons.skipRequest = 0 : catch e: end try
@@ -1927,7 +1925,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               m.videoGrid.setFocus(false)
               m.videoGrid.visible = false
               m.loadingText.visible = true
-              m.loadingText.text = "Resolving Channel..."
+              m.loadingText.text = "Opening channel… (press ← to go back)"
             else if m.videoButtonSelected = "following"
               ? "Subscribe/Follow"
               ? m.wasLoggedIn
@@ -1966,7 +1964,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ' Toggle loop for VODs only
               if isValid(m.videoContent) and m.videoContent.Live = false
                 m.loopEnabled = not m.loopEnabled
-                ' optional UI feedback: briefly bump focus stays on same button
+                updateLoopButtonUI()
               end if
             else if m.videoButtonSelected = "playPause"
               'Play Button
@@ -2079,6 +2077,19 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.focusedItem = 2 '[video grid]
           end if
           return true
+        else if m.video.visible = true
+          ' When playing a video and overlay is hidden or controls not focused,
+          ' pressing OK should bring focus to the control bar instead of doing nothing
+          overlayVisible = false
+          try: overlayVisible = m.videoOverlayGroup.visible : catch e: overlayVisible = false : end try
+          if overlayVisible = false then
+            showVideoOverlay()
+            return true
+          else if not isVideoButtonsFocused()
+            idx = getPreferredVideoButtonsIndex()
+            restoreVideoButtonFocus(idx)
+            return true
+          end if
         end if
       end if
 
@@ -2250,8 +2261,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.blockVideoButtonsFocusEvents = true
           m.videoButtonsIndexBeforeSkip = -1
           if keepFocus = true then m.videoButtonsIndexBeforeSkip = focusIdx
-          ' Some devices also emit LEFT with RW; swallow the next LEFT if controls were focused
-          if keepFocus = true then m.swallowNavKey = "left"
+          ' Do not swallow nav; focus is disabled during seek and restored after
           ' Temporarily disable grid navigation to prevent any internal key handling
           try: m.videoButtons.focusable = false : catch e: end try
           try: m.videoButtons.setFocus(false) : catch e: end try
@@ -2282,8 +2292,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.blockVideoButtonsFocusEvents = true
           m.videoButtonsIndexBeforeSkip = -1
           if keepFocus = true then m.videoButtonsIndexBeforeSkip = focusIdx
-          ' Some devices also emit RIGHT with FF; swallow the next RIGHT if controls were focused
-          if keepFocus = true then m.swallowNavKey = "right"
+          ' Do not swallow nav; focus is disabled during seek and restored after
           ' Temporarily disable grid navigation to prevent any internal key handling
           try: m.videoButtons.focusable = false : catch e: end try
           try: m.videoButtons.setFocus(false) : catch e: end try
@@ -2585,13 +2594,30 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "left"
-        ' Swallow a synthetic LEFT following RW to prevent selection jump
-        if m.swallowNavKey = "left"
-          m.swallowNavKey = ""
-          return true
-        end if
+        ' Ensure the very first LEFT after a skip moves selection immediately
         if m.video.visible
-          showVideoOverlay()
+          overlayVisible = false
+          try: overlayVisible = m.videoOverlayGroup.visible : catch e: overlayVisible = false : end try
+          if overlayVisible = false then
+            ' Show overlay and compute new index immediately
+            showVideoOverlay()
+            baseIdx = getPreferredVideoButtonsIndex()
+          else
+            if not isVideoButtonsFocused() then
+              baseIdx = getPreferredVideoButtonsIndex()
+            else
+              info = captureVideoButtonsFocus()
+              baseIdx = info.index
+            end if
+          end if
+          if baseIdx < 0 then baseIdx = 0
+          total = -1
+          if IsValid(m.videoButtons) and IsValid(m.videoButtons.content) then
+            total = m.videoButtons.content.getChildCount()
+          end if
+          newIdx = baseIdx - 1
+          if total > 0 and newIdx < 0 then newIdx = 0
+          restoreVideoButtonFocus(newIdx)
           return true
         end if
         ' When control bar is active, let MarkupGrid handle left/right navigation
@@ -2680,13 +2706,30 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "right"
-        ' Swallow a synthetic RIGHT following FF to prevent selection jump
-        if m.swallowNavKey = "right"
-          m.swallowNavKey = ""
-          return true
-        end if
+        ' Ensure the very first RIGHT after a skip moves selection immediately
         if m.video.visible
-          showVideoOverlay()
+          overlayVisible = false
+          try: overlayVisible = m.videoOverlayGroup.visible : catch e: overlayVisible = false : end try
+          if overlayVisible = false then
+            ' Show overlay and compute new index immediately
+            showVideoOverlay()
+            baseIdx = getPreferredVideoButtonsIndex()
+          else
+            if not isVideoButtonsFocused() then
+              baseIdx = getPreferredVideoButtonsIndex()
+            else
+              info = captureVideoButtonsFocus()
+              baseIdx = info.index
+            end if
+          end if
+          if baseIdx < 0 then baseIdx = 0
+          total = -1
+          if IsValid(m.videoButtons) and IsValid(m.videoButtons.content) then
+            total = m.videoButtons.content.getChildCount()
+          end if
+          newIdx = baseIdx + 1
+          if total > 0 and newIdx >= total then newIdx = total - 1
+          restoreVideoButtonFocus(newIdx)
           return true
         end if
         ' When control bar is active, let MarkupGrid handle left/right navigation
@@ -3313,7 +3356,7 @@ sub resolveVideo(url = invalid)
           m.videoGrid.setFocus(false)
           m.videoGrid.visible = false
           m.loadingText.visible = true
-          m.loadingText.text = "Resolving Channel..."
+          m.loadingText.text = "Opening channel… (press ← to go back)"
         end if
         if curItem.itemType = "livestream"
           ?"Playing a livestream"
@@ -3739,6 +3782,8 @@ sub playResolvedVideo(msg as object)
       m.videoContent.streamFormat = data.videotype
       m.videoContent.title = data.title 'passthrough title
       m.videoContent.Live = false
+      ' Reset loop state for each new VOD and update button UI
+      m.loopEnabled = false
       m.video.content = m.videoContent
       m.videoVP = 0
       m.video.visible = true
@@ -3750,6 +3795,7 @@ sub playResolvedVideo(msg as object)
       ' m.videoButtons.setFocus(true)
       m.focusedItem = 7 '[video player/overlay]
       updatePlaybackRateUI(m.playbackRateLabels[m.playbackRateIndex])
+      updateLoopButtonUI()
       applyPlaybackRate()
       m.video.control = "play"
       ' Attempt to resume from saved position
@@ -3839,10 +3885,6 @@ function onVideoStateChanged(msg as object)
     end if
     if state = "finished"
       deleteSpinner()
-      if m.global.constants.enableStatistics
-        m.video.unobserveField("position")
-      end if
-      m.video.unobserveField("duration")
       ' Clear resume on completion
       if isValid(m.currentVideoClaimID)
         resumeKey = "resume-" + m.currentVideoClaimID
@@ -3851,9 +3893,15 @@ function onVideoStateChanged(msg as object)
       if m.loopEnabled = true and isValid(m.videoContent) and m.videoContent.Live = false
         ' Loop current video: seek to 0 and play again
         try: m.video.seek = 0 : catch e: end try
+        m.lastKnownVideoPos = 0
+        m.scrubTarget = 0
+        updateScrubUI()
         m.video.control = "play"
         return invalid
       end if
+      ' Not looping: tear down observers and return to UI
+      if m.global.constants.enableStatistics then m.video.unobserveField("position")
+      m.video.unobserveField("duration")
       m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
       m.videoProgressBar.width = 0
@@ -4640,6 +4688,8 @@ sub regenerateNormalButtonRefs()
   if IsValid(m.playbackRateLabels)
     updatePlaybackRateUI(m.playbackRateLabels[m.playbackRateIndex])
   end if
+  ' Re-apply loop visual if present in this layout
+  updateLoopButtonUI()
 end sub
 
 sub regenerateLiveButtonRefs()
