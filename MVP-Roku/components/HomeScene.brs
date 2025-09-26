@@ -754,6 +754,31 @@ sub init()
   m.constantsTask.control = "RUN"
 end sub
 
+' Helper function to get current view context for logging
+function getCurrentViewContext() as string
+  if m.focusedItem = 2
+    if isValid(m.categorySelector) and m.categorySelector.visible = true
+      catIndex = m.categorySelector.itemFocused
+      if catIndex >= 0 and IsValid(m.categorySelectordata) and catIndex < m.categorySelectordata.Count()
+        return m.categorySelectordata[catIndex].trueName
+      else
+        return "unknown_category"
+      end if
+    else if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+      return "channel:" + m.currentChannelId
+    else if m.searchActive = true
+      return "search:" + m.searchContext.type
+    end if
+  else if m.focusedItem = 1
+    return "sidebar"
+  else if m.focusedItem = 3 or m.focusedItem = 4 or m.focusedItem = 5
+    return "search_ui"
+  else if m.focusedItem = 7
+    return "video_playing"
+  end if
+  return "other"
+end function
+
 sub onControlBarSkip(evt as object)
   if type(evt) = "roSGNodeEvent" and evt.getField() = "skipRequest"
     dir = 0
@@ -912,8 +937,46 @@ end sub
 sub refreshAllLive()
   if not IsValid(m.allLiveTask) then return
   if m.allLiveTask.state = "run" then return ' avoid overlapping
-  m.allLiveTask.setField("constants", m.constants)
-  m.allLiveTask.control = "RUN"
+
+  ' Optimization: Only refresh if we're viewing content that benefits from live updates
+  shouldRefresh = false
+
+  ' Always refresh if we're on the main grid (focusedItem = 2)
+  if m.focusedItem = 2
+    ' Check what type of content is currently visible
+    if isValid(m.categorySelector) and m.categorySelector.visible = true
+      catIndex = m.categorySelector.itemFocused
+      if catIndex >= 0 and IsValid(m.categorySelectordata) and catIndex < m.categorySelectordata.Count()
+        catName = m.categorySelectordata[catIndex].trueName
+        ' Always refresh these live-heavy categories
+        if catName = "wildwest" or catName = "FAVORITES"
+          shouldRefresh = true
+        ' For other categories, only refresh if they have live content potential
+        else if IsValid(m.channelIDs[catName]) and IsValid(m.channelIDs[catName]["channelIds"])
+          shouldRefresh = true
+        end if
+      end if
+    ' Always refresh when viewing individual channels (they might have live streams)
+    else if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+      shouldRefresh = true
+    end if
+  end if
+
+  ' Also refresh if user is logged in (to keep FAVORITES current in background)
+  if not shouldRefresh and m.wasLoggedIn = true
+    if IsValid(m.preferences) and IsValid(m.preferences.following) and m.preferences.following.Count() > 0
+      shouldRefresh = true
+      ? "[Live] Refreshing for logged-in user with " + Str(m.preferences.following.Count()) + " followed channels"
+    end if
+  end if
+
+  if shouldRefresh
+    ? "[Live] Refreshing live data - focusedItem=" + Str(m.focusedItem) + " currentView=" + getCurrentViewContext()
+    m.allLiveTask.setField("constants", m.constants)
+    m.allLiveTask.control = "RUN"
+  else
+    ? "[Live] Skipping refresh - not viewing live-relevant content"
+  end if
 end sub
 
 function buildLiveRowsForChannels(channelIds as Object, limit as Integer) as Object
@@ -1372,11 +1435,23 @@ sub gotAllLive(msg as object)
         end if
       end if
     end if
-    ' Also refresh Following (FAVORITES) live rows if logged in and following exists
-    if isValid(m.preferences) and isValid(m.preferences.following)
-      if m.preferences.following.Count() > 0
-        ? "[Live] gotAllLive: merging into FAVORITES; following=" + Str(m.preferences.following.Count())
+    ' Always keep FAVORITES updated in background if user is logged in
+    ' This ensures their followed channels' live status is current when they switch to FAVORITES
+    if isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() > 0
+      currentCatName = ""
+      if IsValid(m.categorySelector) and m.categorySelector.visible = true
+        catIndex = m.categorySelector.itemFocused
+        if catIndex >= 0 and IsValid(m.categorySelectordata) and catIndex < m.categorySelectordata.Count()
+          currentCatName = m.categorySelectordata[catIndex].trueName
+        end if
+      end if
+
+      ' Only update FAVORITES if we're not already viewing it (to avoid disrupting current view)
+      if currentCatName <> "FAVORITES"
+        ? "[Live] gotAllLive: background update of FAVORITES; following=" + Str(m.preferences.following.Count())
         mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
+      else
+        ? "[Live] gotAllLive: skipping FAVORITES background update (currently viewing)"
       end if
     end if
   end if
