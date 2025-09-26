@@ -511,6 +511,7 @@ sub init()
   m.superChatBox = m.top.findNode("SuperChatBox")
   m.sidebarTrim = m.top.findNode("sidebartrim")
   m.sidebarBackground = m.top.findNode("sidebarbackground")
+  m.activeCategoryIndicator = m.top.findNode("activeCategoryIndicator")
   m.channelSidebarThumb = m.top.findNode("channelSidebarThumb")
   m.chatBackground = m.top.findNode("chatBackground")
   m.superChatBackground = m.top.findNode("SuperChatBackground")
@@ -559,7 +560,7 @@ sub init()
   m.playbackRate = m.playbackRateValues[m.playbackRateIndex]
   rateLabel = m.playbackRateLabels[m.playbackRateIndex]
   m.loopEnabled = false
-  m.standardButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["replay"], itemID: "restart" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }, { item: rateLabel, itemID: "playbackRate" }, { item: "Loop", itemID: "loop" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }]
+  m.standardButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["replay"], itemID: "restart" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }, { item: rateLabel, itemID: "playbackRate" }, { item: "Loop", itemID: "loop" }]
   m.standardButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: m.vjschars["previous-item"], itemID: "previousItem" }, { item: m.vjschars["replay"], itemID: "restart" }, { item: m.vjschars["pause"], itemID: "playPause" }, { item: m.vjschars["next-item"], itemID: "nextItem" }, { item: rateLabel, itemID: "playbackRate" }, { item: "Loop", itemID: "loop" }]
   m.liveButtonsLoggedIn = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: "pkg://images/png/Heart.png", itemID: "following" }, { item: "pkg:/images/generic/tu64.png", itemID: "like" }, { item: "pkg:/images/generic/td64.png", itemID: "dislike" }, { item: Chr(61729), itemID: "toggleChat" }]
   m.liveButtonsLoggedOut = [{ item: "pkg:/images/generic/bad_icon_requires_usage_rights.png", itemID: "channelButton" }, { item: Chr(61729), itemID: "toggleChat" }]
@@ -577,6 +578,17 @@ sub init()
   m.currentVideoPosition = [0, 0]
   m.pendingResume = -1 'seconds to seek to after playback starts; -1 when none
   m.resumeTimer = CreateObject("roTimeSpan") 'throttle resume saves
+
+  ' Navigation state tracking for position persistence
+  m.categoryPositions = {} ' Store grid positions for each category/view
+  m.lastCategoryIndex = -1 ' Track last selected category for persistent highlighting
+  m.isReturningToCategory = false ' Flag to know when we're returning to a saved position
+  m.persistSidebarSelection = true ' Flag to control persistent sidebar highlighting
+
+  ' Exit confirmation dialog state
+  m.exitConfirmationActive = false ' Is exit confirmation dialog showing
+  m.exitTimeRemaining = 5 ' Seconds left for auto-cancel
+
   m.searchHistoryBox = m.top.findNode("searchHistory")
   m.searchHistoryLabel = m.top.findNode("searchHistoryLabel")
   m.searchHistoryItems = []
@@ -588,6 +600,14 @@ sub init()
   m.oauthFooter = m.top.findNode("oauth-footer")
   m.oauthLogoutButton = m.top.findNode("logoutButton")
 
+  ' Exit confirmation dialog elements
+  m.exitDialogBackground = m.top.findNode("exitDialogBackground")
+  m.exitDialog = m.top.findNode("exitDialog")
+  m.exitDialogHeader = m.top.findNode("exitDialogHeader")
+  m.exitDialogMessage = m.top.findNode("exitDialogMessage")
+  m.exitDialogTimer = m.top.findNode("exitDialogTimer")
+  m.exitTimer = m.top.findNode("exitTimer")
+
   'UI Item observers
   m.videoObserved = true
   m.video.observeField("state", "onVideoStateChanged")
@@ -598,6 +618,7 @@ sub init()
   m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
   m.searchKeyboardDialog.observeField("itemSelected", "search")
   m.oauthLogoutButton.observeField("buttonSelected", "Logout")
+  m.exitTimer.observeField("fire", "onExitTimer")
 
   'Tasks
   if m.global.constants.enableStatistics
@@ -754,6 +775,13 @@ sub onRowItemFocused()
   row = focusPos[0]: col = focusPos[1]
   content = m.videoGrid.content
   if not IsValid(content) then return
+
+  ' Save current position for this category/view
+  if not m.isReturningToCategory
+    saveCategoryPosition(row, col)
+  end if
+  m.isReturningToCategory = false
+
   ' Trigger when focusing near the end of the last row
   lastRow = content.getChildCount() - 1
   visibleRows = 4
@@ -1431,7 +1459,8 @@ sub authPhaseChanged(msg as object)
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
-      m.loadingText.visible = false
+      ' Keep loading text visible until app finishes loading categories
+      m.loadingText.text = "Loading personalized content..."
       if m.syncTimerObserved = false
         m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
         m.syncLoop.control = "RUN"
@@ -1835,12 +1864,15 @@ sub finishInit()
   m.loadingText.horizAlign = "center"
   if m.favoritesLoaded
     m.categorySelector.jumpToItem = 1
+    updateActiveCategoryIndex(1) ' Update persistent highlighting for favorites
   else
     m.categorySelector.jumpToItem = 2
+    updateActiveCategoryIndex(2) ' Update persistent highlighting for first category
   end if
   m.categorySelector.visible = true
   m.loaded = True
   m.taskRunning = false
+  hideCategoryIndicator() ' Hide indicator when sidebar gets focus
   m.categorySelector.setFocus(true)
   m.focusedItem = 1
   m.global.scene.signalBeacon("AppLaunchComplete")
@@ -2065,6 +2097,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.focusedItem = 3 '[search keyboard]
           else if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.favoritesUIFlag and m.focusedItem <> 7
             m.categorySelector.setFocus(false)
+            maintainSidebarSelection() ' Keep sidebar visually active
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
           else if m.categorySelector.itemFocused = 1 and m.oauthLogoutButton.visible = true
@@ -2073,6 +2106,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.focusedItem = 8 '[oauth logout button]
           else if m.categorySelector.itemFocused > 1 and m.focusedItem <> 7
             m.categorySelector.setFocus(false)
+            maintainSidebarSelection() ' Keep sidebar visually active
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
           end if
@@ -2103,14 +2137,27 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           returnToUIPage()
           ? "[Back] returnToUIPage() called"
           return true
+        else if m.exitConfirmationActive
+          ' Handle exit confirmation - second back press exits
+          ?"[EXIT] Second back press during confirmation - exiting app"
+          ' Hide the confirmation dialog first
+          hideExitConfirmation()
+          ' Return false to let Roku system handle the exit (original behavior)
+          return false
         else if m.itemFocused = 20 '[error button]
           ErrorDismissed()
-        else if (m.uiLayer = 0 and m.focusedItem = 1) or (m.uiLayer = 0 and m.focusedItem = 2) 'are favorites or category 1 in focus with no additional UI layers?
-          'TODO: add "are you sure you want to exit Odysee" screen
-          'for now, re-add old behavior
-          'VGM02
-          showCategorySelector()
-          return false
+        else if m.uiLayer = 0 and m.focusedItem = 1 'is sidebar/categories in focus with no additional UI layers?
+          ' First back press from sidebar - show confirmation dialog
+          ?"[EXIT] First back press - showing confirmation dialog"
+          showExitConfirmation()
+          return true
+        else if m.uiLayer = 0 and m.focusedItem = 2 'is video grid in focus with no additional UI layers?
+          ' Back from video grid goes to sidebar
+          ?"[BACK] Moving from grid to sidebar"
+          m.videoGrid.setFocus(false)
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+          return true
         else if m.categorySelector.itemFocused <> 0 and m.uiLayer = 0 'is anything but search in focus with no additional UI layers?
           'set focus to selector
           m.uiLayer = 0
@@ -2134,6 +2181,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               m.uiLayer = 0
               m.uiLayers = []
               m.videoGrid.content = m.categories["FAVORITES"]
+              restoreGridFocus() ' Restore saved position for favorites
               showCategorySelector()
             else 'go back a UI layer
               m.uiLayers.pop()
@@ -2187,6 +2235,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             if IsValid(m.channelReturnRowCol) and Type(m.channelReturnRowCol) = "roArray" and m.channelReturnRowCol.Count() >= 2
               m.videoGrid.jumpToRowItem = m.channelReturnRowCol
             end if
+            maintainSidebarSelection() ' Keep sidebar visually active when returning from channel
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
             ' Clear channel context and return data
@@ -2475,6 +2524,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 m.uiLayer = 0
                 m.uiLayers = []
                 m.videoGrid.content = m.categories["FAVORITES"]
+                restoreGridFocus() ' Restore saved position for favorites
                 showCategorySelector()
               else 'go back a UI layer
                 m.uiLayers.pop()
@@ -2661,6 +2711,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.searchHistoryBox.setFocus(false)
             m.searchHistoryDialog.setFocus(false)
             m.categorySelector.jumpToItem = 0
+            updateActiveCategoryIndex(0) ' Update persistent highlighting for search
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector]
           end if
@@ -2689,6 +2740,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.searchHistoryBox.setFocus(false)
           m.searchHistoryDialog.setFocus(false)
           m.categorySelector.jumpToItem = 1
+          updateActiveCategoryIndex(1) ' Update persistent highlighting for favorites
           m.categorySelector.setFocus(true)
           m.focusedItem = 1 '[selector]
         end if
@@ -2751,6 +2803,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.focusedItem = 3 '[search keyboard]
         else if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.favoritesUIFlag and m.focusedItem <> 7
           m.categorySelector.setFocus(false)
+          maintainSidebarSelection() ' Keep sidebar visually active
           m.videoGrid.setFocus(true)
           m.focusedItem = 2 '[video grid]
         else if m.categorySelector.itemFocused = 1 and m.oauthLogoutButton.visible = true
@@ -2759,6 +2812,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.focusedItem = 8 '[oauth logout button]
         else if m.categorySelector.itemFocused > 1 and m.focusedItem <> 7
           m.categorySelector.setFocus(false)
+          maintainSidebarSelection() ' Keep sidebar visually active
           m.videoGrid.setFocus(true)
           m.focusedItem = 2 '[video grid]
         end if
@@ -2796,6 +2850,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
     else if key = "A"
       returnToUIPage()
       m.categorySelector.jumpToItem = 0
+      updateActiveCategoryIndex(0) ' Update persistent highlighting for search
       m.categorySelector.setFocus(true)
       m.focusedItem = 1 '[selector]
       return true
@@ -2803,10 +2858,12 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       returnToUIPage()
       if m.wasLoggedIn
         m.categorySelector.jumpToItem = 1
+        updateActiveCategoryIndex(1) ' Update persistent highlighting for favorites
         m.categorySelector.setFocus(true)
         m.focusedItem = 1 '[selector]
       else
         m.categorySelector.jumpToItem = 2
+        updateActiveCategoryIndex(2) ' Update persistent highlighting for first category
         m.categorySelector.setFocus(true)
         m.focusedItem = 1 '[selector]
       end if
@@ -2879,6 +2936,13 @@ sub categorySelectorFocusChanged(msg)
   '?m.categorySelector.itemUnfocused
   '?"to:"
   '?m.categorySelector.itemFocused
+
+  ' Hide the indicator when sidebar is actively being used
+  hideCategoryIndicator()
+
+  ' Save the category selection for persistent highlighting
+  saveLastCategoryIndex()
+
   if m.categorySelector.itemFocused <> -1 and m.loaded = True
     m.videoGrid.visible = true
     m.loadingText.visible = false
@@ -2929,8 +2993,12 @@ sub categorySelectorFocusChanged(msg)
               if m.preferences.following.Count() > 0
                 ? "[Live] entering FAVORITES: merging lives now"
                 mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
+                ' Update grid content after merging live content
+                m.videoGrid.content = m.categories["FAVORITES"]
               end if
             end if
+            ' Restore grid focus AFTER live content has been merged
+            restoreGridFocus() ' Restore saved position for favorites
           end if
         else
           m.videoGrid.visible = false
@@ -2987,6 +3055,7 @@ sub categorySelectorFocusChanged(msg)
       ?m.categorySelector.itemFocused
       trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
       m.videoGrid.content = m.categories[trueName]
+      restoreGridFocus() ' Restore saved position for category
     end if
     if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
       m.categorySelectorEndIndicator.visible = true
@@ -3366,11 +3435,12 @@ sub resolveVideo(url = invalid)
           m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
           isFollowed = false
           if m.wasLoggedIn
-            m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, m.videoButtons.itemSize)
-            m.videoButtons.itemSpacing = "[36, 20]"
+            m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, [150, 128])
+            m.videoButtons.itemSpacing = "[8, 20]" ' Minimal spacing to fit all 10 buttons
+            m.videoButtons.translation = "[50, 83]" ' Move all the way left for 10 buttons
             m.videoButtons.animateToItem = 2
             getReactions(curItem.guid)
-            m.videoButtons.animateToItem = 3
+            m.videoButtons.animateToItem = 2 ' Focus on like button for live content
             if m.preferences.Count() > 0 and isValid(m.preferences.following)
               if m.preferences.following.Count() > 0
                 for each claimID in m.preferences.following
@@ -3391,6 +3461,7 @@ sub resolveVideo(url = invalid)
           else
             m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedOut, m.videoButtons.itemSize)
             m.videoButtons.itemSpacing = "[36, 20]"
+            m.videoButtons.translation = "[300, 83]" ' Original position for fewer buttons
             m.videoButtons.animateToItem = 2
             regenerateLiveButtonRefs()
             m.videoButtonsRate = invalid
@@ -3487,14 +3558,16 @@ sub resolveVideo(url = invalid)
   else if type(url) = "roString" or type(url) = "String"
     ?"Resolving a Video (deeplink direct)"
     if m.wasLoggedIn
-      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
-      m.videoButtons.itemSpacing = "[36, 20]"
-      m.videoButtons.animateToItem = 3
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, [150, 128])
+      m.videoButtons.itemSpacing = "[8, 20]" ' Minimal spacing to fit all 10 buttons
+      m.videoButtons.translation = "[50, 83]" ' Move all the way left for 10 buttons
+      m.videoButtons.animateToItem = 6 ' Focus on play/pause button (new position after reordering)
       regenerateNormalButtonRefs()
       ensureDefaultVideoButtonsIndex()
   else
     m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
     m.videoButtons.itemSpacing = "[36, 20]"
+    m.videoButtons.translation = "[300, 83]" ' Original position for fewer buttons
     m.videoButtons.animateToItem = 3
     ensureDefaultVideoButtonsIndex()
     regenerateNormalButtonRefs()
@@ -3526,15 +3599,17 @@ sub resolveEvaluatedVideo(curItem)
   if m.wasLoggedIn
     ' Choose live vs VOD button sets; exclude restart/loop on livestreams
     if isValid(curItem.streamFormat) and LCase(curItem.streamFormat) = "hls"
-      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, m.videoButtons.itemSize)
-      m.videoButtons.itemSpacing = "[36, 20]"
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, [140, 128])
+      m.videoButtons.itemSpacing = "[8, 20]" ' Minimal spacing to fit all 10 buttons
+      m.videoButtons.translation = "[50, 83]" ' Move all the way left for 10 buttons
       m.videoButtons.animateToItem = 2
       regenerateLiveButtonRefs()
     else
-      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, m.videoButtons.itemSize)
-      m.videoButtons.itemSpacing = "[36, 20]"
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, [150, 128])
+      m.videoButtons.itemSpacing = "[8, 20]" ' Minimal spacing to fit all 10 buttons
+      m.videoButtons.translation = "[50, 83]" ' Move all the way left for 10 buttons
       getReactions(curItem.guid)
-      m.videoButtons.animateToItem = 4
+      m.videoButtons.animateToItem = 6 ' Focus on play/pause button (new position after reordering)
       regenerateNormalButtonRefs()
       ensureDefaultVideoButtonsIndex()
     end if
@@ -3558,11 +3633,13 @@ sub resolveEvaluatedVideo(curItem)
     if isValid(curItem.streamFormat) and LCase(curItem.streamFormat) = "hls"
       m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedOut, m.videoButtons.itemSize)
       m.videoButtons.itemSpacing = "[36, 20]"
+      m.videoButtons.translation = "[300, 83]" ' Original position for fewer buttons
       m.videoButtons.animateToItem = 2
       regenerateLiveButtonRefs()
     else
       m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedOut, m.videoButtons.itemSize)
       m.videoButtons.itemSpacing = "[36, 20]"
+      m.videoButtons.translation = "[300, 83]" ' Original position for fewer buttons
       m.videoButtons.animateToItem = 3
       regenerateNormalButtonRefs()
       ensureDefaultVideoButtonsIndex()
@@ -3994,6 +4071,7 @@ sub returnToUIPage()
     if IsValid(m.videoGrid)
       m.loadingText.visible = false
       m.videoGrid.visible = true
+      maintainSidebarSelection() ' Keep sidebar visually active when returning from video
       m.videoGrid.setFocus(true)
       m.focusedItem = 2 '[video grid]
       ' Try to jump back by GUID first (robust to paging/refresh)
@@ -4360,11 +4438,13 @@ sub gotResolvedChannel(msg as object)
             m.channelSidebarThumb.uri = m.constants["CHANNEL_ICON_PROCESSOR"] + thumb
           end if
           m.channelSidebarThumb.visible = true
+          hideCategoryIndicator() ' Hide category indicator in channel view
         else
           m.channelSidebarThumb.visible = false
         end if
       catch e
         m.channelSidebarThumb.visible = false
+        hideCategoryIndicator() ' Hide category indicator when channel view fails
       end try
     end if
   end if
@@ -4485,6 +4565,8 @@ sub showCategorySelector()
     m.sidebarTrim.visible = true
     m.sidebarBackground.visible = true
     if isValid(m.channelSidebarThumb) then m.channelSidebarThumb.visible = false
+    ' Restore category indicator when returning to category view
+    if m.focusedItem = 2 and m.lastCategoryIndex >= 0 then maintainSidebarSelection()
     if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
       m.categorySelectorEndIndicator.visible = true
     else
@@ -4844,6 +4926,7 @@ sub gotFavorites(msg as object)
         m.oauthLogoutButton.visible = true
       else if m.focusedItem = 7 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 'update under video
         m.videoGrid.content = m.categories["FAVORITES"]
+        restoreGridFocus() ' Restore saved position for favorites
       end if
     end if
   end if
@@ -5098,3 +5181,231 @@ function return_tremendous_data()
   end for
   return tremendous_data
 end function
+
+' ============================================
+' Navigation State Management Functions
+' ============================================
+
+' Get a unique key for the current view context
+function getCurrentViewKey() as string
+  key = ""
+
+  ' Determine the current context
+  if m.searchActive = true
+    if IsValid(m.searchContext) and IsValid(m.searchContext.type)
+      if m.searchContext.type = "video"
+        key = "search_video"
+      else if m.searchContext.type = "channel"
+        key = "search_channel"
+      else
+        key = "search"
+      end if
+    else
+      key = "search"
+    end if
+  else if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+    key = "channel_" + m.currentChannelId
+  else if IsValid(m.categorySelector) and IsValid(m.categorySelector.itemFocused)
+    catIndex = m.categorySelector.itemFocused
+    if catIndex = 0
+      key = "search_ui"
+    else if catIndex = 1
+      key = "favorites"
+    else if catIndex >= 0 and IsValid(m.categorySelectorData) and catIndex < m.categorySelectorData.Count()
+      catData = m.categorySelectorData[catIndex]
+      if IsValid(catData) and IsValid(catData.trueName)
+        key = "category_" + catData.trueName
+      else
+        key = "category_" + catIndex.ToStr()
+      end if
+    end if
+  end if
+
+  if key = ""
+    key = "default"
+  end if
+  return key
+end function
+
+' Save the current grid position for the current view
+sub saveCategoryPosition(row as integer, col as integer)
+  if not IsValid(m.categoryPositions)
+    m.categoryPositions = {}
+  end if
+  key = getCurrentViewKey()
+  if key <> ""
+    m.categoryPositions[key] = [row, col]
+    ?"[NAV] Saved position for " + key + ": [" + row.ToStr() + ", " + col.ToStr() + "]"
+  end if
+end sub
+
+' Restore the saved grid position for the current view
+function restoreCategoryPosition() as object
+  if not IsValid(m.categoryPositions)
+    m.categoryPositions = {}
+  end if
+  key = getCurrentViewKey()
+
+  if IsValid(m.categoryPositions[key])
+    focusPos = m.categoryPositions[key]
+    if Type(focusPos) = "roArray" and focusPos.Count() >= 2
+      ?"[NAV] Restored position for " + key + ": [" + focusPos[0].ToStr() + ", " + focusPos[1].ToStr() + "]"
+      return focusPos
+    end if
+  end if
+
+  ?"[NAV] No saved position for " + key + ", using default [0, 0]"
+  return [0, 0]
+end function
+
+' Restore focus to the grid at the saved position
+sub restoreGridFocus()
+  if not IsValid(m.videoGrid)
+    return
+  end if
+
+  focusPos = restoreCategoryPosition()
+  if IsValid(focusPos) and Type(focusPos) = "roArray" and focusPos.Count() >= 2
+    row = focusPos[0]
+    col = focusPos[1]
+
+    ' Validate the position is within bounds
+    if IsValid(m.videoGrid.content)
+      maxRows = m.videoGrid.content.getChildCount()
+      if row >= maxRows
+        row = maxRows - 1
+      end if
+      if row < 0
+        row = 0
+      end if
+
+      if row < maxRows
+        rowNode = m.videoGrid.content.getChild(row)
+        if IsValid(rowNode)
+          maxCols = rowNode.getChildCount()
+          if col >= maxCols
+            col = maxCols - 1
+          end if
+          if col < 0
+            col = 0
+          end if
+        end if
+      end if
+    end if
+
+    ' Set the flag to prevent saving this restored position
+    m.isReturningToCategory = true
+
+    ' Jump to the saved position
+    try
+      m.videoGrid.jumpToRowItem = [row, col]
+      ?"[NAV] Jumped to position: [" + row.ToStr() + ", " + col.ToStr() + "]"
+    catch e
+      ?"[NAV] Error jumping to position"
+    end try
+  end if
+end sub
+
+' Save the current category index for persistent highlighting
+sub saveLastCategoryIndex()
+  if IsValid(m.categorySelector) and IsValid(m.categorySelector.itemFocused)
+    m.lastCategoryIndex = m.categorySelector.itemFocused
+    ?"[NAV] Saved category index: " + m.lastCategoryIndex.ToStr()
+  end if
+end sub
+
+' Maintain sidebar selection highlighting even when focus moves away
+sub maintainSidebarSelection()
+  if not m.persistSidebarSelection
+    return
+  end if
+
+  if IsValid(m.activeCategoryIndicator) and m.lastCategoryIndex >= 0
+    try
+      ' Calculate the position for the indicator based on category index
+      ' Each category item is 70px tall with 10px spacing
+      baseY = 133 ' Base translation from XML
+      itemHeight = 70
+      itemSpacing = 10
+      yPosition = baseY + (m.lastCategoryIndex * (itemHeight + itemSpacing))
+
+      ' Position and show the indicator
+      m.activeCategoryIndicator.translation = [100, yPosition]
+      m.activeCategoryIndicator.visible = true
+
+      ?"[NAV] Showing category indicator at index " + m.lastCategoryIndex.ToStr() + " (y=" + yPosition.ToStr() + ")"
+    catch e
+      ?"[NAV] Error positioning category indicator: " + e.message
+    end try
+  end if
+end sub
+
+' Hide the active category indicator
+sub hideCategoryIndicator()
+  if IsValid(m.activeCategoryIndicator)
+    m.activeCategoryIndicator.visible = false
+    ?"[NAV] Hidden category indicator"
+  end if
+end sub
+
+' Update the active category index and maintain visual selection
+sub updateActiveCategoryIndex(newIndex as integer)
+  m.lastCategoryIndex = newIndex
+  if m.persistSidebarSelection
+    maintainSidebarSelection()
+  end if
+  ?"[NAV] Updated active category to: " + newIndex.ToStr()
+end sub
+
+' Exit confirmation timer handler
+sub onExitTimer()
+  ?"[EXIT] Timer fire, time remaining: " + m.exitTimeRemaining.ToStr()
+
+  ' Decrement time remaining
+  m.exitTimeRemaining = m.exitTimeRemaining - 1
+
+  ' Update timer display
+  m.exitDialogTimer.text = m.exitTimeRemaining.ToStr()
+
+  ' If time expired, cancel the exit confirmation
+  if m.exitTimeRemaining <= 0
+    ?"[EXIT] Timer expired, canceling exit confirmation"
+    hideExitConfirmation()
+  end if
+end sub
+
+' Show exit confirmation dialog
+sub showExitConfirmation()
+  ?"[EXIT] Showing exit confirmation dialog"
+  m.exitConfirmationActive = true
+  m.exitTimeRemaining = 5
+
+  ' Update timer display
+  m.exitDialogTimer.text = m.exitTimeRemaining.ToStr()
+
+  ' Show dialog elements
+  m.exitDialogBackground.visible = true
+  m.exitDialog.visible = true
+  m.exitDialogHeader.visible = true
+  m.exitDialogMessage.visible = true
+  m.exitDialogTimer.visible = true
+
+  ' Start countdown timer
+  m.exitTimer.control = "start"
+end sub
+
+' Hide exit confirmation dialog
+sub hideExitConfirmation()
+  ?"[EXIT] Hiding exit confirmation dialog"
+  m.exitConfirmationActive = false
+
+  ' Stop timer
+  m.exitTimer.control = "stop"
+
+  ' Hide dialog elements
+  m.exitDialogBackground.visible = false
+  m.exitDialog.visible = false
+  m.exitDialogHeader.visible = false
+  m.exitDialogMessage.visible = false
+  m.exitDialogTimer.visible = false
+end sub

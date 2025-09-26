@@ -58,9 +58,18 @@
         color="0x0a070d"
         width="175"
         height="1000"
-        translation="[65,130]" 
-        visible = "false" 
+        translation="[65,130]"
+        visible = "false"
          />
+    <!-- Active category indicator -->
+    <Rectangle
+        id="activeCategoryIndicator"
+        color="0x5d5d5d"
+        width="110"
+        height="70"
+        translation="[100,133]"
+        visible="false"
+    />
     <!-- Channel thumbnail shown when viewing a channel page -->
     <Poster
         id="channelSidebarThumb"
@@ -115,6 +124,20 @@
 	</Label>
 
     <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1500,70]" iconUri="" focusedIconUri="" visible="false"/>
+
+    <!-- Exit Confirmation Dialog - Top Overlay Banner -->
+    <Rectangle id="exitDialogBackground" color="0x000000DD" width="1920" height="120" translation="[0,0]" visible="false"/>
+    <Rectangle id="exitDialog" color="0xCC3300" width="1920" height="100" translation="[0,10]" visible="false"/>
+    <Label id="exitDialogHeader" font="font:Inter-Emoji" color="#ffffff" width="1000" height="50" text="Press Back again to exit Odysee" horizAlign="center" vertAlign="center" translation="[460,20]" visible="false">
+        <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="40"/>
+    </Label>
+    <Label id="exitDialogMessage" font="font:Inter-Emoji" color="#ffffff" width="800" height="40" text="or wait to cancel" horizAlign="center" vertAlign="center" translation="[560,60]" visible="false">
+        <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="28"/>
+    </Label>
+    <Label id="exitDialogTimer" font="font:Inter-Emoji" color="#ffffff" width="100" height="50" text="5" horizAlign="center" vertAlign="center" translation="[1380,30]" visible="false">
+        <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="42"/>
+    </Label>
+
     <!-- video grid -->
     <MarkupList
             id="selector"
@@ -287,6 +310,12 @@
     id="videoUITimer"
     repeat="false"
     duration="5"
+    />
+    <!--Exit Confirmation Timer-->
+    <Timer
+    id="exitTimer"
+    repeat="true"
+    duration="1"
     />
 
     <!--DEV USE ONLY-->
