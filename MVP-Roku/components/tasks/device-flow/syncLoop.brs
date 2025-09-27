@@ -1,8 +1,16 @@
 sub Init()
     m.top.functionName = "master"
+    m.syncRunning = false ' Flag to prevent concurrent sync operations
 end sub
 
 sub master()
+    ' Prevent concurrent sync operations
+    if m.syncRunning = true
+        ? "Sync Loop already running - skipping this cycle"
+        return
+    end if
+
+    m.syncRunning = true
     ? "Running Sync Loop"
     m.syncTimer = m.top.findNode("syncTimer") 'refresh timer
     if m.syncTimer.control <> "start"
@@ -97,13 +105,20 @@ sub master()
                             end if
                         end if
                         ? "Sync Loop Sync Set"
+                        ? "Setting sync - old_hash: "; prodHash; " new_hash: "; sdkHash
                         syncset = postURLEncoded({ old_hash: prodHash: new_hash: sdkHash: data: sdkWallet }, m.top.constants["ROOT_API"] + "/sync/set", { "Authorization": "Bearer " + m.top.accessToken })
+                        ? "Sync set response: "; formatJson(syncset)
                         if isValid(syncset.error)
+                            ? "SYNC_SET_API error: "; formatJson(syncset.error)
                             THROW "SYNC_SET_API"
                         end if
-                        ?formatJson(syncset)
                         if syncset.success = true
+                            ? "Sync set successful - now in sync"
                             m.top.inSync = true
+                        else
+                            ? "Sync set failed - success=false, response: "; formatJson(syncset)
+                            ' Don't throw error here, just log and continue
+                            m.top.inSync = false
                         end if
                     else
                         ? "currently in sync (wallet-wise)"
@@ -129,5 +144,7 @@ sub master()
     prodHash = invalid
     sdkWallet = invalid
     prodWalletData = invalid
+    ' Reset sync flag to allow next sync operation
+    m.syncRunning = false
     ? "Loop done."
 end sub

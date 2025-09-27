@@ -470,6 +470,9 @@ sub init()
   m.loaded = False 'Has the app finished its first load?
   m.favoritesLoaded = false 'Were favorites loaded?(init only)
   m.favoritesUIFlag = true 'Is a post-init favorites transition allowed?
+  m.needsFavoritesRefresh = false 'Flag to trigger favorites refresh on next navigation
+  m.favoritesLastSyncTime = 0 'Timestamp of last sync trigger to prevent rapid calls
+  m.lastPrefTaskTime = 0 'Timestamp to detect stuck preference tasks
   m.legacyAuthenticated = False 'Has the app passed phase 0 of authentication?
   m.wasLoggedIn = false 'Was the app logged into a valid Odysee account?
   m.taskRunning = False 'Should we avoid UI transitions because of a running search/task?
@@ -663,6 +666,24 @@ sub init()
     }
     ?"Setting initial deeplink from launch: "; deeplink
     m.global.deeplink = deeplink
+  ' Also check for deep link parameters passed from main.brs via global args
+  else if isValid(m.global.deeplink) and type(m.global.deeplink) = "roAssociativeArray"
+    ?"Checking global deeplink args from main.brs: "; formatJson(m.global.deeplink)
+    ' Check if args contain deep link parameters (contentId/contentID and mediaType)
+    if (m.global.deeplink.DoesExist("contentId") or m.global.deeplink.DoesExist("contentID")) and m.global.deeplink.DoesExist("mediaType")
+      contentId = ""
+      if m.global.deeplink.DoesExist("contentID")
+        contentId = m.global.deeplink.contentID
+      else if m.global.deeplink.DoesExist("contentId")
+        contentId = m.global.deeplink.contentId
+      end if
+      deeplink = {
+        contentId: contentId
+        type: m.global.deeplink.mediaType
+      }
+      ?"Setting initial deeplink from main args: "; formatJson(deeplink)
+      m.global.deeplink = deeplink
+    end if
   end if
 
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
@@ -1206,8 +1227,29 @@ sub mergeLiveIntoCategory(catName as String, channelIds as Object, liveLimit as 
   liveCount = liveRows.getChildCount()
   vodCount = vodOnly.getChildCount()
   ? "[Live] built live rows=" + Str(liveCount)
-  if liveCount = 0 then return
+
+  ' Always create merged content, even if no live streams
   merged = createObject("RoSGNode", "ContentNode")
+
+  ' If no live content, just restore the VOD content
+  if liveCount = 0
+    ? "[Live] No live streams found - restoring VOD-only content"
+    ' Move VOD content back to the category
+    while vodOnly.getChildCount() > 0
+      merged.appendChild(vodOnly.getChild(0))
+    end while
+    m.categories.addReplace(catName, merged)
+    ' Update video grid if we're currently viewing this category
+    if IsValid(m.categorySelector) and IsValid(m.categorySelectorData)
+      if IsValid(m.categorySelector.itemFocused) and m.categorySelector.itemFocused >= 0 and m.categorySelector.itemFocused < m.categorySelectorData.Count()
+        cur = m.categorySelectorData[m.categorySelector.itemFocused]
+        if IsValid(cur) and IsValid(cur.trueName) and cur.trueName = catName
+          if IsValid(m.videoGrid) then m.videoGrid.content = merged
+        end if
+      end if
+    end if
+    return
+  end if
   ' Move rows safely without skipping by always taking index 0
   while liveRows.getChildCount() > 0
     merged.appendChild(liveRows.getChild(0))
@@ -2677,7 +2719,9 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           ? m.favoritesLoaded
           ? m.videoGrid.rowItemFocused[0]
           ? m.videoGrid.rowItemFocused[1]
-          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.videoGrid.rowItemFocused[0] = 0 and m.videoGrid.rowItemFocused[1] = 3
+          ' Fixed: Allow navigation to logout button from ANY column in top row of Favorites
+          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.videoGrid.rowItemFocused[0] = 0
+            ?"[Nav] UP from top row of Favorites -> logout button"
             m.videoGrid.setFocus(false)
             m.oauthLogoutButton.setFocus(true)
             m.focusedItem = 8 '[oauth logout button]
@@ -3062,34 +3106,116 @@ sub categorySelectorFocusChanged(msg)
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
+
+      ' Always check for external changes when entering Favorites
       if m.authTask.authPhase = 3
+        ' Force sync loop to run immediately when entering Favorites (throttled to prevent rapid calls)
+        ' This ensures we catch any external changes from odysee.com
+        currentTime = CreateObject("roDateTime").AsSeconds()
+        if isValid(m.syncLoop) and (currentTime - m.favoritesLastSyncTime) > 2
+          ?"[Favorites] Forcing immediate sync check for external changes (throttled)"
+          m.favoritesLastSyncTime = currentTime
+          ' Stop and restart to trigger immediate sync
+          ' Note: sync loop has built-in concurrency protection to prevent multiple runs
+          m.syncLoop.control = "STOP"
+          m.syncLoop.control = "RUN"
+
+          ' Also restart the timer to ensure periodic checks continue
+          if isValid(m.syncLoopTimer)
+            m.syncLoopTimer.control = "stop"
+            m.syncLoopTimer.control = "start"
+          end if
+        else if isValid(m.syncLoop)
+          ?"[Favorites Debug] Skipping sync trigger - too recent (throttled)"
+        end if
+
+        ' Check if we need refresh from local changes or external changes
+        ' The sync loop will set preferencesChanged=true if it detects changes
+        if m.needsFavoritesRefresh = true
+          ?"[Favorites Debug] Local changes detected - need refresh"
+          m.needsFavoritesRefresh = false
+
+          ' Get latest preferences - gotUserPrefs will handle favorites reload
+          getUserPrefs()
+
+          ' Show loading indicator
+          if isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() > 0
+            m.loadingText.visible = true
+            m.loadingText.text = "Refreshing favorites..."
+          end if
+        else if m.syncLoop.preferencesChanged = true
+          ?"[Favorites Debug] External changes detected by sync loop"
+          ' External changes will be handled by preferencesChanged() callback automatically
+          ' Just show loading indicator here
+          if isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() > 0
+            m.loadingText.visible = true
+            m.loadingText.text = "Syncing with odysee.com..."
+          end if
+        else
+          ?"[Favorites Debug] No local changes detected"
+          ?"[Favorites Debug] Current state - favoritesLoaded: "; m.favoritesLoaded; " preferences.following count: "; m.preferences.following.Count()
+          ' Only hide loading text if we're not in a refresh state (favoritesUIFlag=true means UI is stable)
+          if m.favoritesUIFlag = true
+            ?"[Favorites Debug] UI stable, hiding loading text"
+            m.loadingText.visible = false
+          else
+            ?"[Favorites Debug] UI in refresh state (favoritesUIFlag=false), keeping loading text visible"
+          end if
+        end if
+      end if
+
+      if m.authTask.authPhase = 3
+        ?"[Favorites Debug] authPhase=3, preferences.following count: "; m.preferences.following.Count(); " wasLoggedIn: "; m.wasLoggedIn
+        ?"[Favorites Debug] favoritesLoaded: "; m.favoritesLoaded; " favoritesUIFlag: "; m.favoritesUIFlag
+
         if isValid(m.preferences.following) and m.preferences.following.Count() = 0 and m.wasLoggedIn
+          ?"[Favorites Debug] Setting favoritesLoaded=false because following count is 0"
           m.favoritesLoaded = false
         end if
+
         if m.favoritesLoaded
           if m.favoritesUIFlag = false
+            ?"[Favorites Debug] favoritesUIFlag=false - showing loading during refresh"
             m.videoGrid.visible = false
+            m.loadingText.visible = true
+            m.loadingText.text = "Refreshing favorites..."
             m.oauthLogoutButton.visible = true
           else
             ' Check if favorites content is empty even though favorites are loaded
+            ?"[Favorites Debug] Favorites loaded and UI allowed - checking categories content"
+            if isValid(m.categories["FAVORITES"])
+              ?"[Favorites Debug] FAVORITES category exists, child count: "; m.categories["FAVORITES"].getChildCount()
+            else
+              ?"[Favorites Debug] FAVORITES category does not exist or is invalid"
+            end if
+
             if isValid(m.categories["FAVORITES"]) and m.categories["FAVORITES"].getChildCount() > 0
+              ?"[Favorites Debug] Showing favorites content - setting videoGrid"
               m.videoGrid.content = m.categories["FAVORITES"]
+              ?"[Favorites Debug] videoGrid.content set, child count: "; m.videoGrid.content.getChildCount()
               m.videoGrid.visible = true
+              ?"[Favorites Debug] videoGrid.visible set to true"
               m.loadingText.visible = false
+              ?"[Favorites Debug] loadingText.visible set to false"
               m.oauthLogoutButton.visible = true
+              ?"[Favorites Debug] oauthLogoutButton.visible set to true"
               ' Hook: ensure lives appear immediately when entering Following
               if isValid(m.preferences) and isValid(m.preferences.following)
                 if m.preferences.following.Count() > 0
-                  ? "[Live] entering FAVORITES: merging lives now"
+                  ?"[Favorites Debug] About to merge live content"
+                  ?"[Favorites Debug] FAVORITES content before merge: "; m.categories["FAVORITES"].getChildCount()
                   mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
+                  ?"[Favorites Debug] FAVORITES content after merge: "; m.categories["FAVORITES"].getChildCount()
                   ' Update grid content after merging live content
                   m.videoGrid.content = m.categories["FAVORITES"]
+                  ?"[Favorites Debug] videoGrid.content reassigned after merge, child count: "; m.videoGrid.content.getChildCount()
                 end if
               end if
               ' Restore grid focus AFTER live content has been merged
               restoreGridFocus() ' Restore saved position for favorites
             else
               ' Favorites loaded but empty - show friendly message
+              ?"[Favorites Debug] Favorites loaded but empty - showing follow message"
               m.videoGrid.visible = false
               m.oauthHeader.text = "Follow some channels here" + Chr(10) + "or on odysee.com to fill" + Chr(10) + "in this view"
               m.oauthHeader.visible = true
@@ -3098,11 +3224,13 @@ sub categorySelectorFocusChanged(msg)
             end if
           end if
         else
+          ?"[Favorites Debug] favoritesLoaded=false - showing loading message"
           m.videoGrid.visible = false
           m.oauthHeader.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
           m.oauthHeader.visible = true
           m.oauthLogoutButton.visible = true
         end if
+        ?"[Favorites Debug] Final state - videoGrid.visible: "; m.videoGrid.visible; " loadingText.visible: "; m.loadingText.visible; " oauthHeader.visible: "; m.oauthHeader.visible
       else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2 and m.authTask.badSSO = false
         m.oauthHeader.text = "Enter"
         m.videoGrid.visible = false
@@ -3339,11 +3467,27 @@ sub userPrefsError()
 end sub
 
 sub syncLoopError()
-  m.wasLoggedIn = false
-  m.syncLoop.control = "STOP"
-  m.syncLoopTimer.unobserveField("fire")
-  m.authTask.authPhase = 1.6
-  m.authTask.badSSO = true
+  ' Don't logout on sync errors - just log and retry later
+  ?"[SyncLoop] Error occurred: "; m.syncLoop.errorType
+
+  ' Only logout if it's an authentication error
+  if m.syncLoop.errorType = "USER" or m.syncLoop.errorType = "AUTH"
+    ?"[SyncLoop] Authentication error - logging out"
+    m.wasLoggedIn = false
+    m.syncLoop.control = "STOP"
+    m.syncLoopTimer.unobserveField("fire")
+    m.authTask.authPhase = 1.6
+    m.authTask.badSSO = true
+  else
+    ' For other errors (SYNC_SET_API, SYNC_APPLY_SDK, etc), just reset error flag
+    ' and let the sync loop retry on next timer fire
+    ?"[SyncLoop] Non-auth error - will retry on next sync cycle"
+    m.syncLoop.error = false
+    ' Keep the sync loop running for retry
+    if m.syncLoopTimer.control <> "start"
+      m.syncLoopTimer.control = "start"
+    end if
+  end if
 end sub
 
 sub setPreferencesError()
@@ -3655,9 +3799,9 @@ sub resolveVideo(url = invalid)
   else if type(url) = "roString" or type(url) = "String"
     ?"Resolving a Video (deeplink direct)"
     if m.wasLoggedIn
-      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, [150, 128])
-      m.videoButtons.itemSpacing = "[8, 20]" ' Minimal spacing to fit all 10 buttons
-      m.videoButtons.translation = "[50, 83]" ' Move all the way left for 10 buttons
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, [160, 128])
+      m.videoButtons.itemSpacing = "[6, 20]" ' Minimal spacing to fit all 10 buttons
+      m.videoButtons.translation = "[40, 83]" ' Move all the way left for 10 buttons
       m.videoButtons.animateToItem = 6 ' Focus on play/pause button (new position after reordering)
       regenerateNormalButtonRefs()
       ensureDefaultVideoButtonsIndex()
@@ -3702,9 +3846,9 @@ sub resolveEvaluatedVideo(curItem)
       m.videoButtons.animateToItem = 2
       regenerateLiveButtonRefs()
     else
-      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, [150, 128])
-      m.videoButtons.itemSpacing = "[8, 20]" ' Minimal spacing to fit all 10 buttons
-      m.videoButtons.translation = "[50, 83]" ' Move all the way left for 10 buttons
+      m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.standardButtonsLoggedIn, [160, 128])
+      m.videoButtons.itemSpacing = "[6, 20]" ' Minimal spacing to fit all 10 buttons
+      m.videoButtons.translation = "[40, 83]" ' Move all the way left for 10 buttons
       getReactions(curItem.guid)
       m.videoButtons.animateToItem = 6 ' Focus on play/pause button (new position after reordering)
       regenerateNormalButtonRefs()
@@ -4833,20 +4977,66 @@ end sub
 
 'Sync Task related functions (post auth)
 sub getSync()
+  ?"[SyncLoop] getSync called - timer fired, setpreferencesTask state: "; m.setpreferencesTask.state
   if m.setpreferencesTask.state <> "run" and m.setpreferencesTask.state <> "init"
-    ?"GETSYNC DEBUG"
-    ?m.syncLoop.inSync
-    ?m.wasLoggedIn
-    ?m.favoritesLoaded
-    ?"GETSYNC DEBUG"
-    if m.preferences.Count() = 0 and m.syncLoop.inSync = true and m.wasLoggedIn and m.syncLoop.accessToken <> ""
-      getUserPrefs()
-    else if m.syncLoop.accessToken = "" 'logged out, stop loop. (fixes wasLoggedIn race condition)
+    ?"[SyncLoop] Checking sync conditions:"
+    ?"[SyncLoop] - preferences.Count(): "; m.preferences.Count()
+    ?"[SyncLoop] - syncLoop.inSync: "; m.syncLoop.inSync
+    ?"[SyncLoop] - wasLoggedIn: "; m.wasLoggedIn
+    ?"[SyncLoop] - favoritesLoaded: "; m.favoritesLoaded
+    ?"[SyncLoop] - accessToken length: "; Len(m.syncLoop.accessToken)
+
+    if m.syncLoop.accessToken = ""
+      ?"[SyncLoop] User logged out - stopping sync loop"
       m.syncLoop.control = "STOP"
-    else 'get in sync first
-      ? "NOT IN SYNC"
+      if isValid(m.syncLoopTimer)
+        m.syncLoopTimer.control = "stop"
+      end if
+    else if m.syncLoop.inSync = false
+      ?"[SyncLoop] Not in sync - running sync loop to get in sync"
       m.syncLoop.control = "STOP"
       m.syncLoop.control = "RUN"
+    else if m.preferences.Count() = 0 and m.wasLoggedIn
+      ?"[SyncLoop] In sync but no preferences - running sync loop to check and get preferences"
+      m.syncLoop.control = "STOP"
+      m.syncLoop.control = "RUN"
+    else
+      ?"[SyncLoop] Running sync loop to check for external changes (hash comparison)"
+      m.syncLoop.control = "STOP"
+      m.syncLoop.control = "RUN"
+    end if
+  else
+    ?"[SyncLoop] Skipping getSync - preferences task is running (state: "; m.setpreferencesTask.state; ")"
+    ' Safety mechanism: if preference task has been running too long, force reset it
+    ' This prevents the sync loop from being permanently blocked
+    currentTime = CreateObject("roDateTime").AsSeconds()
+    if not isValid(m.lastPrefTaskTime)
+      m.lastPrefTaskTime = currentTime
+    end if
+
+    taskRunningTime = currentTime - m.lastPrefTaskTime
+    if taskRunningTime > 60  ' 60 seconds timeout
+      ?"[SyncLoop] WARNING: Preferences task stuck for "; taskRunningTime; " seconds - forcing reset"
+      m.setpreferencesTask.control = "STOP"
+      m.lastPrefTaskTime = currentTime
+      ' Now allow sync to continue
+      ?m.syncLoop.inSync
+      ?m.wasLoggedIn
+      ?m.favoritesLoaded
+      if m.preferences.Count() = 0 and m.syncLoop.inSync = true and m.wasLoggedIn and m.syncLoop.accessToken <> ""
+        ?"[SyncLoop] Need to get user preferences (after stuck task reset)"
+        getUserPrefs()
+      else if m.syncLoop.accessToken = ""
+        ?"[SyncLoop] User logged out - stopping sync loop"
+        m.syncLoop.control = "STOP"
+        if isValid(m.syncLoopTimer)
+          m.syncLoopTimer.control = "stop"
+        end if
+      else
+        ?"[SyncLoop] Not in sync - restarting sync loop (after stuck task reset)"
+        m.syncLoop.control = "STOP"
+        m.syncLoop.control = "RUN"
+      end if
     end if
   end if
 end sub
@@ -4882,9 +5072,17 @@ end sub
 sub gotSync(msg as object)
   data = msg.getData()
   m.syncLoop.control = "STOP"
-  ?"GOTSyncDebug"
+  ?"[SyncLoop] gotSync called - sync loop completed"
   if m.preferences.Count() = 0 or m.favoritesLoaded = false
+    ?"[SyncLoop] Getting user preferences after sync completion"
     getUserPrefs()
+  end if
+  ' Ensure timer continues running for next sync cycle
+  if isValid(m.syncLoopTimer)
+    if m.syncLoopTimer.control <> "start"
+      ?"[SyncLoop] Restarting sync loop timer to ensure periodic sync continues"
+      m.syncLoopTimer.control = "start"
+    end if
   end if
 end sub
 
@@ -4909,13 +5107,13 @@ sub gotUserPrefs()
   favoritesChanged = false
   oldpreferences = m.preferences
   newpreferences = m.getpreferencesTask.preferences
-  if m.focusedItem = 1 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 and m.wasLoggedIn or m.focusedItem = 2 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 and m.wasLoggedIn
+  onFavoritesPage = (m.focusedItem = 1 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 and m.wasLoggedIn) or (m.focusedItem = 2 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 and m.wasLoggedIn)
+  if onFavoritesPage
+    ?"[Favorites Debug] gotUserPrefs - User on Favorites page"
     m.videoGrid.setFocus(false)
     m.categorySelector.setFocus(true)
-    m.favoritesUIFlag = false 'user shouldn't be allowed to transition during reload
+    ' Only set loading state if we will actually refresh - delay this decision
     m.videoGrid.visible = false
-    m.loadingText.text = "Loading following..."
-    m.loadingText.visible = true
     m.oauthHeader.visible = false
   end if
   setRegistry("preferencesRegistry", "preferences", FormatJson(m.getpreferencesTask.preferences))
@@ -4950,6 +5148,29 @@ sub gotUserPrefs()
       m.oauthHeader.visible = true
     end if
   end if
+
+  ' Manage UI state based on whether refresh is needed
+  if onFavoritesPage
+    if favoritesChanged = false
+      ?"[Favorites Debug] gotUserPrefs - No preference changes, restoring UI to normal state"
+      ?"[Favorites Debug] Current preferences.following count: "; m.getpreferencesTask.preferences.following.Count()
+      ' No changes - restore normal UI state immediately
+      m.favoritesUIFlag = true
+      m.loadingText.visible = false
+      ' Trigger category display to show existing content
+      m.videoGrid.visible = true
+    else
+      ?"[Favorites Debug] gotUserPrefs - Favorites changed, setting loading state for reload"
+      ?"[Favorites Debug] New preferences.following count: "; m.getpreferencesTask.preferences.following.Count()
+      ' Changes detected - set loading state (will be reset by gotFavorites callback)
+      m.favoritesUIFlag = false
+      if m.loadingText.text = "Loading..." or m.loadingText.text = ""
+        m.loadingText.text = "Refreshing favorites..."
+      end if
+      m.loadingText.visible = true
+    end if
+  end if
+
   favoritesChanged = invalid
   oldpreferences = invalid
   newpreferences = invalid
@@ -5143,6 +5364,9 @@ sub follow(channelID)
     m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
   end if
   m.preferences.following.push(channelID)
+  ' Set flag to refresh favorites on next navigation
+  m.needsFavoritesRefresh = true
+  ?"[Follow] Set needsFavoritesRefresh flag for next navigation to Favorites"
   m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
   m.favoritesThread.observeField("output", "gotFavorites")
   m.favoritesThread.control = "RUN"
@@ -5168,6 +5392,9 @@ sub unFollow(channelID)
         m.preferences.following.Delete(i)
       end if
     end for
+    ' Set flag to refresh favorites on next navigation
+    m.needsFavoritesRefresh = true
+    ?"[UnFollow] Set needsFavoritesRefresh flag for next navigation to Favorites"
     m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
@@ -5177,9 +5404,18 @@ end sub
 sub setPrefStateChanged()
   if m.setpreferencesTask.setState = 1
     m.setpreferencesTask.control = "STOP"
+    m.lastPrefTaskTime = 0  ' Reset timer when task completes successfully
     ?"SUCCESS: Set preferences remotely"
+
+    ' Trigger sync loop to update local sync state after remote preference change
+    if isValid(m.syncLoop) and m.syncLoop.accessToken <> ""
+      ?"[Sync] Preferences changed locally - triggering sync loop to update state"
+      m.syncLoop.control = "STOP"
+      m.syncLoop.control = "RUN"
+    end if
   else if m.setpreferencesTask.setState = 2
     m.setpreferencesTask.control = "STOP"
+    m.lastPrefTaskTime = 0  ' Reset timer when task fails
     ?"FAILURE: Failed to set preferences for some reason."
   end if
   'Logout()

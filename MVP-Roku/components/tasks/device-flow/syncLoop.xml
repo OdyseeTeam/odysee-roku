@@ -16,7 +16,7 @@
             <field id="constants" type="assocarray"/>
     </interface>
     <children>
-        <Timer id="syncTimer" repeat="true" duration="15"/>
+        <Timer id="syncTimer" repeat="true" duration="30"/>
     </children>
     <script type="text/brightscript" uri="pkg:/components/tasks/device-flow/syncLoop.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
