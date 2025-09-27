@@ -666,24 +666,6 @@ sub init()
     }
     ?"Setting initial deeplink from launch: "; deeplink
     m.global.deeplink = deeplink
-  ' Also check for deep link parameters passed from main.brs via global args
-  else if isValid(m.global.deeplink) and type(m.global.deeplink) = "roAssociativeArray"
-    ?"Checking global deeplink args from main.brs: "; formatJson(m.global.deeplink)
-    ' Check if args contain deep link parameters (contentId/contentID and mediaType)
-    if (m.global.deeplink.DoesExist("contentId") or m.global.deeplink.DoesExist("contentID")) and m.global.deeplink.DoesExist("mediaType")
-      contentId = ""
-      if m.global.deeplink.DoesExist("contentID")
-        contentId = m.global.deeplink.contentID
-      else if m.global.deeplink.DoesExist("contentId")
-        contentId = m.global.deeplink.contentId
-      end if
-      deeplink = {
-        contentId: contentId
-        type: m.global.deeplink.mediaType
-      }
-      ?"Setting initial deeplink from main args: "; formatJson(deeplink)
-      m.global.deeplink = deeplink
-    end if
   end if
 
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
@@ -2005,6 +1987,27 @@ sub finishInit()
   m.categorySelector.setFocus(true)
   m.focusedItem = 1
   m.global.scene.signalBeacon("AppLaunchComplete")
+  ' Check for deep link parameters passed from main.brs via global args (if not already set)
+  if not isValid(m.global.deeplink) or not isValid(m.global.deeplink.contentId)
+    if isValid(m.global.deeplink) and type(m.global.deeplink) = "roAssociativeArray"
+      ?"Checking global deeplink args from main.brs: "; formatJson(m.global.deeplink)
+      ' Check if args contain deep link parameters (contentId/contentID and mediaType)
+      if (m.global.deeplink.DoesExist("contentId") or m.global.deeplink.DoesExist("contentID")) and m.global.deeplink.DoesExist("mediaType")
+        contentId = ""
+        if m.global.deeplink.DoesExist("contentID")
+          contentId = m.global.deeplink.contentID
+        else if m.global.deeplink.DoesExist("contentId")
+          contentId = m.global.deeplink.contentId
+        end if
+        deeplink = {
+          contentId: contentId
+          type: m.global.deeplink.mediaType
+        }
+        ?"Setting initial deeplink from main args: "; formatJson(deeplink)
+        m.global.deeplink = deeplink
+      end if
+    end if
+  end if
   if isValid(m.global.deeplink)
     if isValid(m.global.deeplink.contentId)
       'TODO: create reverse livestream resolver so that livestreams can be deeplinked
