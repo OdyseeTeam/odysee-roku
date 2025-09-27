@@ -653,6 +653,18 @@ sub init()
   m.allLiveTask = CreateObject("roSGNode", "getAllLiveItems")
   m.InputTask = createObject("roSgNode", "inputTask")
   m.InputTask.observefield("inputData", "handleInputEvent")
+
+  ' Check for launch parameters (deep linking) from Scene interface fields
+  if m.top.contentId <> invalid and m.top.contentId <> "" and m.top.mediaType <> invalid and m.top.mediaType <> ""
+    ?"Launch parameters found - contentId: "; m.top.contentId; " mediaType: "; m.top.mediaType
+    deeplink = {
+      contentId: m.top.contentId
+      type: m.top.mediaType
+    }
+    ?"Setting initial deeplink from launch: "; deeplink
+    m.global.deeplink = deeplink
+  end if
+
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
   'forgot that cookies should be universal throughout application
   m.urlResolver.observeField("cookies", "gotCookies")
@@ -3059,21 +3071,31 @@ sub categorySelectorFocusChanged(msg)
             m.videoGrid.visible = false
             m.oauthLogoutButton.visible = true
           else
-            m.videoGrid.content = m.categories["FAVORITES"]
-            m.videoGrid.visible = true
-            m.loadingText.visible = false
-            m.oauthLogoutButton.visible = true
-            ' Hook: ensure lives appear immediately when entering Following
-            if isValid(m.preferences) and isValid(m.preferences.following)
-              if m.preferences.following.Count() > 0
-                ? "[Live] entering FAVORITES: merging lives now"
-                mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
-                ' Update grid content after merging live content
-                m.videoGrid.content = m.categories["FAVORITES"]
+            ' Check if favorites content is empty even though favorites are loaded
+            if isValid(m.categories["FAVORITES"]) and m.categories["FAVORITES"].getChildCount() > 0
+              m.videoGrid.content = m.categories["FAVORITES"]
+              m.videoGrid.visible = true
+              m.loadingText.visible = false
+              m.oauthLogoutButton.visible = true
+              ' Hook: ensure lives appear immediately when entering Following
+              if isValid(m.preferences) and isValid(m.preferences.following)
+                if m.preferences.following.Count() > 0
+                  ? "[Live] entering FAVORITES: merging lives now"
+                  mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
+                  ' Update grid content after merging live content
+                  m.videoGrid.content = m.categories["FAVORITES"]
+                end if
               end if
+              ' Restore grid focus AFTER live content has been merged
+              restoreGridFocus() ' Restore saved position for favorites
+            else
+              ' Favorites loaded but empty - show friendly message
+              m.videoGrid.visible = false
+              m.oauthHeader.text = "Follow some channels here" + Chr(10) + "or on odysee.com to fill" + Chr(10) + "in this view"
+              m.oauthHeader.visible = true
+              m.oauthLogoutButton.visible = true
+              m.loadingText.visible = false
             end if
-            ' Restore grid focus AFTER live content has been merged
-            restoreGridFocus() ' Restore saved position for favorites
           end if
         else
           m.videoGrid.visible = false

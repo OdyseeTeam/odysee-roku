@@ -19,6 +19,8 @@ function get_prefs()
         blocked = []
         following = []
         followingaa = {}
+        collections = []
+        ' Handle empty preferences gracefully - not an error if user hasn't followed channels yet
         if isValid(preferences.result)
             if IsValid(preferences.result.shared)
                 if isValid(preferences.result.shared.value)
@@ -44,7 +46,6 @@ function get_prefs()
                     end if
                     following.append(followingaa.Keys()) 'get output (no duplicates)
                     followingaa = invalid
-                    collections = []
 
                     'This code removes all unneeded data from collections so we have the bare minimum to run queries with.
                     'Plus, once we're done parsing, we can free memory.
@@ -119,6 +120,13 @@ function get_prefs()
         ?"===================================DONE==================================="
         return { blocked: blocked: following: following: collections: collections, raw: preferences }
     catch e
-        m.top.error = "true"
+        ' Only treat actual network/parsing errors as errors, not empty preferences
+        if isValid(preferences) and isValid(preferences.result)
+            ?"Preferences are empty (user hasn't followed any channels yet) - this is OK"
+            return { blocked: []: following: []: collections: [], raw: preferences }
+        else
+            ?"Real error getting preferences: "; e.message
+            m.top.error = "true"
+        end if
     end try
 end function

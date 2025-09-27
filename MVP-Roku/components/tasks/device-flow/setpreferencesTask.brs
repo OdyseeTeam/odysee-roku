@@ -67,9 +67,110 @@ function set_prefs()
             blockedData = getBulkPageData(blocked)
             'Step 3: Gut raw preferences for alteration
             ? "Step 3: Gut raw preferences for alteration"
-            rawprefs["result"]["shared"]["value"]["following"].Clear() 'roArray
-            rawprefs["result"]["shared"]["value"]["subscriptions"].Clear() 'roArray
-            rawprefs["result"]["shared"]["value"]["blocked"].Clear() 'roArray
+            ' Ensure the structure exists before trying to clear it
+            if not isValid(rawPrefs["result"])
+                rawPrefs["result"] = {}
+            end if
+            if not isValid(rawPrefs["result"]["shared"])
+                rawPrefs["result"]["shared"] = {}
+            end if
+            if not isValid(rawPrefs["result"]["shared"]["value"])
+                ' Create complete default preference structure for fresh users
+                currentTime = CreateObject("roDateTime").AsSeconds()
+                rawPrefs["result"]["shared"]["value"] = {
+                    "app_welcome_version": 0,
+                    "blocked": [],
+                    "builtinCollections": {
+                        "favorites": {
+                            "createdAt": currentTime,
+                            "id": "favorites",
+                            "itemCount": 0,
+                            "items": [],
+                            "name": "Favorites",
+                            "title": "",
+                            "type": "playlist",
+                            "updatedAt": currentTime
+                        },
+                        "watchlater": {
+                            "createdAt": currentTime,
+                            "id": "watchlater",
+                            "itemCount": 0,
+                            "items": [],
+                            "name": "Watch Later",
+                            "title": "",
+                            "type": "playlist",
+                            "updatedAt": currentTime
+                        }
+                    },
+                    "coin_swap_codes": [],
+                    "editedCollections": {},
+                    "following": [],
+                    "lastViewedAnnouncement": [],
+                    "savedCollectionIds": [],
+                    "settings": {
+                        "automatic_dark_mode_enabled": false,
+                        "autoplay": true,
+                        "autoplay_next": true,
+                        "clock_24h": false,
+                        "crypto_disclaimers": true,
+                        "dark_mode_times": {
+                            "from": {
+                                "formattedTime": "21:00",
+                                "hour": "21",
+                                "min": "00"
+                            },
+                            "to": {
+                                "formattedTime": "8:00",
+                                "hour": "8",
+                                "min": "00"
+                            }
+                        },
+                        "default_collection_action": "defaultCollectionActionView",
+                        "floating_player": true,
+                        "hide_balance": false,
+                        "hide_members_only_content": false,
+                        "hide_reposts": false,
+                        "hide_scheduled_livestreams": false,
+                        "hide_splash_animation": false,
+                        "hide_title_notification_count": false,
+                        "homepage_order": {
+                            "active": invalid,
+                            "hidden": invalid
+                        },
+                        "homepage_order_apply_to_sidebar": false,
+                        "instant_purchase_enabled": false,
+                        "instant_purchase_max": {
+                            "amount": 0.1,
+                            "currency": "LBC"
+                        },
+                        "language": invalid,
+                        "preferred_currency": "USD",
+                        "show_mature": false,
+                        "theme": "system",
+                        "upload_page_filtering": {
+                            "isFilteringEnabled": false,
+                            "sortOption": {
+                                "key": "updatedAt",
+                                "value": "asc"
+                            }
+                        }
+                    },
+                    "sharing_3P": false,
+                    "subscriptions": [],
+                    "tags": [],
+                    "unpublishedCollections": {},
+                    "updatedCollections": {}
+                }
+            end if
+            if not isValid(rawPrefs["result"]["shared"]["type"])
+                rawPrefs["result"]["shared"]["type"] = "object"
+            end if
+            if not isValid(rawPrefs["result"]["shared"]["version"])
+                rawPrefs["result"]["shared"]["version"] = "0.1"
+            end if
+            rawPrefs["result"]["shared"]["value"]["following"].Clear() 'roArray
+            rawPrefs["result"]["shared"]["value"]["subscriptions"].Clear() 'roArray
+            rawPrefs["result"]["shared"]["value"]["blocked"].Clear() 'roArray
 
             'Step 4: Get additional data (p2)+create base (manipulate data)
             ? "Step 4: Get additional data (p2)+create base (manipulate data)"
@@ -185,7 +286,7 @@ function set_prefs()
             'example following JSON:
             '"following": [
             '    {
-            '      "notificationsDisabled": "true",
+            '      "notificationsDisabled": true,
             '      "uri": "lbry://@FrameWork:39065ea36ccf9789327aab73ea88f182c8b77bd3"
             '    }
             '  ]
@@ -195,11 +296,11 @@ function set_prefs()
             'Step 5: Create preferences from data.
             ?"Step 5: Create preferences from data."
             for each claim in followingdata["result"]["items"]
-                rawprefs["result"]["shared"]["value"]["following"].Push({ "notificationsDisabled": "true", "uri": claim["permanent_url"].replace("#", ":") })
-                rawprefs["result"]["shared"]["value"]["subscriptions"].Push(claim["permanent_url"].replace("#", ":"))
+                rawPrefs["result"]["shared"]["value"]["following"].Push({ "notificationsDisabled": true, "uri": claim["permanent_url"].replace("#", ":") })
+                rawPrefs["result"]["shared"]["value"]["subscriptions"].Push(claim["permanent_url"].replace("#", ":"))
             end for
             for each claim in blockedData["result"]["items"]
-                rawprefs["result"]["shared"]["value"]["blocked"].Push(claim["permanent_url"].replace("#", ":"))
+                rawPrefs["result"]["shared"]["value"]["blocked"].Push(claim["permanent_url"].replace("#", ":"))
             end for
 
             sdkSyncHash = postJSON(formatJson({ "jsonrpc": "2.0", "method": "sync_hash", "params": {}, "id": m.top.uid }), m.top.constants["ROOT_SDK"]+"/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
@@ -216,7 +317,7 @@ function set_prefs()
 
             'Step 6: preference_set (set what we altered)
             ?"Step 6: preference_set (set what we altered) TO SDK"
-            preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_set", "params": { "key": "shared", "value": formatJson(rawprefs["result"]["shared"]) }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
+            preferences = postJSON(formatJson({ "jsonrpc": "2.0", "method": "preference_set", "params": { "key": "shared", "value": formatJson(rawPrefs["result"]["shared"]) }, "id": m.top.uid }), m.top.constants["ROOT_SDK"] + "/api/v1/proxy", { "Authorization": "Bearer " + m.top.accessToken })
             ?FormatJson(preferences)
             if isValid(preferences.result) = false
                 needs_resync = true

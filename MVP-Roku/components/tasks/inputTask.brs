@@ -22,9 +22,15 @@ function ListenInput()
           end for
 
           ' pass the deeplink to UI
-          if inputData.DoesExist("mediaType") and inputData.DoesExist("contentID")
+          if inputData.DoesExist("mediaType") and (inputData.DoesExist("contentID") or inputData.DoesExist("contentId"))
+            contentId = ""
+            if inputData.DoesExist("contentID")
+              contentId = inputData.contentID
+            else if inputData.DoesExist("contentId")
+              contentId = inputData.contentId
+            end if
             deeplink = {
-                id: inputData.contentID
+                contentId: contentId
                 type: inputData.mediaType
             }
             print "got input deeplink= "; deeplink
