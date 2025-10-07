@@ -130,7 +130,10 @@ function ClaimsToChannelGrid(claims)
     ' ?cresponse
     retries = 0
     while true
-        if IsValid(cresponse.error)
+        if (not isValid(cresponse)) or (Type(cresponse) <> "roAssociativeArray")
+            cresponse = postJSON(queryJSON, queryURL, invalid)
+            retries += 1
+        else if isValid(cresponse) and IsValid(cresponse.error)
             cresponse = postJSON(queryJSON, queryURL, invalid)
             retries += 1
         else

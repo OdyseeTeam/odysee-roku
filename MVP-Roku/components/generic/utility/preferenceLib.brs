@@ -121,7 +121,7 @@ function get_prefs()
         return { blocked: blocked: following: following: collections: collections, raw: preferences }
     catch e
         ' Only treat actual network/parsing errors as errors, not empty preferences
-        if isValid(preferences) and isValid(preferences.result)
+        if isValid(preferences) and Type(preferences) = "roAssociativeArray" and isValid(preferences.result)
             ?"Preferences are empty (user hasn't followed any channels yet) - this is OK"
             return { blocked: []: following: []: collections: [], raw: preferences }
         else

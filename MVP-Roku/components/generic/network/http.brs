@@ -19,11 +19,12 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
       http.AddHeader("Content-Type", "application/json")
       http.AddHeader("Accept", "application/json")
       if http.AsyncPostFromString(json) then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 and responseCode <= 299
-            m.top.cookies = http.getCookies("", "/")
+            cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
             response = parsejson(event.getString().replace("\n","|||||"))
             done = true
             exit while
@@ -41,7 +42,8 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
             end if
           else if responseCode >= 400 and responseCode <= 499
             try
-              m.top.cookies = http.getCookies("", "/")
+              cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
               response = parsejson(event.getString().replace("\n","|||||"))
             catch e
               response = { success: False }
@@ -102,7 +104,7 @@ function postJSONResponseOut(json, url, headers) as Object 'json, url, headers: 
       http.AddHeader("Content-Type", "application/json")
       http.AddHeader("Accept", "application/json")
       if http.AsyncPostFromString(json) then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           code = event.GetResponseCode()
           if code >= 200 and code <= 299
@@ -177,11 +179,12 @@ function postURLEncoded(data, url, headers) as Object
       http.AddHeader("Accept", "application/json")
       body = posturlencode(data)
       if http.AsyncPostFromString(body) then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 and responseCode <= 299
-            m.top.cookies = http.getCookies("", "/")
+            cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
             response = parsejson(event.getString().replace("\n","|||||"))
             done = true
             exit while
@@ -198,7 +201,8 @@ function postURLEncoded(data, url, headers) as Object
             end if
           else if responseCode >= 400 and responseCode <= 499
             try
-              m.top.cookies = http.getCookies("", "/")
+              cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
               response = parsejson(event.getString().replace("\n","|||||"))
             catch e
               response = { success: False }
@@ -275,11 +279,12 @@ function getURLEncoded(data, url, headers) as Object
         end if
       end if
       if http.AsyncGetToString() then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 AND responseCode <= 299
-            m.top.cookies = http.getCookies("", "/")
+            cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
             response = parsejson(event.getString().replace("\n","|||||"))
             done = true
             exit while
@@ -296,7 +301,8 @@ function getURLEncoded(data, url, headers) as Object
             end if
           else if responseCode >= 400 AND responseCode <= 499
             try
-              m.top.cookies = http.getCookies("", "/")
+              cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
               response = parsejson(event.getString().replace("\n","|||||"))
             catch e
               response = { success: False }
@@ -385,13 +391,14 @@ function getJSONAuthenticated(url, headers = invalid) as Object
       end if
 
       if http.AsyncGetToString() then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
 
           if responseCode >= 200 and responseCode <= 299
             ' Success
-            m.top.cookies = http.getCookies("", "/")
+            cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
             response = parsejson(event.getString().replace("\n","|||||"))
             done = true
             exit while
@@ -412,7 +419,8 @@ function getJSONAuthenticated(url, headers = invalid) as Object
           else if responseCode >= 400 and responseCode <= 499
             ' Client error - don't retry
             try
-              m.top.cookies = http.getCookies("", "/")
+              cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
               response = parsejson(event.getString().replace("\n","|||||"))
             catch e
               response = {success: False, error: "Client error"}
@@ -473,11 +481,12 @@ function getJSON(url) as Object
     while redirects <= maxRedirects
       http = httpPreSetup(innerUrl)
       if http.AsyncGetToString() then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 AND responseCode <= 299
-            m.top.cookies = http.getCookies("", "/")
+            cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
             response = parsejson(event.getString().replace("\n","|||||"))
             done = true
             exit while
@@ -495,7 +504,8 @@ function getJSON(url) as Object
             end if
           else if responseCode >= 400 AND responseCode <= 499
             try
-              m.top.cookies = http.getCookies("", "/")
+              cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
               response = parsejson(event.getString().replace("\n","|||||"))
             catch e
               response = { success: False }
@@ -543,11 +553,12 @@ function getRawText(url) as Object
     while redirects <= maxRedirects
       http = httpPreSetup(innerUrl)
       if http.AsyncGetToString() then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 AND responseCode <= 299
-            m.top.cookies = http.getCookies("", "/")
+            cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
             response = event.getString()
             done = true
             exit while
@@ -614,11 +625,12 @@ function getRawTextAuthenticated(url, headers) as Object
         end if
       end if
       if http.AsyncGetToString() then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 AND responseCode <= 299
-            m.top.cookies = http.getCookies("", "/")
+            cookies = http.getCookies("", "/")
+            if cookies <> invalid then m.top.cookies = cookies
             response = event.getString()
             done = true
             exit while
@@ -679,7 +691,7 @@ function urlExists(url) as Object
     while redirects <= maxRedirects
       http = httpPreSetup(innerUrl)
       if http.AsyncHead() then
-        event = Wait(10000, http.GetPort())
+        event = Wait(30000, http.GetPort())
         if Type(event) = "roUrlEvent" Then
           responseCode = event.GetResponseCode()
           if responseCode >= 200 AND responseCode <= 299

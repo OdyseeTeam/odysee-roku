@@ -14,12 +14,19 @@ function FetchNextPage(pageNum as integer)
     m.time.Mark()
     curTime = m.time.AsSeconds()
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-    ' Favor different per-channel limits: FAVORITES uses 3, others use 2
-    limitClaims = 2
-    if IsValid(m.top.rawname)
-        if UCase(m.top.rawname) = "FAVORITES" then limitClaims = 3
+
+    params = { "fee_amount": "<=0", "claim_type": ["stream"], "stream_types": ["video"], "has_source": true, "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
+
+    ' For FAVORITES: no per-channel limit and filter to last 6 months
+    ' For other categories: limit to 2 per channel to show variety
+    if IsValid(m.top.rawname) and UCase(m.top.rawname) = "FAVORITES"
+        ' No limit_claims_per_channel for Favorites
+        ' Filter to videos from last 6 months
+        sixMonthsAgo = curTime - (6 * 30 * 24 * 60 * 60)
+        params["release_time"] = ">"+sixMonthsAgo.toStr()
+    else
+        params["limit_claims_per_channel"] = 2
     end if
-    params = { "fee_amount": "<=0", "claim_type": ["stream"], "stream_types": ["video"], "has_source": true, "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr(), "limit_claims_per_channel": limitClaims }
     ' Only include channel_ids when provided (e.g., most categories). Wild West intentionally omits this.
     if IsValid(m.top.channels)
         if Type(m.top.channels) = "roArray" or Type(m.top.channels) = "Array"

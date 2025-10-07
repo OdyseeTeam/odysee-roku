@@ -106,8 +106,20 @@ function getVideoPage(pageNum)
         channels = m.top.channels
     end if
     rawChannels = invalid
-    
-    params = { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr(), "limit_claims_per_channel": 3 }
+
+    params = { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
+
+    ' For FAVORITES: no per-channel limit and filter to last 6 months
+    ' For other categories: limit to 3 per channel to show variety
+    if IsValid(m.top.rawname) and LCase(m.top.rawname) = "favorites"
+        ' No limit_claims_per_channel for Favorites
+        ' Filter to videos from last 6 months
+        sixMonthsAgo = curTime - (6 * 30 * 24 * 60 * 60)
+        params["release_time"] = ">"+sixMonthsAgo.toStr()
+    else
+        params["limit_claims_per_channel"] = 3
+    end if
+
     ' Wild West: use trending order instead of release_time
     if IsValid(m.top.rawname)
         if LCase(m.top.rawname) = "wildwest"

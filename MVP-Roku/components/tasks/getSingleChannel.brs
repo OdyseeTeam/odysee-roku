@@ -23,7 +23,7 @@ function ChannelToVideoGrid(channel)
         if (not isValid(response)) or (Type(response) <> "roAssociativeArray") then
             response = postJSON(queryJSON, queryURL, invalid)
             retries += 1
-        else if IsValid(response.error)
+        else if isValid(response) and IsValid(response.error)
             response = postJSON(queryJSON, queryURL, invalid)
             retries += 1
         else

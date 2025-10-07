@@ -95,7 +95,7 @@ function runtask() as void
             ? "WSC: Superchat History took " + (m.parseTimer.TotalMilliseconds() / 1000).ToStr() + "s"
             ? m.superchat
             m.parseTimer.Mark()
-            if isValid(chatResponse.result.items)
+            if isValid(chatResponse) and isValid(chatResponse.result) and isValid(chatResponse.result.items)
                 chatResponse.result.items.Reverse()
                 for each chatitem in chatResponse.result.items
                     if m.chatRegex.Replace(chatitem["comment"].Trim(), "") <> "" and chatitem["comment"].Trim().instr("![") = -1 and chatitem["comment"].Trim().instr("](") = -1 and isValid(m.blocked[chatitem["channel_id"]]) = false and chatitem.is_pinned = false

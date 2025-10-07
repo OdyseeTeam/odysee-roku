@@ -880,7 +880,9 @@ sub onRowItemFocused()
         t.observeField("output","onNextPageLoaded")
         t.control = "RUN"
         m.currentCategoryPage[catName] = nextPage
-        ? "[FAVORITES] Prefetch dispatch page=" + Str(nextPage) + " channels=" + Str(m.preferences.following.Count())
+        if isValid(m.preferences) and isValid(m.preferences.following)
+          ? "[FAVORITES] Prefetch dispatch page=" + Str(nextPage) + " channels=" + Str(m.preferences.following.Count())
+        end if
         ensureLoadingPlaceholderRow()
       else if IsValid(m.channelIDs[catName])
         t = CreateObject("roSGNode","getCategoryNextPage")
@@ -962,13 +964,15 @@ sub refreshAllLive()
     if isValid(m.categorySelector) and m.categorySelector.visible = true
       catIndex = m.categorySelector.itemFocused
       if catIndex >= 0 and IsValid(m.categorySelectordata) and catIndex < m.categorySelectordata.Count()
-        catName = m.categorySelectordata[catIndex].trueName
-        ' Always refresh these live-heavy categories
-        if catName = "wildwest" or catName = "FAVORITES"
-          shouldRefresh = true
-        ' For other categories, only refresh if they have live content potential
-        else if IsValid(m.channelIDs[catName]) and IsValid(m.channelIDs[catName]["channelIds"])
-          shouldRefresh = true
+        if isValid(m.categorySelectordata[catIndex]) and isValid(m.categorySelectordata[catIndex].trueName)
+          catName = m.categorySelectordata[catIndex].trueName
+          ' Always refresh these live-heavy categories
+          if catName = "wildwest" or catName = "FAVORITES"
+            shouldRefresh = true
+          ' For other categories, only refresh if they have live content potential
+          else if IsValid(m.channelIDs[catName]) and IsValid(m.channelIDs[catName]["channelIds"])
+            shouldRefresh = true
+          end if
         end if
       end if
     ' Always refresh when viewing individual channels (they might have live streams)
@@ -1700,12 +1704,18 @@ sub authDone()
     ?m.authTask.output
     m.uid = m.authTask.uid
     m.authtoken = m.authTask.authtoken
-    m.cookies = m.authTask.cookies
+    if isValid(m.authTask.cookies)
+      m.cookies = m.authTask.cookies
+    else
+      m.cookies = []
+    end if
     ?"AUTH IS DONE!"
     ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
     m.video.EnableCookies()
     m.video.SetHeaders(m.constants["ACCESS_HEADERS"])
-    m.video.AddCookies(m.cookies)
+    if isValid(m.cookies) and (Type(m.cookies) = "roArray" or Type(m.cookies) = "roAssociativeArray")
+      m.video.AddCookies(m.cookies)
+    end if
     m.loadingText.text = "Legacy Auth complete..."
     m.cidsTask.setField("constants", m.constants)
     m.cidsTask.control = "RUN"
@@ -2159,22 +2169,28 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               end if
             else if m.videoButtonSelected = "nextItem"
               ' Move to the next item in the grid
-              if isValid(m.currentVideoPosition)
+              if isValid(m.currentVideoPosition) and isValid(m.videoGrid) and isValid(m.videoGrid.content)
                 if m.currentVideoPosition[1] = 3
-                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0))
-                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1).getChild(0)
-                    returnToUIPage()
-                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0] + 1, 0]
-                    m.currentVideoPosition = [m.currentVideoPosition[0] + 1, 0]
-                    resolveEvaluatedVideo(curItem)
+                  nextRow = m.videoGrid.content.getChild(m.currentVideoPosition[0] + 1)
+                  if isValid(nextRow)
+                    curItem = nextRow.getChild(0)
+                    if isValid(curItem)
+                      returnToUIPage()
+                      m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0] + 1, 0]
+                      m.currentVideoPosition = [m.currentVideoPosition[0] + 1, 0]
+                      resolveEvaluatedVideo(curItem)
+                    end if
                   end if
                 else
-                  if isValid(m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1))
-                    curItem = m.videoGrid.content.getChild(m.currentVideoPosition[0]).getChild(m.currentVideoPosition[1] + 1)
-                    returnToUIPage()
-                    m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
-                    m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
-                    resolveEvaluatedVideo(curItem)
+                  currentRow = m.videoGrid.content.getChild(m.currentVideoPosition[0])
+                  if isValid(currentRow)
+                    curItem = currentRow.getChild(m.currentVideoPosition[1] + 1)
+                    if isValid(curItem)
+                      returnToUIPage()
+                      m.videoGrid.jumpToRowItem = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
+                      m.currentVideoPosition = [m.currentVideoPosition[0], m.currentVideoPosition[1] + 1]
+                      resolveEvaluatedVideo(curItem)
+                    end if
                   end if
                 end if
               end if
@@ -2188,7 +2204,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               ' Like
               ? "like"
               ? m.wasLoggedIn
-              if m.wasLoggedIn
+              if m.wasLoggedIn and isValid(m.currentVideoReactions) and isValid(m.currentVideoReactions.mine)
                 if m.currentVideoReactions.mine.likes > 0 and m.currentVideoReactions.mine.dislikes = 0
                   setReaction(m.currentVideoClaimID, "negate")
                 else
@@ -2199,7 +2215,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             else if m.videoButtonSelected = "dislike"
               ? "dislike"
               ? m.wasLoggedIn
-              if m.wasLoggedIn
+              if m.wasLoggedIn and isValid(m.currentVideoReactions) and isValid(m.currentVideoReactions.mine)
                 ' Dislike
                 if m.currentVideoReactions.mine.dislikes > 0 and m.currentVideoReactions.mine.likes = 0
                   setReaction(m.currentVideoClaimID, "negate")
@@ -2317,8 +2333,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               showCategorySelector()
             else 'go back a UI layer
               m.uiLayers.pop()
-              m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
-              if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+              if m.uiLayers.Count() > 0
+                m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
+              end if
+              if m.uiLayers.Count() > 0 and isValid(m.uiLayers[m.uiLayers.Count() - 1])
                 if m.videoGrid.content.getChildren(1, 0)[0].getChildren(1, 0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
                   downsizeVideoGrid()
                 end if
@@ -2600,7 +2618,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           if m.categorySelector.itemFocused > 0 and m.uiLayer = 0
             ? "CATEGORY REFRESH"
             if m.categorySelector.itemFocused = 1 and m.wasLoggedIn 'update favorites
-              if m.preferences.following.Count() > 0
+              if isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() > 0
                 m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, cookies: m.cookies })
                 m.favoritesThread.observeField("output", "gotFavorites")
                 m.favoritesThread.control = "RUN"
@@ -3156,7 +3174,11 @@ sub categorySelectorFocusChanged(msg)
           end if
         else
           ?"[Favorites Debug] No local changes detected"
-          ?"[Favorites Debug] Current state - favoritesLoaded: "; m.favoritesLoaded; " preferences.following count: "; m.preferences.following.Count()
+          if isValid(m.preferences) and isValid(m.preferences.following)
+            ?"[Favorites Debug] Current state - favoritesLoaded: "; m.favoritesLoaded; " preferences.following count: "; m.preferences.following.Count()
+          else
+            ?"[Favorites Debug] Current state - favoritesLoaded: "; m.favoritesLoaded; " preferences.following is invalid"
+          end if
           ' Only hide loading text if we're not in a refresh state (favoritesUIFlag=true means UI is stable)
           if m.favoritesUIFlag = true
             ?"[Favorites Debug] UI stable, hiding loading text"
@@ -3168,10 +3190,14 @@ sub categorySelectorFocusChanged(msg)
       end if
 
       if m.authTask.authPhase = 3
-        ?"[Favorites Debug] authPhase=3, preferences.following count: "; m.preferences.following.Count(); " wasLoggedIn: "; m.wasLoggedIn
+        if isValid(m.preferences) and isValid(m.preferences.following)
+          ?"[Favorites Debug] authPhase=3, preferences.following count: "; m.preferences.following.Count(); " wasLoggedIn: "; m.wasLoggedIn
+        else
+          ?"[Favorites Debug] authPhase=3, preferences.following is invalid, wasLoggedIn: "; m.wasLoggedIn
+        end if
         ?"[Favorites Debug] favoritesLoaded: "; m.favoritesLoaded; " favoritesUIFlag: "; m.favoritesUIFlag
 
-        if isValid(m.preferences.following) and m.preferences.following.Count() = 0 and m.wasLoggedIn
+        if isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() = 0 and m.wasLoggedIn
           ?"[Favorites Debug] Setting favoritesLoaded=false because following count is 0"
           m.favoritesLoaded = false
         end if
@@ -4530,11 +4556,16 @@ sub gotChannelSearch(msg as object)
       m.currentChannelPage = 1
       m.loadingChannelNext = false
       m.focusedItem = 2 '[video grid]
-      if isValid(m.uiLayers[m.uiLayers.Count() - 1])
+      if m.uiLayers.Count() > 0 and isValid(m.uiLayers[m.uiLayers.Count() - 1])
         previousData = m.uiLayers[m.uiLayers.Count() - 1]
         currentData = data.content
-        previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
-        currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
+        try
+          previousDataChildTitle = currentData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
+          currentDataChildTitle = previousData.getChildren(1, 0)[0].getChildren(1, 0)[0].TITLE
+        catch e
+          previousDataChildTitle = ""
+          currentDataChildTitle = ""
+        end try
         if previousDataChildTitle <> currentDataChildTitle
           m.uiLayers.push(data.content) 'so we can go back a layer when someone hits back.
           m.uiLayer += 1
@@ -5389,7 +5420,7 @@ sub unFollow(channelID)
   if isValid(m.videoButtonsFollowingIcon)
     m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
   end if
-  if m.preferences.following.Count() > 0
+  if isValid(m.preferences) and isValid(m.preferences.following) and m.preferences.following.Count() > 0
     for i = 0 to m.preferences.following.Count() - 1
       if m.preferences.following[i] = channelID
         m.preferences.following.Delete(i)
@@ -5452,7 +5483,7 @@ end sub
 'General HTTP/Registry-Related Functions
 sub gotCookies(msg as object)
   cookies = msg.getData()
-  if cookies.Count() > 0
+  if cookies <> invalid and cookies.Count() > 0
     ?"COOKIE:"
     ?FormatJson(cookies)
     ?"COOKIE_END"

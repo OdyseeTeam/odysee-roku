@@ -125,15 +125,20 @@ sub itemContentChanged()
         end if
     end if
     if isValid(m.top.itemContent.reposted) AND isValid(m.top.itemContent.repostedBy)
+        if not isValid(m.repostIcon) then m.repostIcon = m.top.findNode("repostIcon")
+        if not isValid(m.repostedBy) then m.repostedBy = m.top.findNode("repostedBy")
+        if not isValid(m.repostedBackground) then m.repostedBackground = m.top.findNode("rbackground")
         if m.top.itemContent.reposted
-            m.repostIcon.visible = true
-            m.repostedBy.visible = true
-            m.repostedBackground.visible = true
-            m.repostedBy.text = m.top.itemContent.repostedBy
+            if isValid(m.repostIcon) then m.repostIcon.visible = true
+            if isValid(m.repostedBy)
+                m.repostedBy.visible = true
+                m.repostedBy.text = m.top.itemContent.repostedBy
+            end if
+            if isValid(m.repostedBackground) then m.repostedBackground.visible = true
         else
-            m.repostIcon.visible = false
-            m.repostedBy.visible = false
-            m.repostedBackground.visible = false
+            if isValid(m.repostIcon) then m.repostIcon.visible = false
+            if isValid(m.repostedBy) then m.repostedBy.visible = false
+            if isValid(m.repostedBackground) then m.repostedBackground.visible = false
         end if
     end if
     if isValid(m.top.itemContent.videolength) AND isValid(m.top.itemContent.ITEMTYPE)
