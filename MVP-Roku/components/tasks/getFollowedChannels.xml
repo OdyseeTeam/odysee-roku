@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="getFollowedChannels" extends="Task">
+  <interface>
+    <field id="constants" type="assocarray"/>
+    <field id="channels" type="array"/>
+    <field id="uid" type="integer"/>
+    <field id="cookies" type="string"/>
+    <field id="output" type="assocarray"/>
+    <field id="mode" type="string"/> <!-- "recent_active" or "all" -->
+    <field id="page" type="integer"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/tasks/getFollowedChannels.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/logic/LBRY_Parsing.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs"/>
+</component>

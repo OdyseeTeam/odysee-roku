@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="ChannelTile" extends="Group">
+  <interface>
+    <field id="itemContent" type="node" onChange="updateContent"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ui/ChannelTile.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs"/>
+
+  <children>
+    <!-- Background card -->
+    <Rectangle id="background" color="0x1a1a1a" width="410" height="180" translation="[0,0]">
+      <Rectangle id="focusIndicator" color="0x5d5d5d" width="410" height="180" opacity="0.0" translation="[0,0]"/>
+    </Rectangle>
+
+    <!-- Channel thumbnail -->
+    <Poster
+      id="channelThumb"
+      uri="pkg:/images/generic/bad_icon_requires_usage_rights.png"
+      width="140"
+      height="140"
+      translation="[20,20]"
+      loadDisplayMode="scaleToFit"
+    />
+
+    <!-- Channel info -->
+    <Label
+      id="channelTitle"
+      font="font:Inter-Emoji"
+      color="#ffffff"
+      width="230"
+      height="60"
+      text=""
+      translation="[170,30]"
+      wrap="true"
+      maxLines="2"
+    >
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="28"/>
+    </Label>
+
+    <Label
+      id="channelUploads"
+      font="font:Inter-Emoji"
+      color="#aaaaaa"
+      width="230"
+      height="40"
+      text=""
+      translation="[170,95]"
+      wrap="false"
+    >
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="22"/>
+    </Label>
+  </children>
+</component>

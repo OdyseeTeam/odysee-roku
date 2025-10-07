@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="FollowedChannelsScene" extends="Group">
+  <interface>
+    <field id="channels" type="array"/>
+    <field id="constants" type="assocarray"/>
+    <field id="uid" type="integer"/>
+    <field id="selectedChannel" type="assocarray"/>
+    <field id="restoreFocus" type="boolean" alwaysNotify="true"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ui/FollowedChannelsScene.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs"/>
+
+  <children>
+    <!-- Background -->
+    <Rectangle id="background" color="0x09070c" width="1920" height="1080" translation="[0,0]"/>
+
+    <!-- Header -->
+    <Rectangle id="headerBg" color="0x241f2a" width="1920" height="130" translation="[0,0]"/>
+
+    <Label id="headerTitle" font="font:Inter-Emoji" color="#ffffff" width="800" height="80" text="Followed Channels" translation="[100,30]">
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
+    </Label>
+
+    <!-- Recently Active Section -->
+    <Label id="recentlyActiveLabel" font="font:Inter-Emoji" color="#ffffff" width="600" height="50" text="Recently Active" translation="[100,160]">
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="42"/>
+    </Label>
+
+    <RowList
+      id="recentlyActiveGrid"
+      translation="[100,220]"
+      itemComponentName="ChannelTile"
+      numRows="2"
+      rowItemSize="[[410,180], [410,180]]"
+      rowItemSpacing="[[20,15], [20,15]]"
+      itemSize="[1720,195]"
+      showRowLabel="[false, false]"
+      rowFocusAnimationStyle="floatingFocus"
+      vertFocusAnimationStyle="floatingFocus"
+      horizFocusAnimationStyle="floatingFocus"
+      focusXOffset="[0]"
+      visible="true"
+    />
+
+    <!-- All Channels Section -->
+    <Label id="allChannelsLabel" font="font:Inter-Emoji" color="#ffffff" width="600" height="50" text="All Channels" translation="[100,630]">
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="42"/>
+    </Label>
+
+    <RowList
+      id="allChannelsGrid"
+      translation="[100,690]"
+      itemComponentName="ChannelTile"
+      numRows="3"
+      rowItemSize="[[410,180]]"
+      rowItemSpacing="[[20,15]]"
+      itemSize="[1720,195]"
+      focusXOffset="[0]"
+      showRowLabel="[false]"
+      rowFocusAnimationStyle="floatingFocus"
+      vertFocusAnimationStyle="floatingFocus"
+      horizFocusAnimationStyle="floatingFocus"
+      wrapDividerBitmapUri=""
+      visible="true"
+    />
+
+    <!-- Loading indicator -->
+    <Label id="loadingText" font="font:Inter-Emoji" color="#ffffff" width="1920" height="400" text="Loading..." wrap="true" vertAlign="center" horizAlign="center" translation="[0,300]" visible="false">
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="48"/>
+    </Label>
+  </children>
+</component>

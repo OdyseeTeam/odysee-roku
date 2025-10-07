@@ -48,15 +48,53 @@ function parseVideo(itemIn)
             catch e
                 item.ChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
             end try
+            ' Prefer release_time, fallback to timestamp if not available
+            dateSet = false
+            dateSource = "none"
+            ' Try release_time first (actual publish date)
             try
-                try
-                    m.time.FromSeconds(curItem["value"]["release_time"])
-                catch e
-                    m.time.FromSeconds(curItem.meta.creation_timestamp)
-                end try
+                if isValid(curItem.value) and isValid(curItem.value.release_time)
+                    releaseTimeVal = 0
+                    ' Handle both string and numeric release_time
+                    if Type(curItem.value.release_time) = "roString" or Type(curItem.value.release_time) = "String"
+                        releaseTimeVal = Val(curItem.value.release_time)
+                    else
+                        releaseTimeVal = curItem.value.release_time
+                    end if
+                    if releaseTimeVal > 0
+                        m.time.FromSeconds(releaseTimeVal)
+                        dateSet = true
+                        dateSource = "release_time"
+                    end if
+                end if
             catch e
-                m.time.FromSeconds(curItem.timestamp)
             end try
+
+            ' Fallback to timestamp
+            if not dateSet
+                try
+                    if isValid(curItem.timestamp)
+                        if curItem.timestamp > 0
+                            m.time.FromSeconds(curItem.timestamp)
+                            dateSet = true
+                            dateSource = "timestamp"
+                        end if
+                    end if
+                catch e
+                end try
+            end if
+
+            ' Last resort: creation_timestamp
+            if not dateSet
+                try
+                    if isValid(curItem.meta) and isValid(curItem.meta.creation_timestamp)
+                        if curItem.meta.creation_timestamp > 0
+                            m.time.FromSeconds(curItem.meta.creation_timestamp)
+                        end if
+                    end if
+                catch e
+                end try
+            end if
             timestr = m.time.AsDateString("short-month-short-weekday") + " "
             timestr = timestr.Trim()
             item.ReleaseDate = timestr

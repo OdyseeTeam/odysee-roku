@@ -123,7 +123,8 @@
 			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
 	</Label>
 
-    <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1500,70]" iconUri="" focusedIconUri="" visible="false"/>
+    <Button id="channelsButton" textcolor="#ffffff" minwidth="80" height="64" text="Channels" showFocusFootprint="true" translation="[1350,70]" iconUri="" focusedIconUri="" visible="false"/>
+    <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1620,70]" iconUri="" focusedIconUri="" visible="false"/>
 
     <!-- Exit Confirmation Dialog - Top Overlay Banner -->
     <Rectangle id="exitDialogBackground" color="0x000000DD" width="1920" height="120" translation="[0,0]" visible="false"/>
@@ -318,13 +319,20 @@
     duration="1"
     />
 
+    <!-- Followed Channels Scene -->
+    <FollowedChannelsScene
+        id="followedChannelsScene"
+        visible="false"
+        translation="[0,0]"
+    />
+
     <!--DEV USE ONLY-->
     <Poster
         id="safezones"
         uri="pkg:/images/safezone.png"
         width="1920"
         height="1080"
-        translation="[0,0]" 
+        translation="[0,0]"
         visible = "false"
     />
     </children>
