@@ -18,6 +18,7 @@ sub Init()
     m.repostedBackground = m.top.findNode("rbackground")
     m.placeholderOverlay = m.top.findNode("placeholderOverlay")
     m.placeholderPulse = m.top.findNode("placeholderPulse")
+    m.progressBar = m.top.findNode("progressBar")
 end sub
 sub itemContentChanged()
     ' Ensure nodes exist (onChange can fire before init)
@@ -31,14 +32,22 @@ sub itemContentChanged()
     if not isValid(m.videoLengthBackground) then m.videoLengthBackground = m.top.findNode("lbackground")
 
     if isValid(m.Poster) and isValid(m.top.itemContent) then m.Poster.uri = m.top.itemContent.HDPOSTERURL
+
+    ' Debug channel icon
+    print "[PosterItem] Processing: "; m.top.itemContent.TITLE
+    print "  ChannelIcon field: "; m.top.itemContent.ChannelIcon
+    print "  CREATOR field: "; m.top.itemContent.CREATOR
+
     ' Always show channel icons when provided; URIs are pre-optimized via CHANNEL_ICON_PROCESSOR
     if isValid(m.top.itemContent) and isValid(m.top.itemContent.ChannelIcon) and m.top.itemContent.ChannelIcon <> ""
         if isValid(m.ChannelIcon)
             m.ChannelIcon.uri = m.top.itemContent.ChannelIcon
             m.ChannelIcon.visible = true
+            print "[PosterItem] Set ChannelIcon visible: "; m.ChannelIcon.uri
         end if
     else
         if isValid(m.ChannelIcon) then m.ChannelIcon.visible = false
+        print "[PosterItem] ChannelIcon hidden or empty"
     end if
     m.Title.text = m.top.itemContent.TITLE
     m.Creator.text = m.top.itemContent.CREATOR
@@ -156,6 +165,43 @@ sub itemContentChanged()
             m.videoLength.width = bgWidth - 10
         end if
     end if
+
+    ' Handle watch progress bar
+    if not isValid(m.progressBar) then m.progressBar = m.top.findNode("progressBar")
+    if isValid(m.progressBar) and isValid(m.top.itemContent)
+        watchProgress = 0
+        if isValid(m.top.itemContent.watchProgress)
+            watchProgress = m.top.itemContent.watchProgress
+        end if
+
+        if watchProgress > 0 and watchProgress <= 100
+            ' Calculate bar width based on progress and poster width
+            posterWidth = 390 ' default
+            if isValid(m.Poster) and isValid(m.Poster.width)
+                posterWidth = m.Poster.width
+            end if
+
+            barWidth = Int(posterWidth * (watchProgress / 100))
+            if barWidth < 1 then barWidth = 1
+            m.progressBar.width = barWidth
+
+            ' Position at bottom of thumbnail (poster height is 220, bar is 6px high)
+            m.progressBar.translation = [10, 224]
+
+            ' Color gradient from red to purple based on progress
+            if watchProgress < 50
+                ' Red to pink
+                m.progressBar.color = "0xC70039FF"
+            else
+                ' Pink to purple
+                m.progressBar.color = "0x9B51E0FF"
+            end if
+
+            m.progressBar.visible = true
+        else
+            m.progressBar.visible = false
+        end if
+    end if
 end sub
 sub updateLayout()
     ' Ensure node refs exist (update can fire before init)
@@ -221,5 +267,25 @@ sub updateLayout()
         ' Background
         if isValid(m.Background) then m.Background.width = m.top.width
         if isValid(m.Background) then m.Background.height = m.top.height
+
+        ' Update progress bar position and width if it exists and has content
+        if not isValid(m.progressBar) then m.progressBar = m.top.findNode("progressBar")
+        if isValid(m.progressBar) and isValid(m.Poster) and isValid(m.top.itemContent)
+            watchProgress = 0
+            if isValid(m.top.itemContent.watchProgress)
+                watchProgress = m.top.itemContent.watchProgress
+            end if
+
+            if watchProgress > 0 and watchProgress <= 100
+                ' Calculate bar width based on progress and actual poster width
+                barWidth = Int(m.Poster.width * (watchProgress / 100))
+                if barWidth < 1 then barWidth = 1
+                m.progressBar.width = barWidth
+
+                ' Position just below poster (poster starts at y=10, height=220, so bottom is at 230)
+                ' Place progress bar at y=224 (6px above the poster bottom edge)
+                m.progressBar.translation = [10, 10 + m.Poster.height - 6]
+            end if
+        end if
     end if
 end sub

@@ -44,11 +44,12 @@ function siteMethod(lbry_url)
         'uri: lbryURL
         'outpoint: resolve TXID+":"+resolve NOUT
         'claim_id: claimID
+        'last_timestamp: position in video (0 for initial call)
         if isValid(m.top.accessToken) and m.top.accessToken <> ""
-            reqData = { uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID }
+            reqData = { uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID, last_timestamp: 0 }
             reqHeaders = { "Authorization": "Bearer " + m.top.accessToken }
         else if isValid(m.top.authToken) and m.top.authToken <> ""
-            reqData = { uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID, "auth_token": m.top.authToken }
+            reqData = { uri: lbry_url, outpoint: outpoint, claim_id: vCLAIMID, last_timestamp: 0, "auth_token": m.top.authToken }
             reqHeaders = {}
         end if
         fileViewRequest = getURLEncoded(reqData, fileViewURL, reqHeaders)

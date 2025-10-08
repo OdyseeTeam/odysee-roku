@@ -145,7 +145,7 @@ function getVideoPage(pageNum)
     end if
     rawChannels = invalid
 
-    params = { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream"], "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
+    params = { "channel_ids": channels, "fee_amount": "<=0", "claim_type": ["stream"], "has_source": true, "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
 
     ' For FAVORITES: no per-channel limit and filter to last 6 months
     ' For other categories: limit to 3 per channel to show variety

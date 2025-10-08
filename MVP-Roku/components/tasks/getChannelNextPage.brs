@@ -11,7 +11,7 @@ function FetchChannelNextPage(pageNum as integer)
     date.Mark()
     curTime = date.AsSeconds()
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-    params = { "page": pageNum, "page_size": 48, "fee_amount": "<=0", "claim_type": ["stream"], "stream_types": ["video"], "no_totals": true, "channel_ids": [m.top.channel], "order_by": ["release_time"], "release_time": "<" + curTime.toStr(), "has_source": true }
+    params = { "page": pageNum, "page_size": 48, "fee_amount": "<=0", "claim_type": ["stream"], "has_source": true, "stream_types": ["video"], "no_totals": true, "channel_ids": [m.top.channel], "order_by": ["release_time"], "release_time": "<" + curTime.toStr() }
     q = FormatJson({"jsonrpc":"2.0","method":"claim_search","params":params,"id":m.top.uid})
     resp = postJSON(q, queryURL, invalid)
     items = []

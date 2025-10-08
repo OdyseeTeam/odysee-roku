@@ -93,6 +93,38 @@
         m.itemText.height = h - 4
       end if
 
+      ' Progress bar
+      if isValid(m.progressBar)
+        ' Check if watchProgress field exists
+        watchProgress = 0
+        if isValid(ic.watchProgress)
+          watchProgress = ic.watchProgress
+        end if
+
+        if watchProgress > 0 and watchProgress <= 100
+          ' Calculate bar width based on progress
+          barWidth = Int((w - 4) * (watchProgress / 100))
+          if barWidth < 1 then barWidth = 1
+          m.progressBar.width = barWidth
+
+          ' Position at bottom of tile
+          m.progressBar.translation = [2, h - 8]
+
+          ' Color gradient from red to purple based on progress
+          if watchProgress < 50
+            ' Red to pink
+            m.progressBar.color = "0xC70039FF"
+          else
+            ' Pink to purple
+            m.progressBar.color = "0x9B51E0FF"
+          end if
+
+          m.progressBar.visible = true
+        else
+          m.progressBar.visible = false
+        end if
+      end if
+
       ' Colors
       outlineColor = "0xFFFFFFFF"
       bgBase = "0x000000"
@@ -130,13 +162,35 @@
   end function
   function gotFocus()
     if m.top.isFocused
-      m.itemBackground.color = m.top.itemContent.backgroundColor+"00"
+      ' Safely access backgroundColor with default
+      bgColor = "0x000000"
+      if IsValid(m.top.itemContent) and IsValid(m.top.itemContent.backgroundColor)
+        bgColor = m.top.itemContent.backgroundColor
+      end if
+      m.itemBackground.color = bgColor+"00"
       m.itemOutline.color = "0xC70039FF"
-      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"FF"
+
+      ' Safely access outlineColor with default
+      outlineColor = "0xFFFFFF"
+      if IsValid(m.top.itemContent) and IsValid(m.top.itemContent.outlineColor)
+        outlineColor = m.top.itemContent.outlineColor
+      end if
+      m.itemText.color = Left(outlineColor, 8)+"FF"
     else
-      m.itemBackground.color = m.top.itemContent.backgroundColor+"FF"
+      ' Safely access backgroundColor with default
+      bgColor = "0x000000"
+      if IsValid(m.top.itemContent) and IsValid(m.top.itemContent.backgroundColor)
+        bgColor = m.top.itemContent.backgroundColor
+      end if
+      m.itemBackground.color = bgColor+"FF"
       m.itemOutline.color = "0xFFFFFFFF"
-      m.itemText.color = Left(m.top.itemContent.outlineColor, 8)+"99"
+
+      ' Safely access outlineColor with default
+      outlineColor = "0xFFFFFF"
+      if IsValid(m.top.itemContent) and IsValid(m.top.itemContent.outlineColor)
+        outlineColor = m.top.itemContent.outlineColor
+      end if
+      m.itemText.color = Left(outlineColor, 8)+"99"
     end if
   end function
   function onKeyEvent(key as string, press as boolean) as boolean
@@ -156,12 +210,13 @@
     end if
     return false
   end function
-  function init() 
+  function init()
     m.itemImage = m.top.findNode("itemImage")
     m.itemText = m.top.findNode("itemText")
     m.itemOutline = m.top.findNode("outline")
     m.itemBackground = m.top.findNode("background")
     m.itemFocusBackground = m.top.findNode("focusBackground")
+    m.progressBar = m.top.findNode("progressBar")
   end function
 
 ]]>
@@ -176,6 +231,8 @@
   <Label id="itemText" width="180" height="50" visible="false" horizAlign="center" vertAlign="center" translation="[2,2]">
     <Font role="font"/>
   </Label>
+  <!-- Watch progress bar -->
+  <Rectangle id="progressBar" width="0" height="6" color="0xC70039FF" visible="false"/>
 </children>
 
 </component>

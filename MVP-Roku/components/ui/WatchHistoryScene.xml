@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="WatchHistoryScene" extends="Group">
+  <interface>
+    <field id="selectedVideo" type="assocarray"/>
+    <field id="restoreFocus" type="boolean" alwaysNotify="true"/>
+    <field id="constants" type="assocarray"/>
+    <field id="uid" type="integer"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ui/WatchHistoryScene.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs"/>
+
+  <children>
+    <!-- Background -->
+    <Rectangle id="background" color="0x09070c" width="1920" height="1080" translation="[0,0]"/>
+
+    <!-- Header -->
+    <Rectangle id="headerBg" color="0x241f2a" width="1920" height="130" translation="[0,0]"/>
+
+    <Label id="headerTitle" font="font:Inter-Emoji" color="#ffffff" width="800" height="80" text="Watch History" translation="[100,30]">
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
+    </Label>
+
+    <!-- History Grid - using more horizontal space without sidebar -->
+    <RowList
+      id="historyGrid"
+      translation="[100,150]"
+      itemComponentName="PosterItem"
+      numRows="4"
+      rowItemSize="[[410,400]]"
+      rowItemSpacing="[[20,0]]"
+      itemSize="[1920,420]"
+      focusXOffset="[50]"
+      showRowLabel="[true]"
+      rowLabelOffset="[[0,20]]"
+      rowFocusAnimationStyle="floatingFocus"
+      vertFocusAnimationStyle="fixedFocus"
+      wrapDividerBitmapUri=""
+      wrapDividerHeight="0"
+      visible="true"
+    />
+
+    <!-- Loading/Empty indicator -->
+    <Label id="statusText" font="font:Inter-Emoji" color="#ffffff" width="1920" height="400" text="Loading..." wrap="true" vertAlign="center" horizAlign="center" translation="[0,300]" visible="false">
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="48"/>
+    </Label>
+  </children>
+</component>

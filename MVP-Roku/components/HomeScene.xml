@@ -123,8 +123,9 @@
 			<Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
 	</Label>
 
-    <Button id="channelsButton" textcolor="#ffffff" minwidth="80" height="64" text="Channels" showFocusFootprint="true" translation="[1350,70]" iconUri="" focusedIconUri="" visible="false"/>
-    <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1620,70]" iconUri="" focusedIconUri="" visible="false"/>
+    <Button id="historyButton" textcolor="#ffffff" minwidth="80" height="64" text="History" showFocusFootprint="true" translation="[1180,70]" iconUri="" focusedIconUri="" visible="false"/>
+    <Button id="channelsButton" textcolor="#ffffff" minwidth="80" height="64" text="Channels" showFocusFootprint="true" translation="[1420,70]" iconUri="" focusedIconUri="" visible="false"/>
+    <Button id="logoutButton" textcolor="#ffffff" minwidth="80" height="64" text="Logout" showFocusFootprint="true" translation="[1690,70]" iconUri="" focusedIconUri="" visible="false"/>
 
     <!-- Exit Confirmation Dialog - Top Overlay Banner -->
     <Rectangle id="exitDialogBackground" color="0x000000DD" width="1920" height="120" translation="[0,0]" visible="false"/>
@@ -322,6 +323,13 @@
     <!-- Followed Channels Scene -->
     <FollowedChannelsScene
         id="followedChannelsScene"
+        visible="false"
+        translation="[0,0]"
+    />
+
+    <!-- Watch History Scene -->
+    <WatchHistoryScene
+        id="watchHistoryScene"
         visible="false"
         translation="[0,0]"
     />

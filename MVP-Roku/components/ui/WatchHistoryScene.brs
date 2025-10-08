@@ -1,0 +1,351 @@
+sub Init()
+    m.historyGrid = m.top.findNode("historyGrid")
+    m.statusText = m.top.findNode("statusText")
+
+    m.historyGrid.observeField("rowItemSelected", "onVideoSelected")
+    m.historyGrid.observeField("itemFocused", "onItemFocused")
+
+    m.top.observeField("restoreFocus", "onRestoreFocus")
+    m.top.observeField("visible", "onVisibleChanged")
+
+    ' Create task for fetching metadata
+    m.fetchTask = CreateObject("roSGNode", "getWatchHistory")
+    m.fetchTask.observeField("output", "onMetadataFetched")
+
+    ' Track last known focus position
+    m.lastFocusRow = 0
+    m.lastFocusCol = 0
+end sub
+
+sub onItemFocused()
+    ' Update last known focus position when it changes
+    focused = m.historyGrid.itemFocused
+    if Type(focused) = "roArray" and focused.Count() >= 2
+        m.lastFocusRow = focused[0]
+        m.lastFocusCol = focused[1]
+    end if
+end sub
+
+sub onVisibleChanged()
+    ' Reload history when scene becomes visible
+    if m.top.visible = true
+        loadWatchHistory()
+    end if
+end sub
+
+sub loadWatchHistory()
+    print "[WatchHistory] Loading watch history"
+    m.statusText.visible = true
+    m.statusText.text = "Loading..."
+
+    ' Read all history entries from registry
+    reg = CreateObject("roRegistrySection", "watchHistory")
+    historyKeys = reg.GetKeyList()
+
+    print "[WatchHistory] Registry keys found: "; historyKeys.Count()
+
+    if historyKeys.Count() = 0
+        print "[WatchHistory] No watch history found"
+        m.statusText.text = "No watch history yet"
+        m.historyGrid.visible = false
+        return
+    end if
+
+    ' Parse history and collect claim IDs with lastPlayedAt
+    historyItems = []
+    for each claimId in historyKeys
+        jsonStr = reg.Read(claimId)
+        if jsonStr <> ""
+            try
+                historyData = ParseJson(jsonStr)
+                if IsValid(historyData) and IsValid(historyData.lastPlayedAt)
+                    historyItems.Push({
+                        claimId: claimId,
+                        lastPlayedAt: historyData.lastPlayedAt,
+                        position: historyData.position,
+                        duration: historyData.duration
+                    })
+                end if
+            catch e
+                print "[WatchHistory] Error parsing history entry: "; claimId
+            end try
+        end if
+    end for
+
+    if historyItems.Count() = 0
+        print "[WatchHistory] No valid history items"
+        m.statusText.text = "No watch history yet"
+        m.historyGrid.visible = false
+        return
+    end if
+
+    ' Sort by lastPlayedAt (most recent first)
+    for i = 0 to historyItems.Count() - 1
+        for j = i + 1 to historyItems.Count() - 1
+            if historyItems[i].lastPlayedAt < historyItems[j].lastPlayedAt
+                temp = historyItems[i]
+                historyItems[i] = historyItems[j]
+                historyItems[j] = temp
+            end if
+        end for
+    end for
+
+    ' Limit to 100 most recent items
+    maxItems = 100
+    if historyItems.Count() > maxItems
+        ' Trim array to first 100
+        trimmed = []
+        for i = 0 to maxItems - 1
+            trimmed.Push(historyItems[i])
+        end for
+        historyItems = trimmed
+    end if
+
+    print "[WatchHistory] Sorted "; historyItems.Count(); " items, will fetch metadata"
+
+    ' Use task to fetch metadata
+    m.fetchTask.constants = m.top.constants
+    m.fetchTask.uid = m.top.uid
+    m.fetchTask.historyItems = historyItems
+    m.fetchTask.control = "RUN"
+end sub
+
+sub onMetadataFetched()
+    results = m.fetchTask.output
+
+    print "[WatchHistory] Metadata fetched: "; results.Count(); " items"
+
+    if results.Count() = 0
+        m.statusText.text = "No watch history available"
+        m.historyGrid.visible = false
+        return
+    end if
+
+    ' Build grid content (4 items per row)
+    buildGrid(results)
+end sub
+
+sub buildGrid(results as object)
+    content = CreateObject("roSGNode", "ContentNode")
+
+    ' Get current time for categorization
+    now = CreateObject("roDateTime")
+    nowSeconds = now.AsSeconds()
+    todayStart = nowSeconds - (nowSeconds mod 86400) ' Start of today (midnight)
+    weekAgo = nowSeconds - (7 * 86400) ' 7 days ago
+
+    ' Categorize items by time
+    todayItems = []
+    weekItems = []
+    earlierItems = []
+
+    for each result in results
+        if IsValid(result.lastPlayedAt)
+            if result.lastPlayedAt >= todayStart
+                todayItems.Push(result)
+            else if result.lastPlayedAt >= weekAgo
+                weekItems.Push(result)
+            else
+                earlierItems.Push(result)
+            end if
+        else
+            earlierItems.Push(result)
+        end if
+    end for
+
+    ' Build rows for each section
+    if todayItems.Count() > 0
+        addHistorySection(content, "Today", todayItems)
+    end if
+
+    if weekItems.Count() > 0
+        addHistorySection(content, "Last Week", weekItems)
+    end if
+
+    if earlierItems.Count() > 0
+        addHistorySection(content, "Earlier", earlierItems)
+    end if
+
+    m.historyGrid.content = content
+    m.historyGrid.visible = true
+    m.statusText.visible = false
+    m.historyGrid.setFocus(true)
+    m.historyGrid.jumpToRowItem = [0, 0]
+
+    print "[WatchHistory] Grid built with "; results.Count(); " items in sections"
+end sub
+
+sub addHistorySection(content as object, sectionLabel as string, items as object)
+    ' Add each row of 4 items
+    itemsPerRow = 4
+    totalRows = Int((items.Count() + itemsPerRow - 1) / itemsPerRow) ' Ceiling division
+
+    for rowIdx = 0 to totalRows - 1
+        row = content.createChild("ContentNode")
+
+        ' Set row label only for first row of section
+        if rowIdx = 0
+            row.title = sectionLabel
+        else
+            row.title = ""
+        end if
+
+        ' Add items to this row
+        startIdx = rowIdx * itemsPerRow
+        endIdx = startIdx + itemsPerRow - 1
+        if endIdx >= items.Count() then endIdx = items.Count() - 1
+
+        for itemIdx = startIdx to endIdx
+            result = items[itemIdx]
+
+            ' Create content node for video (matching getSinglePage.brs pattern)
+            node = row.createChild("ContentNode")
+
+            ' Add custom fields first with lowercase names (matching getSinglePage pattern)
+            node.addFields({
+                creator: "",
+                itemType: "",
+                Channel: "",
+                ChannelIcon: "",
+                videolength: "",
+                claimId: "",
+                guid: "",
+                URL: ""
+            })
+
+            ' Now set all field values (setFields is case-insensitive, maps Creator->creator, etc)
+            node.TITLE = result.title
+            if result.title = "" then node.TITLE = "Untitled Video"
+
+            node.HDPOSTERURL = result.thumbnailUrl
+            if result.thumbnailUrl = "" then node.HDPOSTERURL = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
+
+            node.Creator = result.channelName
+            if result.channelName = "" then node.Creator = "Unknown"
+
+            node.RELEASEDATE = result.releaseDate
+            node.itemType = "video"
+            node.ChannelIcon = result.channelIcon
+            node.videolength = result.videoLength
+            node.claimId = result.claimId
+            node.Channel = result.channelId
+            node.guid = result.claimId
+            node.URL = "lbry://" + result.claimId
+
+            ' Debug what's on the node
+            print "[WatchHistory] Node created for: "; node.TITLE
+            print "  Creator: "; node.Creator
+            print "  ChannelIcon field exists: "; (node.ChannelIcon <> invalid)
+            if node.ChannelIcon <> invalid then print "  ChannelIcon value: "; node.ChannelIcon
+            print "  videolength: "; node.videolength
+
+            ' Calculate watch progress percentage with minimum 1%
+            if IsValid(result.duration) and result.duration > 0
+                progress = (result.position / result.duration) * 100
+                if progress > 100 then progress = 100
+                ' Minimum 1% if video has been started
+                if progress > 0 and progress < 1 then progress = 1
+                if progress < 0 then progress = 0
+                node.addFields({ watchProgress: progress })
+            end if
+        end for
+    end for
+end sub
+
+sub onVideoSelected()
+    selected = m.historyGrid.rowItemSelected
+    if not IsValid(selected) or selected.Count() < 2 then return
+
+    row = selected[0]
+    col = selected[1]
+
+    content = m.historyGrid.content
+    if IsValid(content)
+        rowNode = content.getChild(row)
+        if IsValid(rowNode)
+            videoNode = rowNode.getChild(col)
+            if IsValid(videoNode)
+                m.top.selectedVideo = {
+                    claimId: videoNode.claimId,
+                    guid: videoNode.guid,
+                    title: videoNode.TITLE,
+                    Channel: videoNode.Channel,
+                    creator: videoNode.creator,
+                    HDPOSTERURL: videoNode.HDPOSTERURL
+                }
+            end if
+        end if
+    end if
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+
+    if key = "back"
+        ' Let parent handle back button
+        return false
+    end if
+
+    ' Prevent focus from disappearing by blocking navigation at boundaries
+    if not IsValid(m.historyGrid) or not m.historyGrid.visible then return false
+
+    content = m.historyGrid.content
+    if not IsValid(content) then return false
+
+    currentItem = m.historyGrid.itemFocused
+    ' itemFocused is array [row, col] when grid has focus, but can be integer initially
+    row = -1
+    col = -1
+
+    itemType = Type(currentItem)
+    if itemType = "roArray" and currentItem.Count() >= 2
+        row = currentItem[0]
+        col = currentItem[1]
+    else
+        ' Use last known position if itemFocused isn't valid yet
+        if IsValid(m.lastFocusRow) and IsValid(m.lastFocusCol)
+            row = m.lastFocusRow
+            col = m.lastFocusCol
+        else
+            return false
+        end if
+    end if
+
+    rowCount = content.getChildCount()
+
+    ' Guard UP - block if at first row
+    if key = "up" and row = 0
+        return true
+    end if
+
+    ' Guard DOWN - block if at last row
+    if key = "down" and row = rowCount - 1
+        return true
+    end if
+
+    ' Guard LEFT and RIGHT - need to check current row's item count
+    if row >= 0 and row < rowCount
+        currentRow = content.getChild(row)
+        if IsValid(currentRow)
+            itemCount = currentRow.getChildCount()
+
+            ' Guard LEFT - block if at first column
+            if key = "left" and col = 0
+                return true
+            end if
+
+            ' Guard RIGHT - block if at last column in this row
+            if key = "right" and col = itemCount - 1
+                return true
+            end if
+        end if
+    end if
+
+    return false
+end function
+
+sub onRestoreFocus()
+    ' Restore focus to grid
+    print "[WatchHistory] Restoring focus"
+    m.historyGrid.setFocus(true)
+end sub

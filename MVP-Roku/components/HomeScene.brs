@@ -68,6 +68,10 @@ sub skipVideo(delta as integer)
   safeSeek(target)
   m.scrubTarget = target
   updateScrubUI()
+
+  ' Save history and send view progress update to API when skipping
+  saveWatchHistory()
+  sendViewProgress()
 end sub
 
 ' Return index of a control-bar item by its itemID; -1 if not found
@@ -385,9 +389,17 @@ sub restartCurrentVideo()
     try: m.video.control = "resume" : catch e: end try
   end if
   showVideoOverlay()
+  ' Clear resume position on restart (set to 0)
   if isValid(m.currentVideoClaimID)
-    resumeKey = "resume-" + m.currentVideoClaimID
-    SetRegistry("resumeRegistry", resumeKey, "0")
+    savedJson = GetRegistry("historyRegistry", m.currentVideoClaimID)
+    if isValid(savedJson) and savedJson <> ""
+      try
+        historyData = ParseJson(savedJson)
+        historyData.position = 0
+        SetRegistry("historyRegistry", m.currentVideoClaimID, FormatJson(historyData))
+      catch e
+      end try
+    end if
   end if
 end sub
 
@@ -578,6 +590,7 @@ sub init()
   m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png" 'Current icon displayed w/video UI
   m.currentVideoChannelID = "" 'Current claim ID for Video's Channel
   m.currentVideoClaimID = "" 'Current claim ID for Video
+  m.viewProgressTimer = CreateObject("roTimeSpan") ' Timer for API view progress updates
   m.currentVideoReactions = {}
   m.currentVideoPosition = [0, 0]
   m.pendingResume = -1 'seconds to seek to after playback starts; -1 when none
@@ -602,9 +615,11 @@ sub init()
   m.oauthHeader = m.top.findNode("oauth-header")
   m.oauthCode = m.top.findNode("oauth-code")
   m.oauthFooter = m.top.findNode("oauth-footer")
+  m.oauthHistoryButton = m.top.findNode("historyButton")
   m.oauthChannelsButton = m.top.findNode("channelsButton")
   m.oauthLogoutButton = m.top.findNode("logoutButton")
   m.followedChannelsScene = m.top.findNode("followedChannelsScene")
+  m.watchHistoryScene = m.top.findNode("watchHistoryScene")
 
   ' Exit confirmation dialog elements
   m.exitDialogBackground = m.top.findNode("exitDialogBackground")
@@ -619,13 +634,16 @@ sub init()
   m.video.observeField("state", "onVideoStateChanged")
   m.categorySelector.observeField("itemFocused", "categorySelectorFocusChanged")
   m.videoGrid.observeField("rowItemSelected", "resolveVideo")
+  m.videoGrid.observeField("content", "onVideoGridContentChanged")
   'm.videoGrid.observeField("rowItemFocused", "gotvGridPosition")
   m.searchHistoryBox.observeField("itemSelected", "historySearch")
   m.searchHistoryDialog.observeField("itemSelected", "clearHistory")
   m.searchKeyboardDialog.observeField("itemSelected", "search")
+  m.oauthHistoryButton.observeField("buttonSelected", "showWatchHistory")
   m.oauthChannelsButton.observeField("buttonSelected", "showFollowedChannels")
   m.oauthLogoutButton.observeField("buttonSelected", "Logout")
   m.followedChannelsScene.observeField("selectedChannel", "onChannelSelected")
+  m.watchHistoryScene.observeField("selectedVideo", "onHistoryVideoSelected")
   m.exitTimer.observeField("fire", "onExitTimer")
 
   'Tasks
@@ -712,6 +730,7 @@ sub init()
   m.preferencesRegistry = CreateObject("roRegistrySection", "preferences") 'User preferences (odysee.com/app local)
   m.searchHistoryRegistry = CreateObject("roRegistrySection", "searchHistory") 'Search History
   m.resumeRegistry = CreateObject("roRegistrySection", "resumePoints") 'Per-claim resume positions
+  m.historyRegistry = CreateObject("roRegistrySection", "watchHistory") 'Per-claim watch history
 
   'Get current (older non-token) auth
   if IsValid(GetRegistry("authRegistry", "uid")) and IsValid(GetRegistry("authRegistry", "authtoken"))
@@ -2036,12 +2055,30 @@ end sub
 'UI BACKBONE
 function onKeyEvent(key as string, press as boolean) as boolean 'Literally the backbone of the entire user interface
   'TODO: make more readable
-  ' High-priority Back handler: handle followed channels scene first
+  ' High-priority Back handler: handle followed channels and watch history scenes first
   if key = "back" and press = true
+    if IsValid(m.viewingWatchHistory) and m.viewingWatchHistory = true
+      ?"[Back] Exiting watch history view"
+      hideWatchHistory()
+      return true
+    end if
+
     if IsValid(m.viewingFollowedChannels) and m.viewingFollowedChannels = true
       ?"[Back] Exiting followed channels view"
       hideFollowedChannels()
       return true
+    end if
+
+    ' Handle back from video opened from Watch History
+    if IsValid(m.returnToWatchHistory) and m.returnToWatchHistory = true
+      if m.video.visible = true
+        ?"[Back] Returning to watch history from video"
+        m.returnToWatchHistory = false
+        returnToUIPage()
+        showWatchHistory()
+        m.watchHistoryScene.restoreFocus = true
+        return true
+      end if
     end if
 
     ' Handle back from channel opened from Followed Channels
@@ -2767,8 +2804,11 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.videoGrid.rowItemFocused[0] = 0
             ?"[Nav] UP from top row of Favorites -> buttons"
             m.videoGrid.setFocus(false)
-            ' Navigate to Channels button if visible, otherwise Logout button
-            if m.oauthChannelsButton.visible = true
+            ' Navigate to History button if visible, otherwise Channels button, otherwise Logout button
+            if m.oauthHistoryButton.visible = true
+              m.oauthHistoryButton.setFocus(true)
+              m.focusedItem = 11 '[history button]
+            else if m.oauthChannelsButton.visible = true
               m.oauthChannelsButton.setFocus(true)
               m.focusedItem = 10 '[channels button]
             else
@@ -2835,17 +2875,40 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             m.oauthChannelsButton.setFocus(true)
             m.focusedItem = 10 '[channels button]
             return true
+          else if m.oauthHistoryButton.visible = true
+            m.oauthLogoutButton.setFocus(false)
+            m.oauthHistoryButton.setFocus(true)
+            m.focusedItem = 11 '[history button]
+            return true
           end if
           ' If no channels button, don't handle - let other logic take over
         else if m.focusedItem = 10 '[channels button]
-          ' Left from channels button - go down to video grid or sidebar
-          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded
+          ' Left from channels button - go to history button if visible
+          if m.oauthHistoryButton.visible = true
+            m.oauthChannelsButton.setFocus(false)
+            m.oauthHistoryButton.setFocus(true)
+            m.focusedItem = 11 '[history button]
+            return true
+          else if m.categorySelector.itemFocused = 1 and m.favoritesLoaded
             m.oauthChannelsButton.setFocus(false)
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
             return true
           else if m.categorySelector.itemFocused = 1
             m.oauthChannelsButton.setFocus(false)
+            m.categorySelector.setFocus(true)
+            m.focusedItem = 1 '[selector]
+            return true
+          end if
+        else if m.focusedItem = 11 '[history button]
+          ' Left from history button - go down to video grid or sidebar
+          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded
+            m.oauthHistoryButton.setFocus(false)
+            m.videoGrid.setFocus(true)
+            m.focusedItem = 2 '[video grid]
+            return true
+          else if m.categorySelector.itemFocused = 1
+            m.oauthHistoryButton.setFocus(false)
             m.categorySelector.setFocus(true)
             m.focusedItem = 1 '[selector]
             return true
@@ -3005,7 +3068,18 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
         end if
         ' Handle button navigation first (higher priority)
-        if m.focusedItem = 10 '[channels button]
+        if m.focusedItem = 11 '[history button]
+          ' Right from history button - go to channels button or logout button
+          if m.oauthChannelsButton.visible = true
+            m.oauthHistoryButton.setFocus(false)
+            m.oauthChannelsButton.setFocus(true)
+            m.focusedItem = 10 '[channels button]
+          else
+            m.oauthHistoryButton.setFocus(false)
+            m.oauthLogoutButton.setFocus(true)
+            m.focusedItem = 8 '[oauth logout button]
+          end if
+        else if m.focusedItem = 10 '[channels button]
           ' Right from channels button - go to logout button
           m.oauthChannelsButton.setFocus(false)
           m.oauthLogoutButton.setFocus(true)
@@ -3015,12 +3089,18 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           m.categorySelector.setFocus(false)
           m.searchKeyboard.setFocus(true)
           m.focusedItem = 3 '[search keyboard]
-        else if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.favoritesUIFlag and m.focusedItem <> 7 and m.focusedItem <> 10
+        else if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.favoritesUIFlag and m.focusedItem <> 7 and m.focusedItem <> 10 and m.focusedItem <> 11
           m.categorySelector.setFocus(false)
           maintainSidebarSelection() ' Keep sidebar visually active
           m.videoGrid.setFocus(true)
           m.focusedItem = 2 '[video grid]
-        else if m.categorySelector.itemFocused = 1 and m.oauthChannelsButton.visible = true and m.focusedItem <> 10
+        else if m.categorySelector.itemFocused = 1 and m.oauthHistoryButton.visible = true and m.focusedItem <> 11 and m.focusedItem <> 10
+          ' Right from sidebar on Favorites - go to History button first
+          m.videoGrid.setFocus(false)
+          m.categorySelector.setFocus(false)
+          m.oauthHistoryButton.setFocus(true)
+          m.focusedItem = 11 '[history button]
+        else if m.categorySelector.itemFocused = 1 and m.oauthChannelsButton.visible = true and m.focusedItem <> 10 and m.focusedItem <> 11
           ' Right from sidebar on Favorites - go to Channels button first
           m.videoGrid.setFocus(false)
           m.categorySelector.setFocus(false)
@@ -3179,6 +3259,7 @@ sub categorySelectorFocusChanged(msg)
       m.oauthFooter.visible = false
       m.oauthLogoutButton.visible = false
       m.oauthChannelsButton.visible = false
+      m.oauthHistoryButton.visible = false
       m.searchHistoryBox.visible = true
       m.searchHistoryLabel.visible = true
       m.searchHistoryDialog.visible = true
@@ -3280,6 +3361,7 @@ sub categorySelectorFocusChanged(msg)
             m.loadingText.text = "Refreshing favorites..."
             m.oauthLogoutButton.visible = true
             m.oauthChannelsButton.visible = true
+            m.oauthHistoryButton.visible = true
           else
             ' Check if favorites content is empty even though favorites are loaded
             ?"[Favorites Debug] Favorites loaded and UI allowed - checking categories content"
@@ -3299,7 +3381,8 @@ sub categorySelectorFocusChanged(msg)
               ?"[Favorites Debug] loadingText.visible set to false"
               m.oauthLogoutButton.visible = true
               m.oauthChannelsButton.visible = true
-              ?"[Favorites Debug] oauthLogoutButton and oauthChannelsButton visible set to true"
+              m.oauthHistoryButton.visible = true
+              ?"[Favorites Debug] oauthLogoutButton, oauthChannelsButton, and oauthHistoryButton visible set to true"
               ' Hook: ensure lives appear immediately when entering Following
               if isValid(m.preferences) and isValid(m.preferences.following)
                 if m.preferences.following.Count() > 0
@@ -3322,6 +3405,7 @@ sub categorySelectorFocusChanged(msg)
               m.oauthHeader.visible = true
               m.oauthLogoutButton.visible = true
               m.oauthChannelsButton.visible = false ' Hide Channels button when no channels followed
+              m.oauthHistoryButton.visible = true ' Keep History button visible
               m.loadingText.visible = false
             end if
           end if
@@ -3332,6 +3416,7 @@ sub categorySelectorFocusChanged(msg)
           m.oauthHeader.visible = true
           m.oauthLogoutButton.visible = true
           m.oauthChannelsButton.visible = false ' Hide Channels button when no channels followed
+          m.oauthHistoryButton.visible = true ' Keep History button visible
         end if
         ?"[Favorites Debug] Final state - videoGrid.visible: "; m.videoGrid.visible; " loadingText.visible: "; m.loadingText.visible; " oauthHeader.visible: "; m.oauthHeader.visible
       else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2 and m.authTask.badSSO = false
@@ -3340,6 +3425,7 @@ sub categorySelectorFocusChanged(msg)
         m.loadingText.visible = false
         m.oauthLogoutButton.visible = false
         m.oauthChannelsButton.visible = false
+        m.oauthHistoryButton.visible = false
         m.oauthHeader.visible = true
         m.oauthCode.visible = true
         m.oauthFooter.visible = true
@@ -3355,6 +3441,7 @@ sub categorySelectorFocusChanged(msg)
         m.loadingText.visible = false
         m.oauthLogoutButton.visible = false
         m.oauthChannelsButton.visible = false
+        m.oauthHistoryButton.visible = false
         m.oauthHeader.visible = true
         m.oauthCode.visible = true
         m.oauthFooter.visible = true
@@ -3370,6 +3457,7 @@ sub categorySelectorFocusChanged(msg)
       end if
       m.oauthLogoutButton.visible = false
       m.oauthChannelsButton.visible = false
+      m.oauthHistoryButton.visible = false
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
@@ -4086,13 +4174,13 @@ sub videoPositionChanged()
       m.videoProgressBarp2.text = getvideoLength(totalLen + 1 - m.video.position)
     end if
   end if
-  ' Save resume point every ~10 seconds
+  ' Save watch history and send to API every 30 seconds
   if isValid(m.currentVideoClaimID)
-    if not isValid(m.resumeTimer) then m.resumeTimer = CreateObject("roTimeSpan")
-    if m.resumeTimer.TotalSeconds() >= 10
-      m.resumeTimer.Mark()
-      resumeKey = "resume-" + m.currentVideoClaimID
-      SetRegistry("resumeRegistry", resumeKey, m.video.position.ToStr())
+    if not isValid(m.historyTimer) then m.historyTimer = CreateObject("roTimeSpan")
+    if m.historyTimer.TotalSeconds() >= 30
+      m.historyTimer.Mark()
+      saveWatchHistory()
+      sendViewProgress()
     end if
   end if
 end sub
@@ -4222,22 +4310,34 @@ sub playResolvedVideo(msg as object)
       updateLoopButtonUI()
       applyPlaybackRate()
       m.video.control = "play"
-      ' Attempt to resume from saved position
+      ' Attempt to resume from saved position in watch history
       m.pendingResume = -1
       if isValid(m.currentVideoClaimID)
-        resumeKey = "resume-" + m.currentVideoClaimID
-        saved = GetRegistry("resumeRegistry", resumeKey)
-        if isValid(saved)
-          seconds = StrToI(saved)
-          if seconds > 0 and seconds < data.length - 15
-            m.pendingResume = seconds
-          end if
+        savedJson = GetRegistry("historyRegistry", m.currentVideoClaimID)
+        if isValid(savedJson) and savedJson <> ""
+          try
+            historyData = ParseJson(savedJson)
+            if IsValid(historyData) and IsValid(historyData.position)
+              seconds = Int(historyData.position)
+              if seconds > 0 and seconds < data.length - 15
+                m.pendingResume = seconds
+              end if
+            end if
+          catch e
+          end try
         end if
       end if
       if m.pendingResume > 0
         m.video.seek = m.pendingResume
       end if
       m.video.observeField("position", "videoPositionChanged")
+
+      ' Reset and start view progress timer
+      m.viewProgressTimer.Mark()
+
+      ' Save initial watch history
+      saveWatchHistory()
+
       ?m.video.errorStr
       ?m.video.videoFormat
       ?m.video
@@ -4309,10 +4409,22 @@ function onVideoStateChanged(msg as object)
     end if
     if state = "finished"
       deleteSpinner()
-      ' Clear resume on completion
+      ' Send final view progress at completion
+      if isValid(m.currentVideoClaimID) and isValid(m.urlResolver) and isValid(m.urlResolver.output) and isValid(m.urlResolver.output.length)
+        ' Create a special completion call with the video duration as the position
+        sendViewProgressCompletion(m.urlResolver.output.length)
+      end if
+      ' Clear resume position on completion (set to 0)
       if isValid(m.currentVideoClaimID)
-        resumeKey = "resume-" + m.currentVideoClaimID
-        SetRegistry("resumeRegistry", resumeKey, "0")
+        savedJson = GetRegistry("historyRegistry", m.currentVideoClaimID)
+        if isValid(savedJson) and savedJson <> ""
+          try
+            historyData = ParseJson(savedJson)
+            historyData.position = 0
+            SetRegistry("historyRegistry", m.currentVideoClaimID, FormatJson(historyData))
+          catch e
+          end try
+        end if
       end if
       if m.loopEnabled = true and isValid(m.videoContent) and m.videoContent.Live = false
         ' Loop current video: seek to 0 and play again
@@ -4379,6 +4491,17 @@ sub deleteSpinner()
 end sub
 
 sub returnToUIPage()
+  ' Save final watch history and send view progress before stopping video
+  if IsValid(m.video) and IsValid(m.video.position) and m.video.position > 0
+    saveWatchHistory()
+    sendViewProgress()
+  end if
+
+  ' Refresh progress bars on grid when returning from video
+  if IsValid(m.videoGrid) and IsValid(m.videoGrid.content)
+    addWatchProgressToContent(m.videoGrid.content)
+  end if
+
   m.videoButtons.setFocus(false)
   m.currentVideoChannelIcon = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
   m.videoButtonsChannelIcon.posterUrl = "pkg:/images/generic/bad_icon_requires_usage_rights.png"
@@ -5871,6 +5994,7 @@ sub showFollowedChannels()
   m.sidebarBackground.visible = false
   m.oauthLogoutButton.visible = false
   m.oauthChannelsButton.visible = false
+  m.oauthHistoryButton.visible = false
 
   ' Show followed channels scene
   m.followedChannelsScene.visible = true
@@ -5921,12 +6045,14 @@ sub hideFollowedChannels()
     m.videoGrid.visible = true
     m.oauthLogoutButton.visible = true
     m.oauthChannelsButton.visible = true
+    m.oauthHistoryButton.visible = true
     m.videoGrid.setFocus(true)
     m.focusedItem = 2 '[video grid]
   else
     m.oauthHeader.visible = true
     m.oauthLogoutButton.visible = true
     m.oauthChannelsButton.visible = true
+    m.oauthHistoryButton.visible = true
     m.oauthLogoutButton.setFocus(true)
     m.focusedItem = 8 '[oauth logout button]
   end if
@@ -5969,4 +6095,273 @@ sub onChannelSelected()
     m.videoGrid.setFocus(false)
     m.videoGrid.visible = false
   end if
+end sub
+
+' Show Watch History Scene
+sub showWatchHistory()
+  ?"[WatchHistory] Opening watch history view"
+
+  ' Hide main UI elements
+  m.videoGrid.visible = false
+  m.categorySelector.visible = false
+  m.odyseeLogo.visible = false
+  m.sidebarTrim.visible = false
+  m.sidebarBackground.visible = false
+  m.oauthLogoutButton.visible = false
+  m.oauthChannelsButton.visible = false
+  m.oauthHistoryButton.visible = false
+
+  ' Pass constants and uid to watch history scene
+  m.watchHistoryScene.constants = m.constants
+  m.watchHistoryScene.uid = m.uid
+
+  ' Show watch history scene
+  m.watchHistoryScene.visible = true
+  m.watchHistoryScene.setFocus(true)
+
+  ' Set focus state
+  m.focusedItem = 10 '[watch history scene]
+  m.viewingWatchHistory = true
+
+  ?"[WatchHistory] Watch history view opened"
+end sub
+
+' Hide Watch History Scene
+sub hideWatchHistory()
+  ?"[WatchHistory] Closing watch history view"
+
+  ' Hide watch history scene
+  m.watchHistoryScene.visible = false
+  m.viewingWatchHistory = false
+
+  ' Hide channel sidebar elements that may be showing
+  if IsValid(m.channelSidebarThumb)
+    m.channelSidebarThumb.visible = false
+  end if
+
+  ' Restore proper sidebar layout
+  showCategorySelector()
+
+  ' Restore main UI elements for Favorites category
+  m.odyseeLogo.visible = true
+
+  ' Ensure we're on Favorites category
+  if m.categorySelector.itemFocused <> 1
+    m.categorySelector.jumpToItem = 1
+  end if
+
+  ' Show Favorites content
+  if m.favoritesLoaded and IsValid(m.categories["FAVORITES"])
+    m.videoGrid.content = m.categories["FAVORITES"]
+    m.videoGrid.visible = true
+    m.oauthLogoutButton.visible = true
+    m.oauthChannelsButton.visible = true
+    m.oauthHistoryButton.visible = true
+    m.videoGrid.setFocus(true)
+    m.focusedItem = 2 '[video grid]
+  else
+    m.oauthHeader.visible = true
+    m.oauthLogoutButton.visible = true
+    m.oauthChannelsButton.visible = true
+    m.oauthHistoryButton.visible = true
+    m.oauthLogoutButton.setFocus(true)
+    m.focusedItem = 8
+  end if
+
+  ?"[WatchHistory] Returned to Favorites view"
+end sub
+
+' Handle video selection from Watch History Scene
+sub onHistoryVideoSelected()
+  selectedVideo = m.watchHistoryScene.selectedVideo
+
+  if IsValid(selectedVideo) and IsValid(selectedVideo.claimId)
+    ?"[WatchHistory] Selected video: "; selectedVideo.title; " ID: "; selectedVideo.claimId
+
+    ' Hide watch history scene first
+    m.watchHistoryScene.visible = false
+    m.viewingWatchHistory = false
+
+    ' Set flag to remember we came from Watch History
+    m.returnToWatchHistory = true
+
+    ' Navigate to the video - need to create a proper content node
+    videoNode = CreateObject("roSGNode", "ContentNode")
+    videoNode.TITLE = selectedVideo.title
+    videoNode.HDPOSTERURL = selectedVideo.HDPOSTERURL
+    videoNode.addFields({
+      guid: selectedVideo.claimId,
+      Channel: selectedVideo.Channel,
+      creator: selectedVideo.creator,
+      itemType: "video"
+    })
+
+    ' Resolve and play the video
+    resolveEvaluatedVideo(videoNode)
+  end if
+end sub
+
+' Send view progress update to API
+sub sendViewProgress()
+  if not IsValid(m.currentVideoClaimID) or m.currentVideoClaimID = "" then return
+  if not IsValid(m.video) or not IsValid(m.video.position) then return
+  if not IsValid(m.urlResolver) or not IsValid(m.urlResolver.url) then return
+  if m.global.constants.enableStatistics = false then return
+
+  ' Skip if task is still running from previous call
+  if IsValid(m.viewProgressTask) and m.viewProgressTask.state = "run" then return
+
+  ' Get current video position (this is the timestamp in seconds into the video)
+  videoPosition = Int(m.video.position)
+  if videoPosition < 0 then videoPosition = 0
+
+  ' Get outpoint if available
+  outpoint = ""
+  if IsValid(m.urlResolver.output) and IsValid(m.urlResolver.output.outpoint)
+    outpoint = m.urlResolver.output.outpoint
+  end if
+
+  ' Set task fields
+  taskFields = {
+    constants: m.constants,
+    uri: m.urlResolver.url,
+    claimId: m.currentVideoClaimID,
+    outpoint: outpoint,
+    lastTimestamp: videoPosition
+  }
+
+  ' Set auth based on type
+  if m.wasLoggedIn and IsValid(m.accessToken) and m.accessToken <> ""
+    taskFields.accessToken = m.accessToken
+    taskFields.authToken = ""
+  else if IsValid(m.authToken) and m.authToken <> ""
+    taskFields.accessToken = ""
+    taskFields.authToken = m.authToken
+  else
+    ' No auth available
+    return
+  end if
+
+  ' Create task if not already created
+  if not IsValid(m.viewProgressTask)
+    m.viewProgressTask = CreateObject("roSGNode", "viewProgress")
+  end if
+
+  ?"[ViewProgress] Sending view progress update for claim: "; m.currentVideoClaimID; " position: "; videoPosition
+
+  ' Set fields and run task
+  m.viewProgressTask.setFields(taskFields)
+  m.viewProgressTask.control = "RUN"
+end sub
+
+' Save watch history to local registry
+sub saveWatchHistory()
+  if not IsValid(m.currentVideoClaimID) or m.currentVideoClaimID = "" then return
+  if not IsValid(m.video) or not IsValid(m.video.position) then return
+
+  ' Get duration from urlResolver if available, fallback to video.duration
+  videoDuration = 0
+  if IsValid(m.urlResolver) and IsValid(m.urlResolver.output) and IsValid(m.urlResolver.output.length)
+    videoDuration = m.urlResolver.output.length
+  else if IsValid(m.video) and IsValid(m.video.duration)
+    videoDuration = m.video.duration
+  end if
+
+  ' Save minimal watch history: position (for resume), duration (for progress %), lastPlayedAt (for sorting)
+  ' Channel/title metadata comes from claim_search in watch history page
+  historyData = {
+    position: Int(m.video.position),
+    duration: Int(videoDuration),
+    lastPlayedAt: CreateObject("roDateTime").AsSeconds()
+  }
+
+  historyJson = FormatJson(historyData)
+  SetRegistry("historyRegistry", m.currentVideoClaimID, historyJson)
+end sub
+
+' Send view progress completion (when video finishes)
+sub sendViewProgressCompletion(duration as integer)
+  if not IsValid(m.currentVideoClaimID) or m.currentVideoClaimID = "" then return
+  if not IsValid(m.urlResolver) or not IsValid(m.urlResolver.url) then return
+  if m.global.constants.enableStatistics = false then return
+
+  ' Get outpoint if available
+  outpoint = ""
+  if IsValid(m.urlResolver.output) and IsValid(m.urlResolver.output.outpoint)
+    outpoint = m.urlResolver.output.outpoint
+  end if
+
+  ' Set task fields with duration as position (marking completion)
+  taskFields = {
+    constants: m.constants,
+    uri: m.urlResolver.url,
+    claimId: m.currentVideoClaimID,
+    outpoint: outpoint,
+    lastTimestamp: Int(duration)
+  }
+
+  ' Set auth based on type
+  if m.wasLoggedIn and IsValid(m.accessToken) and m.accessToken <> ""
+    taskFields.accessToken = m.accessToken
+    taskFields.authToken = ""
+  else if IsValid(m.authToken) and m.authToken <> ""
+    taskFields.accessToken = ""
+    taskFields.authToken = m.authToken
+  else
+    ' No auth available
+    return
+  end if
+
+  ' Create separate task for completion to avoid conflicts
+  completionTask = CreateObject("roSGNode", "viewProgress")
+  ?"[ViewProgress] Sending completion for claim: "; m.currentVideoClaimID; " position: "; Int(duration)
+  completionTask.setFields(taskFields)
+  completionTask.control = "RUN"
+end sub
+
+' Called when videoGrid content changes
+sub onVideoGridContentChanged()
+  if IsValid(m.videoGrid) and IsValid(m.videoGrid.content)
+    addWatchProgressToContent(m.videoGrid.content)
+  end if
+end sub
+
+' Add watch progress to content nodes
+sub addWatchProgressToContent(contentNode as object)
+  if not IsValid(contentNode) then return
+
+  ' Read all history from registry
+  reg = CreateObject("roRegistrySection", "watchHistory")
+
+  ' Iterate through all rows and items
+  rowCount = contentNode.getChildCount()
+  for row = 0 to rowCount - 1
+    rowNode = contentNode.getChild(row)
+    if IsValid(rowNode)
+      itemCount = rowNode.getChildCount()
+      for item = 0 to itemCount - 1
+        itemNode = rowNode.getChild(item)
+        if IsValid(itemNode) and IsValid(itemNode.guid)
+          ' Look up history for this claim ID (key is just the claim ID)
+          jsonStr = reg.Read(itemNode.guid)
+          if jsonStr <> ""
+            try
+              historyData = ParseJson(jsonStr)
+              if IsValid(historyData) and IsValid(historyData.position) and IsValid(historyData.duration) and historyData.duration > 0
+                ' Calculate progress percentage
+                progress = (historyData.position / historyData.duration) * 100
+                if progress > 100 then progress = 100
+                ' Minimum 1% if video has been started
+                if progress > 0 and progress < 1 then progress = 1
+                if progress < 0 then progress = 0
+                ' Add watchProgress field to the item
+                itemNode.addFields({ watchProgress: progress })
+              end if
+            catch e
+            end try
+          end if
+        end if
+      end for
+    end if
+  end for
 end sub

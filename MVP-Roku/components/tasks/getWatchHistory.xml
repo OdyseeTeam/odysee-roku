@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="getWatchHistory" extends="Task">
+    <interface>
+        <field id="constants" type="assocarray"/>
+        <field id="uid" type="integer"/>
+        <field id="historyItems" type="roArray"/>
+        <field id="output" type="roArray"/>
+        <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/getWatchHistory.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>

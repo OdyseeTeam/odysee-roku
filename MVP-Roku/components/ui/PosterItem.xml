@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
-<component name="PosterItem" extends="Group">
+<component name="PosterItem" extends="Group" enableRenderTracking="false">
     <interface>
         <field id="width"       type="float" onChange="updateLayout"/>
         <field id="height"      type="float" onChange="updateLayout"/>
@@ -71,6 +71,8 @@
         <Label id="repostedBy" width="250" height="32" font="font:Inter-Emoji" color="#ffffff" translation="[40,12]" horizAlign="center" vertAlign="center" numLines = "1" text="user" visible="false">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="20"/>
         </Label>
+        <!-- Watch progress bar - positioned at bottom of thumbnail, above duration -->
+        <Rectangle id="progressBar" width="0" height="6" color="0xC70039FF" translation="[10,224]" visible="false"/>
         <!-- Pulse animation for placeholder overlay -->
         <Animation id="placeholderPulse" duration="1.4" repeat="true">
             <FloatFieldInterpolator fieldToInterp="placeholderOverlay.opacity" key="[0.0, 0.5, 1.0]" keyValue="[0.35, 0.75, 0.35]"/>

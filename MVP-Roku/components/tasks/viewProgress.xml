@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Send view progress updates to API-->
+<component name="viewProgress" extends="Task">
+    <interface>
+        <!--Universal constants-->
+        <field id="constants" type="assocarray"/>
+        <!--Input data for view progress-->
+        <field id="uri" type="String"/>
+        <field id="claimId" type="String"/>
+        <field id="outpoint" type="String"/>
+        <field id="lastTimestamp" type="LongInteger"/>
+        <!--Account-Specific Vars-->
+        <field id="accessToken" type="String"/>
+        <field id="authToken" type="String"/>
+        <field id="cookies" type="roArray"/>
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/viewProgress.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
+</component>
