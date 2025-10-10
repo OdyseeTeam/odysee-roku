@@ -20,6 +20,7 @@ function ClaimsToChannelGrid(channelList)
     subCountsURL = m.top.constants["ROOT_API"] + "/subscription/sub_count?auth_token=" + m.top.authToken + "&claim_id=" + channelList.Join(",")
     subCountsRawData = getRawText(subCountsURL).replace(Chr(10), "").replace(" ", "")
     subCountsData = subCountsRawData.split("[")[1].split("]")[0].split(",")
+    subCountsAA = {}
     for i = 0 to channelList.Count() - 1
         numFollowers = Val(subCountsData[i])
         if numFollowers = 1
