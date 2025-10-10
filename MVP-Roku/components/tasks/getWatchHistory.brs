@@ -82,11 +82,28 @@ sub fetchMetadata()
 
         if IsValid(resp) and IsValid(resp.result) and IsValid(resp.result.items)
             print "[getWatchHistory] Received "; resp.result.items.Count(); " results for batch"
-            ' Merge with history data
+
+            ' Build lookup map of API results by claim_id for O(1) access
+            resultsMap = {}
             for each item in resp.result.items
-                ' Find corresponding history entry
-                for i = startIdx to endIdx
-                    if m.top.historyItems[i].claimId = item.claim_id
+                resultsMap[item.claim_id] = item
+            end for
+
+            ' Merge with history data - iterate through historyItems to maintain sort order
+            for i = startIdx to endIdx
+                claimId = m.top.historyItems[i].claimId
+                ' O(1) lookup instead of O(n) search
+                if resultsMap.DoesExist(claimId)
+                    item = resultsMap[claimId]
+                        ' Detect if this is a livestream (no video source or no duration)
+                        isLivestream = false
+                        if not IsValid(item.value.video) or not IsValid(item.value.video.duration) or item.value.video.duration = 0
+                            isLivestream = true
+                        end if
+                        if IsValid(item.value.source) and IsValid(item.value.source.media_type) and item.value.source.media_type = "video/mp4"
+                            isLivestream = false ' Has video source, definitely not livestream
+                        end if
+
                         ' Add metadata to result - all from claim_search
                         result = {
                             claimId: item.claim_id,
@@ -97,9 +114,14 @@ sub fetchMetadata()
                             channelIcon: "",
                             releaseDate: "",
                             videoLength: "",
+                            permanentUrl: "",
                             position: m.top.historyItems[i].position,
-                            lastPlayedAt: m.top.historyItems[i].lastPlayedAt
+                            lastPlayedAt: m.top.historyItems[i].lastPlayedAt,
+                            itemType: "video"
                         }
+
+                        ' Set itemType for livestreams
+                        if isLivestream then result.itemType = "livestream"
 
                         ' Get duration from claim_search for progress calculation
                         duration = 0
@@ -108,9 +130,20 @@ sub fetchMetadata()
                         end if
                         result.duration = duration
 
-                        ' Add thumbnail if available
+                        ' Add thumbnail if available (use IMAGE_PROCESSOR for optimization)
                         if IsValid(item.value.thumbnail) and IsValid(item.value.thumbnail.url)
-                            result.thumbnailUrl = item.value.thumbnail.url
+                            if IsValid(m.top.constants) and IsValid(m.top.constants["IMAGE_PROCESSOR"])
+                                result.thumbnailUrl = m.top.constants["IMAGE_PROCESSOR"] + item.value.thumbnail.url
+                            else
+                                result.thumbnailUrl = item.value.thumbnail.url
+                            end if
+                        end if
+
+                        ' Add permanent URL if available (needed for video playback)
+                        ' For livestreams, don't use permanent_url as it may be a vanity URL (lbry://shortname#id)
+                        ' Instead leave it empty so WatchHistoryScene will use claim_id fallback
+                        if IsValid(item.permanent_url) and not isLivestream
+                            result.permanentUrl = item.permanent_url
                         end if
 
                         ' Add channel info if available (matching parseVideo logic)
@@ -175,9 +208,7 @@ sub fetchMetadata()
                         end try
 
                         allResults.Push(result)
-                        exit for
-                    end if
-                end for
+                end if
             end for
         else
             print "[getWatchHistory] Error fetching batch"
@@ -185,5 +216,84 @@ sub fetchMetadata()
     end for
 
     print "[getWatchHistory] Total results: "; allResults.Count()
-    m.top.output = allResults
+
+    ' Filter out inactive livestreams and clean up registry
+    filteredResults = filterInactiveLivestreams(allResults)
+
+    print "[getWatchHistory] After filtering inactive livestreams: "; filteredResults.Count()
+    m.top.output = filteredResults
 end sub
+
+' Filter out inactive livestreams and remove them from registry
+function filterInactiveLivestreams(results as object) as object
+    if not IsValid(results) or results.Count() = 0 then return results
+
+    ' Collect all livestream items and their channel IDs
+    livestreamChannels = {}
+    for each result in results
+        if IsValid(result.itemType) and result.itemType = "livestream"
+            if IsValid(result.channelId) and result.channelId <> ""
+                livestreamChannels[result.channelId] = true
+            end if
+        end if
+    end for
+
+    if livestreamChannels.Count() = 0
+        print "[getWatchHistory] No livestreams to check"
+        return results
+    end if
+
+    print "[getWatchHistory] Checking "; livestreamChannels.Count(); " livestream channels"
+
+    ' Check which channels are currently live
+    activeChannels = {}
+    try
+        ' Fetch all currently active livestreams
+        liveAPI = m.top.constants["NEW_LIVE_API"] + "/all"
+        livestreamData = getJSON(liveAPI)
+
+        if IsValid(livestreamData) and IsValid(livestreamData["data"]) and livestreamData["data"].Count() > 0
+            for each liveStream in livestreamData["data"]
+                if IsValid(liveStream["ChannelClaimID"])
+                    channelId = liveStream["ChannelClaimID"]
+                    ' Mark this channel as having an active livestream
+                    activeChannels[channelId] = true
+                end if
+            end for
+        end if
+        print "[getWatchHistory] Found "; activeChannels.Count(); " active livestream channels"
+    catch e
+        print "[getWatchHistory] Error checking livestream status: "; e.message
+        ' If we can't check, keep all livestreams
+        return results
+    end try
+
+    ' Filter results and remove inactive livestreams from registry
+    filteredResults = []
+    reg = CreateObject("roRegistrySection", "watchHistory")
+
+    for each result in results
+        if IsValid(result.itemType) and result.itemType = "livestream"
+            ' Check if this livestream's channel is currently active
+            if IsValid(result.channelId) and activeChannels.DoesExist(result.channelId)
+                ' Livestream is still active, keep it
+                filteredResults.Push(result)
+                print "[getWatchHistory] Keeping active livestream: "; result.title
+            else
+                ' Livestream is no longer active, remove from history
+                print "[getWatchHistory] Removing inactive livestream from history: "; result.title
+                if IsValid(result.claimId) and result.claimId <> ""
+                    reg.Delete(result.claimId)
+                end if
+            end if
+        else
+            ' Not a livestream, keep it
+            filteredResults.Push(result)
+        end if
+    end for
+
+    ' Flush registry changes
+    reg.Flush()
+
+    return filteredResults
+end function

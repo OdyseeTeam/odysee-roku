@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<component name="FollowedChannelsScene" extends="Group">
+<component name="FollowedChannelsScene" extends="Group" focusable="true">
   <interface>
-    <field id="channels" type="array"/>
+    <field id="channels" type="array" onChange="onChannelsChanged"/>
     <field id="constants" type="assocarray"/>
     <field id="uid" type="integer"/>
     <field id="selectedChannel" type="assocarray"/>
     <field id="restoreFocus" type="boolean" alwaysNotify="true"/>
+    <field id="unfollowRequest" type="assocarray" alwaysNotify="true"/>
+    <field id="reloadChannels" type="boolean" alwaysNotify="true" onChange="onReloadRequested"/>
   </interface>
   <script type="text/brightscript" uri="pkg:/components/ui/FollowedChannelsScene.brs"/>
   <script type="text/brightscript" uri="pkg:/components/generic/utility/isValid.brs"/>
@@ -19,6 +21,11 @@
 
     <Label id="headerTitle" font="font:Inter-Emoji" color="#ffffff" width="800" height="80" text="Followed Channels" translation="[100,30]">
       <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
+    </Label>
+
+    <!-- Hint text -->
+    <Label id="hintText" font="font:Inter-Emoji" color="#aaaaaa" width="1200" height="40" text="Press * on a channel to unfollow" translation="[1000,50]">
+      <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
     </Label>
 
     <!-- Recently Active Section -->
@@ -51,14 +58,15 @@
       id="allChannelsGrid"
       translation="[100,690]"
       itemComponentName="ChannelTile"
-      numRows="3"
+      numRows="100"
+      height="350"
       rowItemSize="[[410,180]]"
       rowItemSpacing="[[20,15]]"
       itemSize="[1720,195]"
       focusXOffset="[0]"
       showRowLabel="[false]"
       rowFocusAnimationStyle="floatingFocus"
-      vertFocusAnimationStyle="floatingFocus"
+      vertFocusAnimationStyle="fixedFocusWrap"
       horizFocusAnimationStyle="floatingFocus"
       wrapDividerBitmapUri=""
       visible="true"
@@ -68,5 +76,19 @@
     <Label id="loadingText" font="font:Inter-Emoji" color="#ffffff" width="1920" height="400" text="Loading..." wrap="true" vertAlign="center" horizAlign="center" translation="[0,300]" visible="false">
       <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="48"/>
     </Label>
+
+    <!-- Confirmation dialog -->
+    <Rectangle id="confirmationOverlay" color="0x000000CC" width="1920" height="1080" translation="[0,0]" visible="false"/>
+    <Rectangle id="confirmationDialog" color="0x1a1a1a" width="800" height="300" translation="[560,390]" visible="false">
+      <Label id="confirmationTitle" font="font:Inter-Emoji" color="#ffffff" width="760" height="80" text="Unfollow Channel?" translation="[20,30]" horizAlign="center">
+        <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="48"/>
+      </Label>
+      <Label id="confirmationMessage" font="font:Inter-Emoji" color="#aaaaaa" width="760" height="100" text="" translation="[20,110]" horizAlign="center" wrap="true">
+        <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="32"/>
+      </Label>
+      <Label id="confirmationHint" font="font:Inter-Emoji" color="#888888" width="760" height="60" text="Press OK to confirm, Back to cancel" translation="[20,220]" horizAlign="center">
+        <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
+      </Label>
+    </Rectangle>
   </children>
 </component>

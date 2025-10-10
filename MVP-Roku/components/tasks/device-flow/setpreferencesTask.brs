@@ -15,6 +15,11 @@ sub master()
     '7. set w/preferences_get+new data
     '8. call sync_apply
     '9. then call sync_set+new data from sync_apply
+    print "=========================================="
+    print "SETPREFERENCESTASK MASTER() CALLED"
+    print "changeType: "; m.top.changeType
+    print "preferences: "; FormatJson(m.top.preferences)
+    print "=========================================="
     if isValid(m.top.accessToken)
         if Type(m.top.accessToken) = "roString"
             if m.top.accessToken <> ""
@@ -27,15 +32,28 @@ end sub
 function prenotify_delete_follow(channelclaim, channelname)
     ?"Prenotifying ROOT API (/subscription/delete)"
     notifyURL = m.top.constants["ROOT_API"] + "/subscription/delete"
-    notifyQuery = { claim_id: channelclaim, channel_name: channelname, notifications_disabled: "true" }
-    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
+    notifyQuery = { claim_id: channelclaim }
+    ?"POST URL: "; notifyURL
+    ?"POST data: "; FormatJson(notifyQuery)
+    ?"Authorization token exists: "; (m.top.accessToken <> "" and m.top.accessToken <> invalid)
+    response = postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
+    ?"Subscription delete response: "; response
+    return response
 end function
 
 function prenotify_new_follow(channelclaim, channelname)
     ?"Prenotifying ROOT API (/subscription/new)"
     notifyURL = m.top.constants["ROOT_API"] + "/subscription/new"
-    notifyQuery = { claim_id: channelclaim, channel_name: channelname, notifications_disabled: "true" }
-    postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
+    notifyQuery = {
+        claim_id: channelclaim,
+        channel_name: channelname,
+        notifications_disabled: "true"
+    }
+    ?"POST URL: "; notifyURL
+    ?"POST data: "; FormatJson(notifyQuery)
+    response = postURLEncoded(notifyQuery, notifyURL, { "Authorization": "Bearer " + m.top.accessToken })
+    ?"Subscription new response: "; response
+    return response
 end function
 
 function set_prefs()
@@ -45,6 +63,8 @@ function set_prefs()
         '8082 api
         m.inSync = true
         ? "RUNNING setPreferencesTask"
+        ? "[Debug] changeType: "; m.top.changeType
+        ? "[Debug] preferences: "; FormatJson(m.top.preferences)
 
         'moving between # and ; in walletfiles (iOS), so replace ; with #
         'save as # by default
@@ -179,10 +199,18 @@ function set_prefs()
             change = m.top.preferences
             ? formatJson(change)
             if m.top.changeType = "append"
-                if isValid(change) and following.Count() = followingData.result.items.Count() and blocked.Count() = blockedData.result.items.Count()
+                ?"========== APPEND MODE DEBUG START =========="
+                ?"[Debug] Append mode - following.Count: "; following.Count(); " followingData.result.items.Count: "; followingData.result.items.Count()
+                ?"[Debug] blocked.Count: "; blocked.Count(); " blockedData.result.items.Count: "; blockedData.result.items.Count()
+                ' Don't check counts for append - just process the change
+                ' (some channels might not resolve via API, which would cause count mismatch)
+                if isValid(change)
+                    ?"========== CONDITION PASSED - WILL PROCESS FOLLOW =========="
                     'Append following
                     if isValid(change["following"])
+                        ?"[Debug] change[following] is valid"
                         if change["following"].Count() > 0
+                            ?"[Debug] change[following].Count() = "; change["following"].Count()
                             'example following JSON:
                             '"following": [
                             '    {
@@ -194,19 +222,30 @@ function set_prefs()
                             'Current implimentation plan is to append all results of blocked/following queries together, parse after.
                             'Optimization will be added in the future after setPreferencesTask is fixed.
                             newfollowingData = getBulkPageData(change["following"])
+                            ?"[Debug] getBulkPageData returned: "; formatJson(newfollowingData)
+                            channelsResolved = 0
                             if isValid(newfollowingData.result)
                                 if isValid(newfollowingdata["result"]["items"])
                                     if newfollowingdata["result"]["items"].Count() > 0 and newfollowingdata["result"]["items"].Count() <= 2
                                         for each channel in newfollowingdata["result"]["items"]
                                             followingdata["result"]["items"].Push(channel)
                                             prenotify_new_follow(channel["claim_id"], channel["name"])
+                                            channelsResolved = channelsResolved + 1
                                         end for
                                     else if newfollowingdata["result"]["items"].Count() > 2
                                         for each channel in newfollowingdata["result"]["items"] 'do NOT prenotify on MASS FOLLOW.
                                             followingdata["result"]["items"].Push(channel)
+                                            channelsResolved = channelsResolved + 1
                                         end for
                                     end if
                                 end if
+                            end if
+                            ' Fallback: if getBulkPageData didn't resolve the channel, still call subscription API with claim_id only
+                            if channelsResolved = 0 and change["following"].Count() > 0 and change["following"].Count() <= 2
+                                ?"[Debug] getBulkPageData did not resolve channels, calling subscription API with claim_id only"
+                                for each claimId in change["following"]
+                                    prenotify_new_follow(claimId, claimId) ' Use claim_id as placeholder for channel_name
+                                end for
                             end if
                         end if
                     end if
@@ -231,10 +270,16 @@ function set_prefs()
                     end if
                 end if
             else if m.top.changeType = "remove"
-                ? "remove"
-                if isValid(change) and following.Count() = followingData.result.items.Count() and blocked.Count() = blockedData.result.items.Count()
+                ? "remove - changeType is remove"
+                ? "following.Count: "; following.Count(); " followingData.result.items.Count: "; followingData.result.items.Count()
+                ? "blocked.Count: "; blocked.Count(); " blockedData.result.items.Count: "; blockedData.result.items.Count()
+                ' Don't check counts for remove - just process the change
+                ' (some channels might not resolve via API, which would cause count mismatch)
+                if isValid(change)
+                    ? "Condition met for remove operation"
                     if isValid(change["following"])
                         if change["following"].Count() > 0
+                            ? "Processing unfollow for "; change["following"].Count(); " channels"
                             followingAA = {} 'Following Reference AA
                             for each changeItem in change["following"]
                                 followingaa.addreplace(changeItem, true)
@@ -245,6 +290,7 @@ function set_prefs()
                                 else
                                     if isValid(followingAA[followingdata["result"]["items"][i]["claim_id"]])
                                         channel = followingdata["result"]["items"][i]
+                                        ? "Calling prenotify_delete_follow for: "; channel["name"]; " ("; channel["claim_id"]; ")"
                                         prenotify_delete_follow(channel["claim_id"], channel["name"])
                                         followingdata["result"]["items"].Delete(i)
                                         channel = invalid

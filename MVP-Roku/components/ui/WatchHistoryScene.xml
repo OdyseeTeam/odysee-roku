@@ -2,6 +2,7 @@
 <component name="WatchHistoryScene" extends="Group">
   <interface>
     <field id="selectedVideo" type="assocarray"/>
+    <field id="selectedChannel" type="assocarray" alwaysNotify="true"/>
     <field id="restoreFocus" type="boolean" alwaysNotify="true"/>
     <field id="constants" type="assocarray"/>
     <field id="uid" type="integer"/>
@@ -27,18 +28,20 @@
       translation="[100,150]"
       itemComponentName="PosterItem"
       numRows="4"
-      rowItemSize="[[410,400]]"
-      rowItemSpacing="[[20,0]]"
-      itemSize="[1920,420]"
+      rowItemSize="[[410,380]]"
+      rowItemSpacing="[[20,20]]"
+      itemSize="[1920,460]"
       focusXOffset="[50]"
-      showRowLabel="[true]"
-      rowLabelOffset="[[0,20]]"
+      showRowLabel="[false]"
+      rowLabelWidth="[260]"
+      rowLabelOffset="[0]"
       rowFocusAnimationStyle="floatingFocus"
       vertFocusAnimationStyle="fixedFocus"
       wrapDividerBitmapUri=""
       wrapDividerHeight="0"
       visible="true"
     />
+
 
     <!-- Loading/Empty indicator -->
     <Label id="statusText" font="font:Inter-Emoji" color="#ffffff" width="1920" height="400" text="Loading..." wrap="true" vertAlign="center" horizAlign="center" translation="[0,300]" visible="false">

@@ -128,23 +128,27 @@ end sub
 sub buildGrid(results as object)
     content = CreateObject("roSGNode", "ContentNode")
 
-    ' Get current time for categorization
+    ' Use midnight boundaries for clean buckets
     now = CreateObject("roDateTime")
     nowSeconds = now.AsSeconds()
     todayStart = nowSeconds - (nowSeconds mod 86400) ' Start of today (midnight)
-    weekAgo = nowSeconds - (7 * 86400) ' 7 days ago
+    sevenDaysStart = todayStart - (7 * 86400)
+    fourteenDaysStart = todayStart - (14 * 86400)
 
     ' Categorize items by time
     todayItems = []
-    weekItems = []
-    earlierItems = []
+    recentItems = [] ' From 1 to 7 days ago (excludes today)
+    lastWeekItems = [] ' >7 to 14 days ago
+    earlierItems = [] ' >14 days ago
 
     for each result in results
         if IsValid(result.lastPlayedAt)
             if result.lastPlayedAt >= todayStart
                 todayItems.Push(result)
-            else if result.lastPlayedAt >= weekAgo
-                weekItems.Push(result)
+            else if result.lastPlayedAt >= sevenDaysStart
+                recentItems.Push(result)
+            else if result.lastPlayedAt >= fourteenDaysStart
+                lastWeekItems.Push(result)
             else
                 earlierItems.Push(result)
             end if
@@ -153,20 +157,36 @@ sub buildGrid(results as object)
         end if
     end for
 
-    ' Build rows for each section
+    ' Build rows for each non-empty section
     if todayItems.Count() > 0
         addHistorySection(content, "Today", todayItems)
     end if
 
-    if weekItems.Count() > 0
-        addHistorySection(content, "Last Week", weekItems)
+    if recentItems.Count() > 0
+        addHistorySection(content, "Recent", recentItems)
+    end if
+
+    if lastWeekItems.Count() > 0
+        addHistorySection(content, "Last Week", lastWeekItems)
     end if
 
     if earlierItems.Count() > 0
         addHistorySection(content, "Earlier", earlierItems)
     end if
 
+    ' Apply content and reserve label column for all rows
     m.historyGrid.content = content
+    rowCount = content.getChildCount()
+    if rowCount > 0
+        reserve = []
+        for i = 0 to rowCount - 1
+            reserve.Push(true)
+        end for
+        m.historyGrid.showRowLabel = reserve
+    end if
+
+    ' Built-in RowList labels will render; extra row height prevents overlap
+
     m.historyGrid.visible = true
     m.statusText.visible = false
     m.historyGrid.setFocus(true)
@@ -175,16 +195,15 @@ sub buildGrid(results as object)
     print "[WatchHistory] Grid built with "; results.Count(); " items in sections"
 end sub
 
-sub addHistorySection(content as object, sectionLabel as string, items as object)
-    ' Add each row of 4 items
+
+function addHistorySection(content as object, sectionLabel as string, items as object) as integer
+    ' Add items split into rows of 4; set label only on the first row
     itemsPerRow = 4
     totalRows = Int((items.Count() + itemsPerRow - 1) / itemsPerRow) ' Ceiling division
 
     for rowIdx = 0 to totalRows - 1
         row = content.createChild("ContentNode")
-
-        ' Set row label only for first row of section
-        if rowIdx = 0
+        if rowIdx = 0 then
             row.title = sectionLabel
         else
             row.title = ""
@@ -201,19 +220,23 @@ sub addHistorySection(content as object, sectionLabel as string, items as object
             ' Create content node for video (matching getSinglePage.brs pattern)
             node = row.createChild("ContentNode")
 
-            ' Add custom fields first with lowercase names (matching getSinglePage pattern)
+            ' Add custom fields (matching field names that PosterItem expects)
             node.addFields({
-                creator: "",
-                itemType: "",
+                CREATOR: "",
+                ITEMTYPE: "",
                 Channel: "",
                 ChannelIcon: "",
                 videolength: "",
                 claimId: "",
                 guid: "",
-                URL: ""
+                URL: "",
+                streamFormat: "",
+                rawCreator: "",
+                chatCategory: "",
+                description: ""
             })
 
-            ' Now set all field values (setFields is case-insensitive, maps Creator->creator, etc)
+            ' Now set all field values
             node.TITLE = result.title
             if result.title = "" then node.TITLE = "Untitled Video"
 
@@ -224,33 +247,34 @@ sub addHistorySection(content as object, sectionLabel as string, items as object
             if result.channelName = "" then node.Creator = "Unknown"
 
             node.RELEASEDATE = result.releaseDate
-            node.itemType = "video"
+            node.ITEMTYPE = result.itemType
             node.ChannelIcon = result.channelIcon
             node.videolength = result.videoLength
             node.claimId = result.claimId
             node.Channel = result.channelId
             node.guid = result.claimId
-            node.URL = "lbry://" + result.claimId
-
-            ' Debug what's on the node
-            print "[WatchHistory] Node created for: "; node.TITLE
-            print "  Creator: "; node.Creator
-            print "  ChannelIcon field exists: "; (node.ChannelIcon <> invalid)
-            if node.ChannelIcon <> invalid then print "  ChannelIcon value: "; node.ChannelIcon
-            print "  videolength: "; node.videolength
+            ' Use permanent URL if available, fallback to claim ID
+            if IsValid(result.permanentUrl) and result.permanentUrl <> ""
+                node.URL = result.permanentUrl
+            else
+                node.URL = "lbry://" + result.claimId
+            end if
 
             ' Calculate watch progress percentage with minimum 1%
             if IsValid(result.duration) and result.duration > 0
                 progress = (result.position / result.duration) * 100
                 if progress > 100 then progress = 100
-                ' Minimum 1% if video has been started
                 if progress > 0 and progress < 1 then progress = 1
                 if progress < 0 then progress = 0
                 node.addFields({ watchProgress: progress })
+            else if IsValid(result.lastPlayedAt)
+                node.addFields({ watchProgress: 1 })
             end if
         end for
     end for
-end sub
+
+    return totalRows
+end function
 
 sub onVideoSelected()
     selected = m.historyGrid.rowItemSelected
@@ -271,7 +295,14 @@ sub onVideoSelected()
                     title: videoNode.TITLE,
                     Channel: videoNode.Channel,
                     creator: videoNode.creator,
-                    HDPOSTERURL: videoNode.HDPOSTERURL
+                    HDPOSTERURL: videoNode.HDPOSTERURL,
+                    URL: videoNode.URL,
+                    itemType: videoNode.ITEMTYPE,
+                    streamFormat: videoNode.streamFormat,
+                    ChannelIcon: videoNode.ChannelIcon,
+                    rawCreator: videoNode.rawCreator,
+                    chatCategory: videoNode.chatCategory,
+                    description: videoNode.description
                 }
             end if
         end if
@@ -284,6 +315,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "back"
         ' Let parent handle back button
         return false
+    else if key = "*" or key = "options"
+        ' Navigate to channel page for currently focused video
+        navigateToChannel()
+        return true
     end if
 
     ' Prevent focus from disappearing by blocking navigation at boundaries
@@ -348,4 +383,53 @@ sub onRestoreFocus()
     ' Restore focus to grid
     print "[WatchHistory] Restoring focus"
     m.historyGrid.setFocus(true)
+end sub
+
+sub navigateToChannel()
+    ' Get currently focused video and navigate to its channel page
+    print "[WatchHistory] Navigate to channel for focused video"
+
+    content = m.historyGrid.content
+    if not IsValid(content) then return
+
+    currentItem = m.historyGrid.itemFocused
+    row = -1
+    col = -1
+
+    ' Get row and col from itemFocused
+    itemType = Type(currentItem)
+    if itemType = "roArray" and currentItem.Count() >= 2
+        row = currentItem[0]
+        col = currentItem[1]
+    else if IsValid(m.lastFocusRow) and IsValid(m.lastFocusCol)
+        row = m.lastFocusRow
+        col = m.lastFocusCol
+    else
+        print "[WatchHistory] Could not determine focused item"
+        return
+    end if
+
+    ' Get the video node
+    if row >= 0 and row < content.getChildCount()
+        rowNode = content.getChild(row)
+        if IsValid(rowNode) and col >= 0 and col < rowNode.getChildCount()
+            videoNode = rowNode.getChild(col)
+            if IsValid(videoNode)
+                ' Extract channel info from video node
+                channelId = videoNode.Channel
+                channelName = videoNode.Creator
+
+                if IsValid(channelId) and channelId <> ""
+                    print "[WatchHistory] Navigating to channel: "; channelName; " ("; channelId; ")"
+                    ' Set selectedChannel field to trigger navigation in HomeScene
+                    m.top.selectedChannel = {
+                        channelId: channelId,
+                        channelName: channelName
+                    }
+                else
+                    print "[WatchHistory] Channel ID not available for this video"
+                end if
+            end if
+        end if
+    end if
 end sub

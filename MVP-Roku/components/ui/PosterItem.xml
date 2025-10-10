@@ -19,10 +19,10 @@
         <Rectangle id="placeholderOverlay" color="0x3a3a3a" width="390" height="220" translation="[10,10]" visible="false" opacity="0.5" />
         <Rectangle id="liveDotBg" color="0x000000AA" width="28" height="28" translation="[10,10]" visible="false" />
         <Rectangle id="liveDot" color="0xFF0000FF" width="12" height="12" translation="[18,18]" visible="false" />
-        <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,240]" wrap = "true" numLines = "2" lineSpacing = "0" text="title">
+        <Label id="title" font="font:Inter-Emoji" color="#ffffff" translation="[10,232]" wrap = "true" numLines = "2" lineSpacing = "0" text="title">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
-        <Label id="published" font="font:Inter-Emoji" color="#ffffff" translation="[10,277]" text="date">
+        <Label id="published" font="font:Inter-Emoji" color="#ffffff" translation="[10,286]" text="date">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
         <!--
@@ -33,8 +33,8 @@
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
         -->
-        <Poster id="channelIcon" width="20" height="20" translation="[10,310]" visible="true" />
-        <Label id="creator" font="font:Inter-Emoji" color="#ffffff" translation="[40,310]" text="publisher">
+        <Poster id="channelIcon" width="28" height="28" translation="[10,320]" visible="true" loadDisplayMode="scaleToFit" />
+        <Label id="creator" font="font:Inter-Emoji" color="#ffffff" translation="[44,322]" text="publisher">
         <Font role="font" uri = "pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="24"/>
         </Label>
         <Rectangle

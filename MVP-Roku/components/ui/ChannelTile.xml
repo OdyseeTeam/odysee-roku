@@ -49,5 +49,15 @@
     >
       <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="22"/>
     </Label>
+
+    <!-- Heart icon (followed indicator) -->
+    <Poster
+      id="heartIcon"
+      uri="pkg:/images/generic/Heart-selected.png"
+      width="32"
+      height="32"
+      translation="[170,130]"
+      visible="true"
+    />
   </children>
 </component>

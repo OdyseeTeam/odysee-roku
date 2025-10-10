@@ -7,6 +7,7 @@
   </interface>
     <script type="text/brightscript" uri="pkg:/components/HomeScene.brs" />
     <script type="text/brightscript" uri="pkg:/components/generic/utility/liveUtils.brs" />
+    <script type="text/brightscript" uri="pkg:/components/generic/network/http.brs" />
     <!-- All nodes must be inside <children> headers -->
     <children>
 
@@ -78,6 +79,44 @@
         height="100"
         translation="[10,180]"
         visible="false"
+    />
+    <!-- Follow/Unfollow heart icon below channel thumbnail -->
+    <Rectangle
+        id="channelSidebarHeartBackground"
+        color="0x3a3a3a"
+        width="110"
+        height="110"
+        translation="[5,295]"
+        visible="false"
+    />
+    <Rectangle
+        id="channelSidebarHeartFocusIndicator"
+        color="0x5d5d5d"
+        width="110"
+        height="110"
+        translation="[5,295]"
+        visible="false"
+    />
+    <Label
+        id="channelSidebarHeartLabel"
+        text="♡"
+        font="font:LargeBoldSystemFont"
+        width="110"
+        height="110"
+        horizAlign="center"
+        vertAlign="center"
+        color="0xFFFFFF"
+        translation="[5,295]"
+        visible="false"
+    />
+    <Poster
+        id="channelSidebarHeart"
+        uri="pkg:/images/generic/Heart.png"
+        width="100"
+        height="100"
+        translation="[10,300]"
+        visible="false"
+        focusable="true"
     />
     <Poster
         id="odyseelogo"

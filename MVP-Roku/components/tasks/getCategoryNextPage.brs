@@ -66,6 +66,10 @@ function FetchNextPage(pageNum as integer)
             chCount = params["channel_ids"].Count()
         end if
     end if
+    limitClaims = 0
+    if IsValid(params["limit_claims_per_channel"])
+        limitClaims = params["limit_claims_per_channel"]
+    end if
     ? "[CatNext] limit=" + Str(limitClaims) + " channels=" + Str(chCount) + " release<" + curTime.ToStr()
     q = FormatJson({"jsonrpc":"2.0","method":"claim_search","params":params,"id":m.top.uid})
     ' Defensive: if channel_ids provided but empty, remove to avoid server-side filtering to zero

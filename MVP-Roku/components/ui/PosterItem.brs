@@ -33,21 +33,14 @@ sub itemContentChanged()
 
     if isValid(m.Poster) and isValid(m.top.itemContent) then m.Poster.uri = m.top.itemContent.HDPOSTERURL
 
-    ' Debug channel icon
-    print "[PosterItem] Processing: "; m.top.itemContent.TITLE
-    print "  ChannelIcon field: "; m.top.itemContent.ChannelIcon
-    print "  CREATOR field: "; m.top.itemContent.CREATOR
-
     ' Always show channel icons when provided; URIs are pre-optimized via CHANNEL_ICON_PROCESSOR
     if isValid(m.top.itemContent) and isValid(m.top.itemContent.ChannelIcon) and m.top.itemContent.ChannelIcon <> ""
         if isValid(m.ChannelIcon)
             m.ChannelIcon.uri = m.top.itemContent.ChannelIcon
             m.ChannelIcon.visible = true
-            print "[PosterItem] Set ChannelIcon visible: "; m.ChannelIcon.uri
         end if
     else
         if isValid(m.ChannelIcon) then m.ChannelIcon.visible = false
-        print "[PosterItem] ChannelIcon hidden or empty"
     end if
     m.Title.text = m.top.itemContent.TITLE
     m.Creator.text = m.top.itemContent.CREATOR
@@ -217,6 +210,7 @@ sub updateLayout()
         ' Poster area
         if isValid(m.Poster) then m.Poster.width = m.top.width - 20
         if isValid(m.Poster) then m.Poster.height = 220
+        if isValid(m.Poster) then m.Poster.translation = [10, 10]
         if not isValid(m.viewers) then m.viewers = m.top.findNode("viewers")
         if not isValid(m.viewersBackground) then m.viewersBackground = m.top.findNode("vbackground")
         if not isValid(m.viewersIcon) then m.viewersIcon = m.top.findNode("viewersIcon")
@@ -254,16 +248,25 @@ sub updateLayout()
             end if
         end if
         ' Title below poster, allow 2 lines without overlap
-        if isValid(m.Title) then m.Title.translation = [10, 234]
+        if isValid(m.Title) then m.Title.translation = [10, 232]
         if isValid(m.Title) then m.Title.width = m.top.width - 20
         if isValid(m.Title) then m.Title.wrap = true
         ' Published/date below title
-        if isValid(m.Published) then m.Published.translation = [10, 292]
+        if isValid(m.Published) then m.Published.translation = [10, 286]
         if isValid(m.Published) then m.Published.width = m.top.width - 20
-        ' Bottom row: channel icon + creator
-        if isValid(m.ChannelIcon) then m.ChannelIcon.translation = [10, m.top.height - 26]
-        if isValid(m.Creator) then m.Creator.translation = [36, m.top.height - 30]
-        if isValid(m.Creator) then m.Creator.width = m.top.width - 46
+        ' Channel icon + creator below published date
+        ' Icon: 28x28 circular, aligned with text baseline (font size 24)
+        ' Positioned to fit within 380px tile height - moved up to prevent clipping
+        if isValid(m.ChannelIcon)
+            m.ChannelIcon.width = 28
+            m.ChannelIcon.height = 28
+            m.ChannelIcon.translation = [10, 320]
+            m.ChannelIcon.loadDisplayMode = "scaleToFit"
+        end if
+        if isValid(m.Creator)
+            m.Creator.translation = [44, 322]
+            m.Creator.width = m.top.width - 54
+        end if
         ' Background
         if isValid(m.Background) then m.Background.width = m.top.width
         if isValid(m.Background) then m.Background.height = m.top.height
@@ -282,9 +285,8 @@ sub updateLayout()
                 if barWidth < 1 then barWidth = 1
                 m.progressBar.width = barWidth
 
-                ' Position just below poster (poster starts at y=10, height=220, so bottom is at 230)
-                ' Place progress bar at y=224 (6px above the poster bottom edge)
-                m.progressBar.translation = [10, 10 + m.Poster.height - 6]
+            ' Position just below poster
+            m.progressBar.translation = [10, 10 + m.Poster.height - 6]
             end if
         end if
     end if

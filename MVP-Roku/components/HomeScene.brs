@@ -529,6 +529,11 @@ sub init()
   m.sidebarBackground = m.top.findNode("sidebarbackground")
   m.activeCategoryIndicator = m.top.findNode("activeCategoryIndicator")
   m.channelSidebarThumb = m.top.findNode("channelSidebarThumb")
+  m.channelSidebarHeart = m.top.findNode("channelSidebarHeart")
+  m.channelSidebarHeartLabel = m.top.findNode("channelSidebarHeartLabel")
+  m.channelSidebarHeartBackground = m.top.findNode("channelSidebarHeartBackground")
+  m.channelSidebarHeartFocusIndicator = m.top.findNode("channelSidebarHeartFocusIndicator")
+  m.channelSidebarHeart.observeField("focusedChild", "onHeartFocusChanged")
   m.chatBackground = m.top.findNode("chatBackground")
   m.superChatBackground = m.top.findNode("SuperChatBackground")
   m.odyseeLogo = m.top.findNode("odyseelogo")
@@ -542,6 +547,12 @@ sub init()
   ' Channel and search paging state
   m.currentChannelId = ""
   m.currentChannelPage = 1
+  ' Debug: Track key sequence for clearing local data (press REWIND five times rapidly while focused on Logout)
+  m.debugKeySequence = []
+  m.debugKeyTimer = CreateObject("roSGNode", "Timer")
+  m.debugKeyTimer.duration = 2
+  m.debugKeyTimer.repeat = false
+  m.debugKeyTimer.observeField("fire", "onDebugKeyTimeout")
   m.loadingChannelNext = false
   m.channelReturnRowCol = invalid
   m.channelReturnContext = ""
@@ -643,7 +654,9 @@ sub init()
   m.oauthChannelsButton.observeField("buttonSelected", "showFollowedChannels")
   m.oauthLogoutButton.observeField("buttonSelected", "Logout")
   m.followedChannelsScene.observeField("selectedChannel", "onChannelSelected")
+  m.followedChannelsScene.observeField("unfollowRequest", "onUnfollowRequested")
   m.watchHistoryScene.observeField("selectedVideo", "onHistoryVideoSelected")
+  m.watchHistoryScene.observeField("selectedChannel", "onHistoryChannelSelected")
   m.exitTimer.observeField("fire", "onExitTimer")
 
   'Tasks
@@ -747,9 +760,14 @@ sub init()
     else
       m.wasLoggedIn = false
     end if
+    ' Set grid position for all users (logged in have 3 buttons, logged out has History button)
+    m.videoGrid.translation = [210, 150]
     m.preferences = ParseJSON(GetRegistry("preferencesRegistry", "preferences"))
     m.oldpreferences = ParseJSON(GetRegistry("preferencesRegistry", "preferences"))
   end if
+
+  ' Initialize button visibility and positioning based on login status
+  showAuthButtonsIfLoggedIn()
 
   m.wallet = { "oldHash": "asdf", "walletData": "asdf" } 'create template wallet object
   'begin populating template
@@ -2016,6 +2034,9 @@ sub finishInit()
   hideCategoryIndicator() ' Hide indicator when sidebar gets focus
   m.categorySelector.setFocus(true)
   m.focusedItem = 1
+
+  ' Adjust grid position for buttons (History button visible for all users)
+  m.videoGrid.translation = [210, 150]
   m.global.scene.signalBeacon("AppLaunchComplete")
   ' Check for deep link parameters passed from main.brs via global args (if not already set)
   if not isValid(m.global.deeplink) or not isValid(m.global.deeplink.contentId)
@@ -2055,6 +2076,51 @@ end sub
 'UI BACKBONE
 function onKeyEvent(key as string, press as boolean) as boolean 'Literally the backbone of the entire user interface
   'TODO: make more readable
+
+  ' Debug: Check for data clear sequence (press REWIND five times rapidly while focused on Logout)
+  if press = true and key = "rewind"
+    ' Require focus on Logout button to avoid conflicts with Roku accessibility shortcut
+    if IsValid(m.focusedItem) and m.focusedItem = 8 and IsValid(m.oauthLogoutButton) and m.oauthLogoutButton.visible = true
+      ' Track key presses for debug sequence
+      m.debugKeySequence.Push(CreateObject("roDateTime").AsSeconds())
+      ' Keep only last 5 presses
+      if m.debugKeySequence.Count() > 5
+        m.debugKeySequence.Shift()
+      end if
+      ' Start/restart timer
+      m.debugKeyTimer.control = "stop"
+      m.debugKeyTimer.control = "start"
+
+      ' Check if we have 5 presses within 2 seconds
+      if m.debugKeySequence.Count() = 5
+        firstPress = m.debugKeySequence[0]
+        lastPress = m.debugKeySequence[4]
+        if (lastPress - firstPress) <= 2
+          showClearDataDialog()
+          m.debugKeySequence = []
+          m.debugKeyTimer.control = "stop"
+          return true
+        end if
+      end if
+    else
+      ' Not on Logout; ignore and reset sequence state
+      m.debugKeySequence = []
+      m.debugKeyTimer.control = "stop"
+    end if
+  end if
+
+  ' Let FollowedChannelsScene and WatchHistoryScene handle OK/options/* keys first
+  ' This allows them to handle confirmation dialogs and other internal state
+  ' (Back key is handled by existing handlers below)
+  if key = "OK" or key = "options" or key = "*"
+    if IsValid(m.viewingFollowedChannels) and m.viewingFollowedChannels = true
+      return false ' Let FollowedChannelsScene handle it first
+    end if
+    if IsValid(m.viewingWatchHistory) and m.viewingWatchHistory = true
+      return false ' Let WatchHistoryScene handle it first
+    end if
+  end if
+
   ' High-priority Back handler: handle followed channels and watch history scenes first
   if key = "back" and press = true
     if IsValid(m.viewingWatchHistory) and m.viewingWatchHistory = true
@@ -2119,6 +2185,29 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
     ?m.uiLayers
     if press
       if key = "OK"
+        ' Handle OK press on heart icon (disabled when signed out)
+        if isUserLoggedIn() and m.focusedItem = 12 and IsValid(m.currentChannelId) and m.currentChannelId <> ""
+          ' Check if currently following
+          isFollowing = false
+          if IsValid(m.preferences) and IsValid(m.preferences.following)
+            for each channelId in m.preferences.following
+              if channelId = m.currentChannelId
+                isFollowing = true
+                exit for
+              end if
+            end for
+          end if
+
+          if isFollowing
+            ' Show unfollow confirmation
+            showChannelUnfollowConfirmation()
+          else
+            ' Follow directly without confirmation
+            follow(m.currentChannelId)
+          end if
+          return true
+        end if
+
         if m.video.visible = true and m.videoOverlayGroup.visible = true
           if m.videoButtonSelected <> "none"
             focusVal = invalid
@@ -2159,7 +2248,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               m.videoGrid.setFocus(false)
               m.videoGrid.visible = false
               m.loadingText.visible = true
-              m.loadingText.text = "Opening channel… (press ← to go back)"
+              m.loadingText.text = "Opening channel (press * to go back)"
             else if m.videoButtonSelected = "following"
               ? "Subscribe/Follow"
               ? m.wasLoggedIn
@@ -2600,7 +2689,76 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         end if
       end if
 
+      if key = "*"
+        ' Toggle follow/unfollow for current channel when heart icon has focus
+        if isUserLoggedIn() and m.focusedItem = 12 and IsValid(m.currentChannelId) and m.currentChannelId <> ""
+          ' Check if currently following
+          isFollowing = false
+          if IsValid(m.preferences) and IsValid(m.preferences.following)
+            for each channelId in m.preferences.following
+              if channelId = m.currentChannelId
+                isFollowing = true
+                exit for
+              end if
+            end for
+          end if
+
+          if isFollowing
+            ' Show unfollow confirmation
+            showChannelUnfollowConfirmation()
+          else
+            ' Follow directly without confirmation
+            follow(m.currentChannelId)
+          end if
+          return true
+        end if
+
+        ' Toggle follow/unfollow for current channel when viewing channel page
+        if isUserLoggedIn() and m.focusedItem = 2 and IsValid(m.currentChannelId) and m.currentChannelId <> ""
+          ' Check if currently following
+          isFollowing = false
+          if IsValid(m.preferences) and IsValid(m.preferences.following)
+            for each channelId in m.preferences.following
+              if channelId = m.currentChannelId
+                isFollowing = true
+                exit for
+              end if
+            end for
+          end if
+
+          if isFollowing
+            ' Show unfollow confirmation
+            showChannelUnfollowConfirmation()
+          else
+            ' Follow directly without confirmation
+            follow(m.currentChannelId)
+          end if
+          return true
+        end if
+      end if
+
       if key = "options"
+        ' Check if we're already on a channel page - if so, treat options as follow/unfollow toggle
+        if isUserLoggedIn() and m.focusedItem = 2 and m.uiLayer > 0 and IsValid(m.currentChannelId) and m.currentChannelId <> ""
+          ' We're viewing a channel, so options should toggle follow/unfollow
+          isFollowing = false
+          if IsValid(m.preferences) and IsValid(m.preferences.following)
+            for each channelId in m.preferences.following
+              if channelId = m.currentChannelId
+                isFollowing = true
+                exit for
+              end if
+            end for
+          end if
+
+          if isFollowing
+            showChannelUnfollowConfirmation()
+          else
+            follow(m.currentChannelId)
+          end if
+          return true
+        end if
+
         if m.focusedItem = 2 '[video grid]  'Options Key Channel Transition.
           'VGM01
           hideCategorySelector()
@@ -2664,7 +2822,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               m.taskRunning = True
               ' Show quick hint while resolving
               m.loadingText.visible = true
-              m.loadingText.text = "Opening channel… (press ← to go back)"
+              m.loadingText.text = "Opening channel (press * to go back)"
               m.videoGrid.setFocus(false)
               m.videoGrid.visible = false
               ' Sidebar thumbnail will be shown in gotResolvedChannel
@@ -2796,24 +2954,25 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
         end if
         if m.focusedItem = 2
-          ? m.categorySelector.itemFocused
-          ? m.favoritesLoaded
-          ? m.videoGrid.rowItemFocused[0]
-          ? m.videoGrid.rowItemFocused[1]
-          ' Fixed: Allow navigation to buttons from ANY column in top row of Favorites
-          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded and m.videoGrid.rowItemFocused[0] = 0
-            ?"[Nav] UP from top row of Favorites -> buttons"
-            m.videoGrid.setFocus(false)
-            ' Navigate to History button if visible, otherwise Channels button, otherwise Logout button
-            if m.oauthHistoryButton.visible = true
-              m.oauthHistoryButton.setFocus(true)
-              m.focusedItem = 11 '[history button]
-            else if m.oauthChannelsButton.visible = true
-              m.oauthChannelsButton.setFocus(true)
-              m.focusedItem = 10 '[channels button]
-            else
-              m.oauthLogoutButton.setFocus(true)
-              m.focusedItem = 8 '[oauth logout button]
+          ' Move focus to header buttons from top row (no auto-open)
+          topRow = false
+          if IsValid(m.videoGrid) and IsValid(m.videoGrid.rowItemFocused) and Type(m.videoGrid.rowItemFocused) = "roArray" and m.videoGrid.rowItemFocused.Count() >= 2
+            if m.videoGrid.rowItemFocused[0] = 0 then topRow = true
+          end if
+          if topRow = true
+            if (IsValid(m.oauthHistoryButton) and m.oauthHistoryButton.visible = true) or (IsValid(m.oauthChannelsButton) and m.oauthChannelsButton.visible = true) or (IsValid(m.oauthLogoutButton) and m.oauthLogoutButton.visible = true)
+              ?"[Nav] UP from top row -> header buttons"
+              m.videoGrid.setFocus(false)
+              if IsValid(m.oauthHistoryButton) and m.oauthHistoryButton.visible = true
+                m.oauthHistoryButton.setFocus(true)
+                m.focusedItem = 11 '[history button]
+              else if IsValid(m.oauthChannelsButton) and m.oauthChannelsButton.visible = true
+                m.oauthChannelsButton.setFocus(true)
+                m.focusedItem = 10 '[channels button]
+              else if IsValid(m.oauthLogoutButton) and m.oauthLogoutButton.visible = true
+                m.oauthLogoutButton.setFocus(true)
+                m.focusedItem = 8 '[oauth logout button]
+              end if
             end if
           end if
         end if
@@ -2852,12 +3011,15 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
         end if
 
         ' Handle button down navigation - go to video grid
-        if m.focusedItem = 8 or m.focusedItem = 10 '[oauth logout/channels button]
-          if m.categorySelector.itemFocused = 1 and m.favoritesLoaded
+        if m.focusedItem = 8 or m.focusedItem = 10 or m.focusedItem = 11 '[oauth logout/channels/history button]
+          ' Go down to video grid if content is visible
+          if m.videoGrid.visible = true
             if m.focusedItem = 8
               m.oauthLogoutButton.setFocus(false)
-            else
+            else if m.focusedItem = 10
               m.oauthChannelsButton.setFocus(false)
+            else if m.focusedItem = 11
+              m.oauthHistoryButton.setFocus(false)
             end if
             m.videoGrid.setFocus(true)
             m.focusedItem = 2 '[video grid]
@@ -2954,6 +3116,18 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
         end if
         if m.focusedItem = 2 '[video grid]
+          ' Check if we're at the leftmost column on a channel page with heart visible
+          if IsValid(m.videoGrid) and IsValid(m.videoGrid.rowItemFocused) and m.videoGrid.rowItemFocused.Count() >= 2
+            col = m.videoGrid.rowItemFocused[1]
+            if col = 0 and IsValid(m.channelSidebarHeart) and m.channelSidebarHeart.visible = true and IsValid(m.currentChannelId) and m.currentChannelId <> ""
+              ' Move focus to the heart icon
+              m.videoGrid.setFocus(false)
+              m.channelSidebarHeart.setFocus(true)
+              m.focusedItem = 12 '[heart icon]
+              return true
+            end if
+          end if
+
           if m.categorySelector.itemFocused = 0
             m.videoGrid.setFocus(false)
             m.videoGrid.visible = false
@@ -3029,6 +3203,16 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "right"
+        ' Handle heart icon navigation - right goes back to video grid
+        if m.focusedItem = 12 '[heart icon]
+          if IsValid(m.videoGrid) and m.videoGrid.visible = true
+            m.channelSidebarHeart.setFocus(false)
+            m.videoGrid.setFocus(true)
+            m.focusedItem = 2 '[video grid]
+            return true
+          end if
+        end if
+
         ' Ensure the very first RIGHT after a skip moves selection immediately
         if m.video.visible
           overlayVisible = false
@@ -3068,6 +3252,41 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           end if
         end if
         ' Handle button navigation first (higher priority)
+        ' Also allow RIGHT from the top-right grid tile to go to the header (no auto-open)
+        if m.focusedItem = 2
+          rowCol = invalid
+          try: rowCol = m.videoGrid.rowItemFocused : catch e: rowCol = invalid : end try
+          if Type(rowCol) = "roArray" and rowCol.Count() >= 2
+            r = rowCol[0]: c = rowCol[1]
+            if r = 0
+              lastCol = 3
+              itemCount = -1
+              content = invalid
+              try: content = m.videoGrid.content : catch e: content = invalid : end try
+              if IsValid(content) and content.getChildCount() > 0
+                rowNode = content.getChild(0)
+                if IsValid(rowNode) then itemCount = rowNode.getChildCount()
+              end if
+              if itemCount > 0 then lastCol = itemCount - 1
+              if c = lastCol
+                if (IsValid(m.oauthHistoryButton) and m.oauthHistoryButton.visible = true) or (IsValid(m.oauthChannelsButton) and m.oauthChannelsButton.visible = true) or (IsValid(m.oauthLogoutButton) and m.oauthLogoutButton.visible = true)
+                  m.videoGrid.setFocus(false)
+                  if IsValid(m.oauthHistoryButton) and m.oauthHistoryButton.visible = true
+                    m.oauthHistoryButton.setFocus(true)
+                    m.focusedItem = 11 '[history button]
+                  else if IsValid(m.oauthChannelsButton) and m.oauthChannelsButton.visible = true
+                    m.oauthChannelsButton.setFocus(true)
+                    m.focusedItem = 10 '[channels button]
+                  else if IsValid(m.oauthLogoutButton) and m.oauthLogoutButton.visible = true
+                    m.oauthLogoutButton.setFocus(true)
+                    m.focusedItem = 8 '[oauth logout button]
+                  end if
+                  return true
+                end if
+              end if
+            end if
+          end if
+        end if
         if m.focusedItem = 11 '[history button]
           ' Right from history button - go to channels button or logout button
           if m.oauthChannelsButton.visible = true
@@ -3148,32 +3367,31 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           itemFocused = invalid
         end if
       end if
-    else if key = "A"
-      returnToUIPage()
-      m.categorySelector.jumpToItem = 0
-      updateActiveCategoryIndex(0) ' Update persistent highlighting for search
-      m.categorySelector.setFocus(true)
-      m.focusedItem = 1 '[selector]
-      return true
-    else if key = "B"
-      returnToUIPage()
-      if m.wasLoggedIn
-        m.categorySelector.jumpToItem = 1
-        updateActiveCategoryIndex(1) ' Update persistent highlighting for favorites
+      if key = "A"
+        returnToUIPage()
+        m.categorySelector.jumpToItem = 0
+        updateActiveCategoryIndex(0) ' Update persistent highlighting for search
         m.categorySelector.setFocus(true)
         m.focusedItem = 1 '[selector]
-      else
-        m.categorySelector.jumpToItem = 2
-        updateActiveCategoryIndex(2) ' Update persistent highlighting for first category
-        m.categorySelector.setFocus(true)
-        m.focusedItem = 1 '[selector]
+        return true
       end if
-      return true
-      'below used in dev
-      '? "oh no."
-      'massFollow(return_tremendous_data())
-    else
-      return true
+      if key = "B"
+        returnToUIPage()
+        if m.wasLoggedIn
+          m.categorySelector.jumpToItem = 1
+          updateActiveCategoryIndex(1) ' Update persistent highlighting for favorites
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+        else
+          m.categorySelector.jumpToItem = 2
+          updateActiveCategoryIndex(2) ' Update persistent highlighting for first category
+          m.categorySelector.setFocus(true)
+          m.focusedItem = 1 '[selector]
+        end if
+        return true
+        'below used in dev
+        '? "oh no."
+      end if
     end if
   else
     ?"task running, denying user input"
@@ -3257,6 +3475,7 @@ sub categorySelectorFocusChanged(msg)
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
+      ' Hide all buttons in search - History will be shown via showAuthButtonsIfLoggedIn()
       m.oauthLogoutButton.visible = false
       m.oauthChannelsButton.visible = false
       m.oauthHistoryButton.visible = false
@@ -3359,9 +3578,9 @@ sub categorySelectorFocusChanged(msg)
             m.videoGrid.visible = false
             m.loadingText.visible = true
             m.loadingText.text = "Refreshing favorites..."
-            m.oauthLogoutButton.visible = true
-            m.oauthChannelsButton.visible = true
-            m.oauthHistoryButton.visible = true
+            m.oauthLogoutButton.visible = isUserLoggedIn()
+            m.oauthChannelsButton.visible = isUserLoggedIn()
+            m.oauthHistoryButton.visible = isUserLoggedIn()
           else
             ' Check if favorites content is empty even though favorites are loaded
             ?"[Favorites Debug] Favorites loaded and UI allowed - checking categories content"
@@ -3379,9 +3598,9 @@ sub categorySelectorFocusChanged(msg)
               ?"[Favorites Debug] videoGrid.visible set to true"
               m.loadingText.visible = false
               ?"[Favorites Debug] loadingText.visible set to false"
-              m.oauthLogoutButton.visible = true
-              m.oauthChannelsButton.visible = true
-              m.oauthHistoryButton.visible = true
+              m.oauthLogoutButton.visible = isUserLoggedIn()
+              m.oauthChannelsButton.visible = isUserLoggedIn()
+              m.oauthHistoryButton.visible = isUserLoggedIn()
               ?"[Favorites Debug] oauthLogoutButton, oauthChannelsButton, and oauthHistoryButton visible set to true"
               ' Hook: ensure lives appear immediately when entering Following
               if isValid(m.preferences) and isValid(m.preferences.following)
@@ -3403,9 +3622,9 @@ sub categorySelectorFocusChanged(msg)
               m.videoGrid.visible = false
               m.oauthHeader.text = "Follow some channels here" + Chr(10) + "or on odysee.com to fill" + Chr(10) + "in this view"
               m.oauthHeader.visible = true
-              m.oauthLogoutButton.visible = true
-              m.oauthChannelsButton.visible = false ' Hide Channels button when no channels followed
-              m.oauthHistoryButton.visible = true ' Keep History button visible
+              m.oauthLogoutButton.visible = isUserLoggedIn()
+              m.oauthChannelsButton.visible = isUserLoggedIn()
+              m.oauthHistoryButton.visible = isUserLoggedIn()
               m.loadingText.visible = false
             end if
           end if
@@ -3414,9 +3633,10 @@ sub categorySelectorFocusChanged(msg)
           m.videoGrid.visible = false
           m.oauthHeader.text = "Follow some creators here" + Chr(10) + "or on Odysee.com to" + Chr(10) + "enjoy their latest content!"
           m.oauthHeader.visible = true
-          m.oauthLogoutButton.visible = true
-          m.oauthChannelsButton.visible = false ' Hide Channels button when no channels followed
-          m.oauthHistoryButton.visible = true ' Keep History button visible
+          m.oauthLogoutButton.visible = isUserLoggedIn()
+          m.oauthChannelsButton.visible = isUserLoggedIn()
+          m.oauthHistoryButton.visible = isUserLoggedIn()
+          showAuthButtonsIfLoggedIn()
         end if
         ?"[Favorites Debug] Final state - videoGrid.visible: "; m.videoGrid.visible; " loadingText.visible: "; m.loadingText.visible; " oauthHeader.visible: "; m.oauthHeader.visible
       else if m.authTask.legacyAuthorized and m.authTask.authPhase = 1 or m.authTask.authPhase = 2 and m.authTask.badSSO = false
@@ -3455,9 +3675,8 @@ sub categorySelectorFocusChanged(msg)
         m.authTask.control = "STOP"
         m.authTaskTimer.control = "stop"
       end if
-      m.oauthLogoutButton.visible = false
-      m.oauthChannelsButton.visible = false
-      m.oauthHistoryButton.visible = false
+      ' Show appropriate buttons based on login status
+      showAuthButtonsIfLoggedIn()
       m.oauthHeader.visible = false
       m.oauthCode.visible = false
       m.oauthFooter.visible = false
@@ -3772,7 +3991,7 @@ sub retryResolve()
   m.urlResolver.control = "RUN"
   m.taskRunning = True
   m.loadingText.visible = true
-  m.loadingText.text = "Retrying…"
+  m.loadingText.text = "Retrying"
   m.videoGrid.setFocus(false)
 end sub
 
@@ -3860,7 +4079,7 @@ sub resolveVideo(url = invalid)
           m.videoGrid.setFocus(false)
           m.videoGrid.visible = false
           m.loadingText.visible = true
-          m.loadingText.text = "Opening channel… (press ← to go back)"
+          m.loadingText.text = "Opening channel (press * to go back)"
         end if
         if curItem.itemType = "livestream"
           ?"Playing a livestream"
@@ -4903,6 +5122,8 @@ sub gotResolvedChannel(msg as object)
         hideCategorySelector()
       end if
       m.videoGrid.setFocus(true)
+      ' Show auth buttons if logged in
+      showAuthButtonsIfLoggedIn()
       ' Show channel thumbnail in the sidebar for context
       try
         thumb = m.channelResolver.ChannelIcon
@@ -4914,14 +5135,47 @@ sub gotResolvedChannel(msg as object)
           end if
           m.channelSidebarThumb.visible = true
           hideCategoryIndicator() ' Hide category indicator in channel view
+
+          ' Show follow/unfollow heart icon
+          updateChannelSidebarHeart()
         else
           m.channelSidebarThumb.visible = false
+          m.channelSidebarHeart.visible = false
+          if isValid(m.channelSidebarHeartLabel) then m.channelSidebarHeartLabel.visible = false
+          if isValid(m.channelSidebarHeartBackground) then m.channelSidebarHeartBackground.visible = false
         end if
       catch e
         m.channelSidebarThumb.visible = false
+        m.channelSidebarHeart.visible = false
+        if isValid(m.channelSidebarHeartLabel) then m.channelSidebarHeartLabel.visible = false
+        if isValid(m.channelSidebarHeartBackground) then m.channelSidebarHeartBackground.visible = false
         hideCategoryIndicator() ' Hide category indicator when channel view fails
       end try
     end if
+  end if
+end sub
+
+sub showAuthButtonsIfLoggedIn()
+  ' Hide header buttons during loading splash
+  if IsValid(m.loadingBackground) and m.loadingBackground.visible = true
+    m.oauthLogoutButton.visible = false
+    m.oauthChannelsButton.visible = false
+    m.oauthHistoryButton.visible = false
+    return
+  end if
+
+  if isUserLoggedIn()
+    ' Logged-in: show all buttons
+    m.oauthLogoutButton.visible = true
+    m.oauthChannelsButton.visible = true
+    m.oauthHistoryButton.visible = true
+    m.oauthHistoryButton.translation = [1180, 70]
+  else
+    ' Logged-out: show History only
+    m.oauthLogoutButton.visible = false
+    m.oauthChannelsButton.visible = false
+    m.oauthHistoryButton.visible = true
+    m.oauthHistoryButton.translation = [1690, 70]
   end if
 end sub
 
@@ -5029,17 +5283,34 @@ sub hideCategorySelector()
   m.sidebarTrim.visible = false
   m.sidebarBackground.visible = false
   if isValid(m.channelSidebarThumb) then m.channelSidebarThumb.visible = false
+  if isValid(m.channelSidebarHeart) then m.channelSidebarHeart.visible = false
+  if isValid(m.channelSidebarHeartLabel) then m.channelSidebarHeartLabel.visible = false
+  if isValid(m.channelSidebarHeartBackground) then m.channelSidebarHeartBackground.visible = false
   m.categorySelectorEndIndicator.visible = false
-  m.videoGrid.translation = [110, 120]
+  ' Position grid lower if buttons are visible (check Logout for logged-in, History for logged-out)
+  if m.oauthLogoutButton.visible = true or m.oauthHistoryButton.visible = true
+    m.videoGrid.translation = [110, 150]
+  else
+    m.videoGrid.translation = [110, 120]
+  end if
 end sub
 
 sub showCategorySelector()
   if isValid(m.categorySelector.content) and m.loadingBackground.visible = false
-    m.videoGrid.translation = [210, 120]
+    ' Position grid lower when buttons are visible (any category)
+    ' Check button visibility OR if any user (logged in or out) - buttons will be shown
+    if m.oauthLogoutButton.visible = true or m.oauthHistoryButton.visible = true or m.wasLoggedIn = true
+      m.videoGrid.translation = [210, 150]
+    else
+      m.videoGrid.translation = [210, 120]
+    end if
     m.categorySelector.visible = true
     m.sidebarTrim.visible = true
     m.sidebarBackground.visible = true
     if isValid(m.channelSidebarThumb) then m.channelSidebarThumb.visible = false
+    if isValid(m.channelSidebarHeart) then m.channelSidebarHeart.visible = false
+    if isValid(m.channelSidebarHeartLabel) then m.channelSidebarHeartLabel.visible = false
+    if isValid(m.channelSidebarHeartBackground) then m.channelSidebarHeartBackground.visible = false
     ' Restore category indicator when returning to category view
     if m.focusedItem = 2 and m.lastCategoryIndex >= 0 then maintainSidebarSelection()
     if m.categorySelector.itemFocused < (m.categorySelector.content.getChildren(-1, 0).count() - 1)
@@ -5475,7 +5746,7 @@ sub gotFavorites(msg as object)
         m.videoGrid.visible = true
         m.videoGrid.setFocus(true)
         m.focusedItem = 2
-        m.oauthLogoutButton.visible = true
+        m.oauthLogoutButton.visible = isUserLoggedIn()
       else if m.focusedItem = 7 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 'update under video
         m.videoGrid.content = m.categories["FAVORITES"]
         restoreGridFocus() ' Restore saved position for favorites
@@ -5558,13 +5829,13 @@ end sub
 
 sub block(channelID)
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "append" })
-  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.observeField("setState", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
 sub unBlock(channelID)
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "blocked": [channelID] }: changeType: "remove" })
-  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.observeField("setState", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
 end sub
 
@@ -5576,7 +5847,7 @@ sub massFollow(channelIDs)
     m.preferences.following = []
   end if
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": channelIDs }: changeType: "append" })
-  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.observeField("setState", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
   m.preferences.following.Append(channelIDs)
   m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", uid: m.uid, cookies: m.cookies, resolveLivestreams: true })
@@ -5585,19 +5856,31 @@ sub massFollow(channelIDs)
 end sub
 
 sub follow(channelID)
+  if not isUserLoggedIn() then
+    return
+  end if
+  ?"[Follow] Starting follow for channel: "; channelID
   if not isValid(m.preferences) then
     m.preferences = {}
   end if
   if not isValid(m.preferences.following) or Type(m.preferences.following) <> "roArray"
     m.preferences.following = []
   end if
+
+  ' Update preferences via setpreferencesTask (which will call subscription API)
+  ?"[Follow] Calling setpreferencesTask with channelID: "; channelID
+  m.setpreferencesTask.unobserveField("setState")
+  m.setpreferencesTask.control = "STOP"
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "append" })
-  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.observeField("setState", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
+
   if isValid(m.videoButtonsFollowingIcon)
     m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
   end if
   m.preferences.following.push(channelID)
+  ' Update sidebar heart icon
+  updateChannelSidebarHeart()
   ' Set flag to refresh favorites on next navigation
   m.needsFavoritesRefresh = true
   ?"[Follow] Set needsFavoritesRefresh flag for next navigation to Favorites"
@@ -5607,16 +5890,25 @@ sub follow(channelID)
 end sub
 
 sub unFollow(channelID)
-  ? "attempting to unfollow " + channelID
+  if not isUserLoggedIn() then
+    return
+  end if
+  ?"[UnFollow] Starting unfollow for channel: "; channelID
   if not isValid(m.preferences) then
     m.preferences = {}
   end if
   if not isValid(m.preferences.following) or Type(m.preferences.following) <> "roArray"
     m.preferences.following = []
   end if
+
+  ' Update preferences via setpreferencesTask (which will call subscription API)
+  ?"[UnFollow] Calling setpreferencesTask with channelID: "; channelID
+  m.setpreferencesTask.unobserveField("setState")
+  m.setpreferencesTask.control = "STOP"
   m.setpreferencesTask.setFields({ accessToken: m.accessToken: uid: m.uid: constants: m.constants: oldHash: m.wallet.oldHash: walletData: m.wallet.walletData: uid: m.flowUID: preferences: { "following": [channelID] }: changeType: "remove" })
-  m.setpreferencesTask.observeField("state", "setPrefStateChanged")
+  m.setpreferencesTask.observeField("setState", "setPrefStateChanged")
   m.setpreferencesTask.control = "RUN"
+
   if isValid(m.videoButtonsFollowingIcon)
     m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
   end if
@@ -5626,6 +5918,8 @@ sub unFollow(channelID)
         m.preferences.following.Delete(i)
       end if
     end for
+    ' Update sidebar heart icon
+    updateChannelSidebarHeart()
     ' Set flag to refresh favorites on next navigation
     m.needsFavoritesRefresh = true
     ?"[UnFollow] Set needsFavoritesRefresh flag for next navigation to Favorites"
@@ -5635,7 +5929,98 @@ sub unFollow(channelID)
   end if
 end sub
 
+sub updateChannelSidebarHeart()
+  ' Update heart icon based on whether current channel is followed
+  ' Hide entirely when not logged in
+  if not isUserLoggedIn() then
+    if isValid(m.channelSidebarHeart) then m.channelSidebarHeart.visible = false
+    if isValid(m.channelSidebarHeartLabel) then m.channelSidebarHeartLabel.visible = false
+    if isValid(m.channelSidebarHeartBackground) then m.channelSidebarHeartBackground.visible = false
+    if isValid(m.channelSidebarHeartFocusIndicator) then m.channelSidebarHeartFocusIndicator.visible = false
+    return
+  end if
+
+  if not IsValid(m.currentChannelId) or m.currentChannelId = "" then
+    m.channelSidebarHeart.visible = false
+    if isValid(m.channelSidebarHeartLabel) then m.channelSidebarHeartLabel.visible = false
+    if isValid(m.channelSidebarHeartBackground) then m.channelSidebarHeartBackground.visible = false
+    if isValid(m.channelSidebarHeartFocusIndicator) then m.channelSidebarHeartFocusIndicator.visible = false
+    return
+  end if
+
+  isFollowing = false
+  if IsValid(m.preferences) and IsValid(m.preferences.following)
+    for each channelId in m.preferences.following
+      if channelId = m.currentChannelId
+        isFollowing = true
+        exit for
+      end if
+    end for
+  end if
+
+  ' Always show the poster (which is focusable), just change the image
+  if isFollowing
+    ' Show filled heart image (matching video page)
+    m.channelSidebarHeart.uri = "pkg:/images/generic/Heart-selected.png"
+  else
+    ' Show hollow heart image (matching video page)
+    m.channelSidebarHeart.uri = "pkg:/images/png/Heart.png"
+  end if
+  m.channelSidebarHeart.visible = true
+
+  ' Hide label (not needed anymore)
+  if isValid(m.channelSidebarHeartLabel) then m.channelSidebarHeartLabel.visible = false
+
+  ' Show background
+  if isValid(m.channelSidebarHeartBackground) then m.channelSidebarHeartBackground.visible = true
+end sub
+
+sub onHeartFocusChanged()
+  ' Show/hide focus indicator when heart gains/loses focus
+  if IsValid(m.channelSidebarHeart) and IsValid(m.channelSidebarHeartFocusIndicator)
+    hasFocus = false
+    try
+      hasFocus = m.channelSidebarHeart.hasFocus()
+    catch e
+      hasFocus = false
+    end try
+    m.channelSidebarHeartFocusIndicator.visible = hasFocus
+  end if
+end sub
+
+sub showChannelUnfollowConfirmation()
+  if not isUserLoggedIn() then
+    return
+  end if
+  ' Show simple confirmation dialog for unfollowing
+  dialog = CreateObject("roSGNode", "Dialog")
+  dialog.title = "Unfollow Channel?"
+  dialog.message = "Are you sure you want to unfollow this channel?"
+  dialog.buttons = ["Unfollow", "Cancel"]
+  dialog.observeField("buttonSelected", "onChannelUnfollowDialogButton")
+  m.top.dialog = dialog
+  ?"[Channel] Showing unfollow confirmation dialog"
+end sub
+
+sub onChannelUnfollowDialogButton(event as object)
+  if not isUserLoggedIn() then
+    m.top.dialog = invalid
+    return
+  end if
+  buttonIndex = event.getData()
+  ?"[Channel] Dialog button selected: "; buttonIndex
+  if buttonIndex = 0 ' Unfollow
+    if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+      unFollow(m.currentChannelId)
+    end if
+  end if
+  ' Close dialog
+  m.top.dialog = invalid
+end sub
+
 sub setPrefStateChanged()
+  ?"[setPrefStateChanged] Task state changed to: "; m.setpreferencesTask.setState
+  ?"[setPrefStateChanged] Task control: "; m.setpreferencesTask.control
   if m.setpreferencesTask.setState = 1
     m.setpreferencesTask.control = "STOP"
     m.lastPrefTaskTime = 0  ' Reset timer when task completes successfully
@@ -5651,6 +6036,8 @@ sub setPrefStateChanged()
     m.setpreferencesTask.control = "STOP"
     m.lastPrefTaskTime = 0  ' Reset timer when task fails
     ?"FAILURE: Failed to set preferences for some reason."
+  else
+    ?"[setPrefStateChanged] WARNING: Unexpected state value: "; m.setpreferencesTask.setState
   end if
   'Logout()
 end sub
@@ -5711,6 +6098,22 @@ function SetRegistry(registry, key, value) as boolean
     return false
   end try
 end function
+
+
+function isUserLoggedIn() as boolean
+  hasToken = false
+  try
+    if IsValid(m.accessToken) and m.accessToken <> "" then hasToken = true
+  catch e
+  end try
+  if hasToken = false then return false
+  now = CreateObject("roDateTime").AsSeconds()
+  exp = 0
+  try: exp = m.accessTokenExpiration : catch e: exp = 0 : end try
+  if exp > 0 and exp <= now then return false
+  return true
+end function
+
 
 function IsValid(value as dynamic) as boolean 'TheEndless Roku Development forums
   try
@@ -5999,11 +6402,32 @@ sub showFollowedChannels()
   ' Show followed channels scene
   m.followedChannelsScene.visible = true
 
-  ' Only set channels/constants/uid on first load
-  if not IsValid(m.followedChannelsScene.channels) or m.followedChannelsScene.channels.Count() = 0
+  ' Always update channels list to reflect any new follows/unfollows
+  ' Check if channels array has changed before updating to avoid unnecessary reload
+  needsUpdate = false
+  if not IsValid(m.followedChannelsScene.channels)
+    needsUpdate = true
+  else if m.followedChannelsScene.channels.Count() <> m.preferences.following.Count()
+    needsUpdate = true
+  else
+    ' Check if channel IDs are different
+    for i = 0 to m.preferences.following.Count() - 1
+      if m.followedChannelsScene.channels[i] <> m.preferences.following[i]
+        needsUpdate = true
+        exit for
+      end if
+    end for
+  end if
+
+  if needsUpdate
+    ?"[FollowedChannels] Channels changed, updating list"
     m.followedChannelsScene.channels = m.preferences.following
     m.followedChannelsScene.constants = m.constants
     m.followedChannelsScene.uid = m.uid
+    m.followedChannelsScene.cookies = m.cookies
+  else
+    ' Just restore focus if no changes
+    m.followedChannelsScene.restoreFocus = not m.followedChannelsScene.restoreFocus
   end if
 
   m.followedChannelsScene.setFocus(true)
@@ -6023,6 +6447,10 @@ sub hideFollowedChannels()
   m.followedChannelsScene.visible = false
   m.viewingFollowedChannels = false
 
+  ' Reset UI layer state
+  m.uiLayer = 0
+  m.uiLayers = []
+
   ' Hide channel sidebar elements that may be showing
   if IsValid(m.channelSidebarThumb)
     m.channelSidebarThumb.visible = false
@@ -6034,25 +6462,30 @@ sub hideFollowedChannels()
   ' Restore main UI elements for Favorites category
   m.odyseeLogo.visible = true
 
+  ' Set grid position (History button is visible for all users)
+  m.videoGrid.translation = [210, 150]
+
   ' Ensure we're on Favorites category
   if m.categorySelector.itemFocused <> 1
     m.categorySelector.jumpToItem = 1
   end if
 
   ' Show Favorites content
-  if m.favoritesLoaded and IsValid(m.categories["FAVORITES"])
+  if m.favoritesLoaded and IsValid(m.categories["FAVORITES"]) 
     m.videoGrid.content = m.categories["FAVORITES"]
     m.videoGrid.visible = true
-    m.oauthLogoutButton.visible = true
-    m.oauthChannelsButton.visible = true
-    m.oauthHistoryButton.visible = true
+              m.oauthLogoutButton.visible = isUserLoggedIn()
+              m.oauthChannelsButton.visible = isUserLoggedIn()
+              m.oauthHistoryButton.visible = isUserLoggedIn()
+              showAuthButtonsIfLoggedIn()
     m.videoGrid.setFocus(true)
     m.focusedItem = 2 '[video grid]
   else
     m.oauthHeader.visible = true
-    m.oauthLogoutButton.visible = true
-    m.oauthChannelsButton.visible = true
-    m.oauthHistoryButton.visible = true
+              m.oauthLogoutButton.visible = isUserLoggedIn()
+              m.oauthChannelsButton.visible = isUserLoggedIn()
+              m.oauthHistoryButton.visible = isUserLoggedIn()
+              showAuthButtonsIfLoggedIn()
     m.oauthLogoutButton.setFocus(true)
     m.focusedItem = 8 '[oauth logout button]
   end if
@@ -6076,7 +6509,7 @@ sub onChannelSelected()
 
     ' Show loading
     m.loadingText.visible = true
-    m.loadingText.text = "Opening channel… (press ← to go back)"
+    m.loadingText.text = "Opening channel (press * to go back)"
 
     ' Create channel resolver if needed
     if not isValid(m.channelResolver)
@@ -6094,6 +6527,26 @@ sub onChannelSelected()
     m.focusedItem = 2
     m.videoGrid.setFocus(false)
     m.videoGrid.visible = false
+  end if
+
+  ' Ensure header buttons visibility is correct after returning
+  showAuthButtonsIfLoggedIn()
+end sub
+
+sub onUnfollowRequested()
+  request = m.followedChannelsScene.unfollowRequest
+  ?"[HomeScene] onUnfollowRequested called, request: "; request
+  if IsValid(request) and IsValid(request.channelId)
+    ?"[HomeScene] Unfollow request for: "; request.channelName; " ID: "; request.channelId
+    unFollow(request.channelId)
+    ?"[HomeScene] After unFollow, preferences.following count: "; m.preferences.following.Count()
+
+    ' Update the channels array in FollowedChannelsScene to reflect the unfollow
+    ' This will trigger the onChange handler and reload the grids
+    m.followedChannelsScene.channels = m.preferences.following
+    ?"[HomeScene] Updated followedChannelsScene.channels"
+  else
+    ?"[HomeScene] Invalid request or missing channelId"
   end if
 end sub
 
@@ -6134,6 +6587,10 @@ sub hideWatchHistory()
   m.watchHistoryScene.visible = false
   m.viewingWatchHistory = false
 
+  ' Reset UI layer state
+  m.uiLayer = 0
+  m.uiLayers = []
+
   ' Hide channel sidebar elements that may be showing
   if IsValid(m.channelSidebarThumb)
     m.channelSidebarThumb.visible = false
@@ -6142,33 +6599,58 @@ sub hideWatchHistory()
   ' Restore proper sidebar layout
   showCategorySelector()
 
-  ' Restore main UI elements for Favorites category
+  ' Restore main UI elements
   m.odyseeLogo.visible = true
 
-  ' Ensure we're on Favorites category
-  if m.categorySelector.itemFocused <> 1
-    m.categorySelector.jumpToItem = 1
-  end if
+  ' Set grid position (History button is visible for all users)
+  m.videoGrid.translation = [210, 150]
 
-  ' Show Favorites content
-  if m.favoritesLoaded and IsValid(m.categories["FAVORITES"])
+  ' Restore to appropriate category based on authentication state
+  if m.wasLoggedIn and m.favoritesLoaded and IsValid(m.categories["FAVORITES"])
+    ' Authenticated user with favorites - go to Favorites category
+    if m.categorySelector.itemFocused <> 1
+      m.categorySelector.jumpToItem = 1
+      updateActiveCategoryIndex(1)
+    end if
     m.videoGrid.content = m.categories["FAVORITES"]
     m.videoGrid.visible = true
     m.oauthLogoutButton.visible = true
     m.oauthChannelsButton.visible = true
     m.oauthHistoryButton.visible = true
+    showAuthButtonsIfLoggedIn()
     m.videoGrid.setFocus(true)
     m.focusedItem = 2 '[video grid]
-  else
+    ?"[WatchHistory] Returned to Favorites view"
+  else if m.wasLoggedIn
+    ' Authenticated user without favorites loaded - show oauth buttons
+    if m.categorySelector.itemFocused <> 1
+      m.categorySelector.jumpToItem = 1
+      updateActiveCategoryIndex(1)
+    end if
     m.oauthHeader.visible = true
     m.oauthLogoutButton.visible = true
     m.oauthChannelsButton.visible = true
     m.oauthHistoryButton.visible = true
     m.oauthLogoutButton.setFocus(true)
     m.focusedItem = 8
+    ?"[WatchHistory] Returned to Favorites view (no content loaded)"
+  else
+    ' Not authenticated - go to Featured category (index 2)
+    m.categorySelector.jumpToItem = 2
+    updateActiveCategoryIndex(2)
+    showAuthButtonsIfLoggedIn()
+    if IsValid(m.categories["FEATURED"])
+      m.videoGrid.content = m.categories["FEATURED"]
+      m.videoGrid.visible = true
+      m.videoGrid.setFocus(true)
+      m.focusedItem = 2 '[video grid]
+    else
+      ' Featured not loaded yet - focus on category selector
+      m.categorySelector.setFocus(true)
+      m.focusedItem = 1 '[selector]
+    end if
+    ?"[WatchHistory] Returned to Featured view (not authenticated)"
   end if
-
-  ?"[WatchHistory] Returned to Favorites view"
 end sub
 
 ' Handle video selection from Watch History Scene
@@ -6185,19 +6667,192 @@ sub onHistoryVideoSelected()
     ' Set flag to remember we came from Watch History
     m.returnToWatchHistory = true
 
-    ' Navigate to the video - need to create a proper content node
-    videoNode = CreateObject("roSGNode", "ContentNode")
-    videoNode.TITLE = selectedVideo.title
-    videoNode.HDPOSTERURL = selectedVideo.HDPOSTERURL
-    videoNode.addFields({
-      guid: selectedVideo.claimId,
-      Channel: selectedVideo.Channel,
-      creator: selectedVideo.creator,
-      itemType: "video"
-    })
+    ' Check if this is a livestream - if so, need to fetch current live data
+    if IsValid(selectedVideo.itemType) and selectedVideo.itemType = "livestream"
+      ?"[WatchHistory] Fetching livestream data for channel: "; selectedVideo.Channel
+      ' Show loading indicator
+      m.loadingText.visible = true
+      m.loadingText.text = "Checking livestream status..."
+      m.videoGrid.visible = false
 
-    ' Resolve and play the video
-    resolveEvaluatedVideo(videoNode)
+      ' Use task to fetch livestream data
+      if not IsValid(m.livestreamFetcher)
+        m.livestreamFetcher = CreateObject("roSGNode", "getSingleLivestream")
+      end if
+      m.livestreamFetcher.unobserveField("output")
+      m.livestreamFetcher.setFields({
+        constants: m.constants,
+        channel: selectedVideo.Channel,
+        uid: m.uid
+      })
+      m.livestreamFetcher.observeField("output", "onHistoryLivestreamFetched")
+      m.livestreamFetcher.control = "RUN"
+    else
+      ' Regular video - navigate to the video
+      videoNode = CreateObject("roSGNode", "ContentNode")
+      videoNode.TITLE = selectedVideo.title
+      videoNode.HDPOSTERURL = selectedVideo.HDPOSTERURL
+      videoNode.addFields({
+        guid: selectedVideo.claimId,
+        Channel: selectedVideo.Channel,
+        creator: selectedVideo.creator,
+        itemType: "video",
+        URL: selectedVideo.URL,
+        ChannelIcon: selectedVideo.ChannelIcon
+      })
+
+      ' Resolve and play the video
+      resolveEvaluatedVideo(videoNode)
+    end if
+  end if
+
+  ' Ensure header buttons visibility is correct after returning
+  showAuthButtonsIfLoggedIn()
+end sub
+
+' Handle livestream fetch result from task
+sub onHistoryLivestreamFetched()
+  liveResult = m.livestreamFetcher.output
+
+  if IsValid(liveResult) and IsValid(liveResult.success) and liveResult.success = true
+    ' Livestream is currently live - play it
+    playLivestreamFromHistory(liveResult.liveItem)
+  else
+    ' Livestream is not currently live
+    ?"[WatchHistory] Livestream is not currently live"
+    m.loadingText.visible = true
+    m.loadingText.text = "This livestream is not currently active"
+  end if
+end sub
+
+' Play a livestream from watch history
+sub playLivestreamFromHistory(liveItem)
+  ?"[WatchHistory] Livestream is live, playing"
+
+  ' Trigger the livestream playback path (similar to resolveVideo line 4011)
+  m.currentVideoChannelIcon = liveItem.ChannelIcon
+  m.currentVideoChannelID = liveItem.Channel
+  m.currentVideoClaimID = liveItem.guid
+
+  ' Set up video buttons based on login status
+  isFollowed = false
+  if m.wasLoggedIn
+    m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedIn, [150, 128])
+    m.videoButtons.itemSpacing = "[8, 20]"
+    m.videoButtons.translation = "[50, 83]"
+    m.videoButtons.animateToItem = 2
+    getReactions(liveItem.guid)
+
+    ' Check if following
+    if m.preferences.Count() > 0 and isValid(m.preferences.following)
+      if m.preferences.following.Count() > 0
+        for each claimID in m.preferences.following
+          if claimID = m.currentVideoChannelID
+            isFollowed = true
+          end if
+        end for
+      end if
+    end if
+    regenerateLiveButtonRefs()
+    m.videoButtonsRate = invalid
+    if isFollowed
+      m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/generic/Heart-selected.png"
+    else
+      m.videoButtonsFollowingIcon.posterUrl = "pkg:/images/png/Heart.png"
+    end if
+  else
+    m.videoButtons.content = createBothItemsIdentified(m.videoButtons, m.liveButtonsLoggedOut, m.videoButtons.itemSize)
+    m.videoButtons.itemSpacing = "[36, 20]"
+    m.videoButtons.translation = "[300, 83]"
+    m.videoButtons.animateToItem = 2
+    regenerateLiveButtonRefs()
+    m.videoButtonsRate = invalid
+  end if
+
+  m.videoButtonsChannelIcon.posterUrl = m.currentVideoChannelIcon
+
+  ' Set up video content for livestream
+  m.videoContent.url = liveItem.URL
+  m.videoContent.streamFormat = liveItem.streamFormat
+  m.videoContent.title = liveItem.description
+  m.videoContent.Live = true
+  m.lastKnownVideoPos = 0
+  updatePlaybackRateUI("")
+  applyPlaybackRate()
+  m.video.content = m.videoContent
+  m.video.visible = true
+  m.videoProgressBar.visible = false
+  m.videoProgressBarp1.visible = false
+  m.videoProgressBarp2.visible = false
+  m.focusedItem = 7
+  m.video.control = "play"
+  m.refreshes = 0
+  m.videoVP = 0
+  m.video.observeField("duration", "liveDurationChanged")
+  m.videoButtons.animateToItem = 3
+  m.loadingText.visible = false
+
+  ' Set up chat if logged in
+  observeFields("ws", { "on_close": "on_close", "on_error": "on_error", "chat": "on_chat", "superchat": "on_superchat" })
+  if isValid(m.preferences)
+    chatBase = m.constants["CHAT_API"]
+    catParam = ""
+    try
+      if isValid(liveItem.chatCategory) and liveItem.chatCategory <> ""
+        catParam = liveItem.chatCategory
+      else
+        handle = ""
+        if isValid(liveItem.rawCreator) and liveItem.rawCreator <> "" then handle = liveItem.rawCreator
+        sid = ""
+        if isValid(m.currentVideoChannelID) and m.currentVideoChannelID <> "" then sid = Left(m.currentVideoChannelID, 1)
+        if handle <> "" and sid <> "" then catParam = handle + ":" + sid
+      end if
+    catch e
+    end try
+    openUrl = chatBase + "/commentron?id=" + m.currentVideoClaimID + "&category=" + catParam + "&sub_category=viewer"
+    m.ws.uri = openUrl
+    m.ws.control = "RUN"
+    m.chatBox.visible = true
+    m.chatBackground.visible = true
+    m.videoGrid.setFocus(false)
+    try: m.top.setFocus(true) : catch e: end try
+  end if
+end sub
+
+' Handle channel selection from Watch History Scene (via * button)
+sub onHistoryChannelSelected()
+  selectedChannel = m.watchHistoryScene.selectedChannel
+
+  if IsValid(selectedChannel) and IsValid(selectedChannel.channelId)
+    ?"[WatchHistory] Selected channel: "; selectedChannel.channelName; " ID: "; selectedChannel.channelId
+
+    ' Hide watch history scene first
+    m.watchHistoryScene.visible = false
+    m.viewingWatchHistory = false
+
+    ' Set flag to remember we came from Watch History
+    m.returnToWatchHistory = true
+
+    ' Show loading
+    m.loadingText.visible = true
+    m.loadingText.text = "Opening channel (press * to go back)"
+
+    ' Create channel resolver if needed
+    if not isValid(m.channelResolver)
+      m.channelResolver = createObject("roSGNode", "getSingleChannel")
+      m.channelResolver.observeField("cookies", "gotCookies")
+    end if
+
+    ' Navigate to the selected channel using channel ID
+    m.channelResolver.setFields({ constants: m.constants, channel: selectedChannel.channelId, uid: m.uid, cookies: m.cookies })
+    m.channelResolver.observeField("output", "gotResolvedChannel")
+    m.channelResolver.control = "RUN"
+    m.taskRunning = True
+
+    ' Update UI state
+    m.focusedItem = 2
+    m.videoGrid.setFocus(false)
+    m.videoGrid.visible = false
   end if
 end sub
 
@@ -6211,9 +6866,16 @@ sub sendViewProgress()
   ' Skip if task is still running from previous call
   if IsValid(m.viewProgressTask) and m.viewProgressTask.state = "run" then return
 
+  ' Check if this is a livestream
+  isLivestream = (IsValid(m.videoContent) and IsValid(m.videoContent.Live) and m.videoContent.Live = true)
+
   ' Get current video position (this is the timestamp in seconds into the video)
-  videoPosition = Int(m.video.position)
-  if videoPosition < 0 then videoPosition = 0
+  ' For livestreams, always send 0
+  videoPosition = 0
+  if not isLivestream
+    videoPosition = Int(m.video.position)
+    if videoPosition < 0 then videoPosition = 0
+  end if
 
   ' Get outpoint if available
   outpoint = ""
@@ -6259,6 +6921,9 @@ sub saveWatchHistory()
   if not IsValid(m.currentVideoClaimID) or m.currentVideoClaimID = "" then return
   if not IsValid(m.video) or not IsValid(m.video.position) then return
 
+  ' Check if this is a livestream
+  isLivestream = (IsValid(m.videoContent) and IsValid(m.videoContent.Live) and m.videoContent.Live = true)
+
   ' Get duration from urlResolver if available, fallback to video.duration
   videoDuration = 0
   if IsValid(m.urlResolver) and IsValid(m.urlResolver.output) and IsValid(m.urlResolver.output.length)
@@ -6267,13 +6932,18 @@ sub saveWatchHistory()
     videoDuration = m.video.duration
   end if
 
-  ' Save minimal watch history: position (for resume), duration (for progress %), lastPlayedAt (for sorting)
-  ' Channel/title metadata comes from claim_search in watch history page
+  ' For livestreams: always save position as 0 (no resume), duration as 0 (no progress bar)
+  ' For regular videos: save actual position and duration
   historyData = {
-    position: Int(m.video.position),
-    duration: Int(videoDuration),
+    position: 0,
+    duration: 0,
     lastPlayedAt: CreateObject("roDateTime").AsSeconds()
   }
+
+  if not isLivestream
+    historyData.position = Int(m.video.position)
+    historyData.duration = Int(videoDuration)
+  end if
 
   historyJson = FormatJson(historyData)
   SetRegistry("historyRegistry", m.currentVideoClaimID, historyJson)
@@ -6365,3 +7035,93 @@ sub addWatchProgressToContent(contentNode as object)
     end if
   end for
 end sub
+
+' Debug: Reset timer when no keys pressed for a while
+sub onDebugKeyTimeout()
+  m.debugKeySequence = []
+end sub
+
+' Debug: Show confirmation dialog to clear all local data
+sub showClearDataDialog()
+  dialog = CreateObject("roSGNode", "Dialog")
+  dialog.title = "Clear All Local Data?"
+  dialog.message = "This will erase all preferences, watch history, and authentication. The app will restart. Press OK to confirm."
+  dialog.buttons = ["Clear Data", "Cancel"]
+  dialog.observeField("buttonSelected", "onClearDataDialogButton")
+  m.top.dialog = dialog
+  ?"[Debug] Showing clear data confirmation dialog"
+end sub
+
+' Debug: Handle clear data dialog response
+sub onClearDataDialogButton(event as object)
+  buttonIndex = event.getData()
+  ?"[Debug] Clear data dialog button selected: "; buttonIndex
+  if buttonIndex = 0 ' Clear Data
+    clearAllLocalData()
+  end if
+  ' Close dialog
+  m.top.dialog = invalid
+end sub
+
+' Debug: Clear all local registry data and restart app
+sub clearAllLocalData()
+  ?"[Debug] Clearing all local data..."
+
+  ' Clear ALL registry sections for this app (auth, device-flow, preferences, history, cookies)
+  deleteReg("")
+
+  ' Also clear in-memory auth/session state
+  m.uid = 0
+  m.flowUID = ""
+  m.authToken = ""
+  m.accessToken = ""
+  m.refreshToken = ""
+  m.accessTokenExpiration = 0
+  m.refreshTokenExpiration = 0
+  m.wallet = { oldHash: "": walletData: "" }
+  m.preferences = {}
+  m.oldpreferences = { blocked: []: following: []: collections: [] }
+  m.cookies = []
+  ' Reset authTask state as well (tokens, phase, timer)
+  if IsValid(m.authTask)
+    try: m.authTask.control = "STOP" : catch e: end try
+    try: m.authTask.setFields({ accessToken: "": refreshToken: "": authtoken: "": uid: 0: accessTokenExpiration: 0: refreshTokenExpiration: 0 }) : catch e: end try
+    try: m.authTask.badSSO = false : catch e: end try
+    try: m.authTask.authPhase = 1.4 : catch e: end try ' device-code init on restart
+  end if
+  if IsValid(m.syncLoop)
+    m.syncLoop.setFields({ accessToken: "": oldHash: "": walletData: "" })
+    m.syncLoop.control = "STOP"
+  end if
+
+  ?"[Debug] All local data cleared. Restarting app..."
+
+  ' Show message before restart
+  m.loadingText.visible = true
+  m.loadingText.text = "Data cleared. Restarting app..."
+  m.videoGrid.visible = false
+  m.categorySelector.visible = false
+  if IsValid(m.header) then m.header.visible = false
+  if IsValid(m.oauthLogoutButton) then m.oauthLogoutButton.visible = false
+  if IsValid(m.oauthChannelsButton) then m.oauthChannelsButton.visible = false
+  if IsValid(m.oauthHistoryButton) then m.oauthHistoryButton.visible = false
+
+  ' Restart the app after a brief delay
+  timer = CreateObject("roSGNode", "Timer")
+  timer.duration = 2
+  timer.repeat = false
+  timer.observeField("fire", "restartApp")
+  m.top.appendChild(timer)
+  timer.control = "start"
+end sub
+
+' Debug: Restart the app
+sub restartApp()
+  m.top.dialog = invalid
+  ' Soft-reinitialize by invoking Logout flow (device-code screen)
+  Logout()
+end sub
+
+
+
+

@@ -4,6 +4,7 @@ sub Init()
     m.channelThumb = m.top.findNode("channelThumb")
     m.channelTitle = m.top.findNode("channelTitle")
     m.channelUploads = m.top.findNode("channelUploads")
+    m.heartIcon = m.top.findNode("heartIcon")
 
     m.top.focusable = true
     m.top.observeField("focusedChild", "onFocusChanged")
