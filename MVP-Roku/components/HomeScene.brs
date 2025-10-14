@@ -2248,12 +2248,29 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
     end if
 
+    ' Handle back from channel opened from Watch History
+    if IsValid(m.returnToWatchHistory) and m.returnToWatchHistory = true
+      if m.focusedItem = 2 and IsValid(m.currentChannelId) and m.currentChannelId <> ""
+        ?"[Back] Returning to watch history from channel view"
+        m.returnToWatchHistory = false
+        m.currentChannelId = ""
+        m.uiLayer = 0
+        m.uiLayers = []
+        showWatchHistory()
+        ' Trigger focus restoration
+        m.watchHistoryScene.restoreFocus = true
+        return true
+      end if
+    end if
+
     ' Handle back from channel opened from Followed Channels
     if IsValid(m.returnToFollowedChannels) and m.returnToFollowedChannels = true
       if m.focusedItem = 2 and IsValid(m.currentChannelId) and m.currentChannelId <> ""
         ?"[Back] Returning to followed channels from channel view"
         m.returnToFollowedChannels = false
         m.currentChannelId = ""
+        m.uiLayer = 0
+        m.uiLayers = []
         showFollowedChannels()
         ' Trigger focus restoration
         m.followedChannelsScene.restoreFocus = true
@@ -2544,6 +2561,27 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
           return false
         else if m.itemFocused = 20 '[error button]
           ErrorDismissed()
+        end if
+
+        ' Handle back from top buttons (8/10/11) by restoring focus then continuing
+        if m.focusedItem = 8 or m.focusedItem = 10 or m.focusedItem = 11 '[logout/channels/history button]
+          ' Back from top-right buttons - restore focus and continue processing
+          ?"[BACK] Back from top button, uiLayer="; m.uiLayer; " uiLayers.Count()="; m.uiLayers.Count()
+          if m.focusedItem = 8 then m.oauthLogoutButton.setFocus(false)
+          if m.focusedItem = 10 then m.oauthChannelsButton.setFocus(false)
+          if m.focusedItem = 11 then m.oauthHistoryButton.setFocus(false)
+          m.videoGrid.setFocus(true)
+          m.focusedItem = 2 '[video grid]
+          ' Now focusedItem is 2 (grid), continue to next if statement
+        end if
+
+        if m.focusedItem = 12 '[heart icon on channel page]
+          ' Back from heart icon goes back to video grid
+          ?"[BACK] Returning from heart icon to video grid"
+          if IsValid(m.channelSidebarHeart) then m.channelSidebarHeart.setFocus(false)
+          m.videoGrid.setFocus(true)
+          m.focusedItem = 2 '[video grid]
+          return true
         else if m.uiLayer = 0 and m.focusedItem = 1 'is sidebar/categories in focus with no additional UI layers?
           ' First back press from sidebar - show confirmation dialog
           ?"[EXIT] First back press - showing confirmation dialog"
@@ -6649,50 +6687,75 @@ sub hideFollowedChannels()
   m.followedChannelsScene.visible = false
   m.viewingFollowedChannels = false
 
-  ' Reset UI layer state
-  m.uiLayer = 0
-  m.uiLayers = []
+  ' Reset UI layer state ONLY if we're not on a channel page
+  ' If uiLayer > 0, we're on a channel and should preserve the stack for back navigation
+  if m.uiLayer = 0
+    ?"[FollowedChannels] Clearing UI layers (not on channel page)"
+    m.uiLayers = []
 
-  ' Hide channel sidebar elements that may be showing
-  if IsValid(m.channelSidebarThumb)
-    m.channelSidebarThumb.visible = false
-  end if
+    ' Hide channel sidebar elements that may be showing
+    if IsValid(m.channelSidebarThumb)
+      m.channelSidebarThumb.visible = false
+    end if
 
-  ' Restore proper sidebar layout
-  showCategorySelector()
+    ' Restore proper sidebar layout
+    showCategorySelector()
 
-  ' Restore main UI elements for Favorites category
-  m.odyseeLogo.visible = true
+    ' Restore main UI elements for Favorites category
+    m.odyseeLogo.visible = true
 
-  ' Set grid position (History button is visible for all users)
-  m.videoGrid.translation = [210, 150]
+    ' Set grid position (History button is visible for all users)
+    m.videoGrid.translation = [210, 150]
 
-  ' Ensure we're on Favorites category
-  if m.categorySelector.itemFocused <> 1
-    m.categorySelector.jumpToItem = 1
-  end if
+    ' Ensure we're on Favorites category
+    if m.categorySelector.itemFocused <> 1
+      m.categorySelector.jumpToItem = 1
+    end if
 
-  ' Show Favorites content
-  if m.favoritesLoaded and IsValid(m.categories["FAVORITES"]) 
-    m.videoGrid.content = m.categories["FAVORITES"]
+    ' Show Favorites content
+    if m.favoritesLoaded and IsValid(m.categories["FAVORITES"])
+      m.videoGrid.content = m.categories["FAVORITES"]
+      m.videoGrid.visible = true
+      m.oauthLogoutButton.visible = isUserLoggedIn()
+      m.oauthChannelsButton.visible = isUserLoggedIn()
+      m.oauthHistoryButton.visible = isUserLoggedIn()
+      showAuthButtonsIfLoggedIn()
+      m.videoGrid.setFocus(true)
+      m.focusedItem = 2 '[video grid]
+    else
+      m.oauthHeader.visible = true
+      m.oauthLogoutButton.visible = isUserLoggedIn()
+      m.oauthChannelsButton.visible = isUserLoggedIn()
+      m.oauthHistoryButton.visible = isUserLoggedIn()
+      showAuthButtonsIfLoggedIn()
+      m.oauthLogoutButton.setFocus(true)
+      m.focusedItem = 8 '[oauth logout button]
+    end if
+
+    ?"[FollowedChannels] Returned to Favorites view"
+  else
+    ?"[FollowedChannels] Preserving UI layers and staying on channel page, uiLayer="; m.uiLayer
+    ' Just hide the overlay, restore visibility but don't change grid content or navigation
+    ' The channel page content should remain visible
+
+    ' Restore main UI elements visibility (but NOT category selector - we're on a channel)
     m.videoGrid.visible = true
-              m.oauthLogoutButton.visible = isUserLoggedIn()
-              m.oauthChannelsButton.visible = isUserLoggedIn()
-              m.oauthHistoryButton.visible = isUserLoggedIn()
-              showAuthButtonsIfLoggedIn()
+    m.odyseeLogo.visible = true
+
+    ' Channel sidebar should remain visible (don't show categorySelector on channel page)
+    ' The channel sidebar elements should already be visible from when we entered the channel
+
+    ' Restore auth buttons
+    m.oauthLogoutButton.visible = isUserLoggedIn()
+    m.oauthChannelsButton.visible = isUserLoggedIn()
+    m.oauthHistoryButton.visible = isUserLoggedIn()
+    showAuthButtonsIfLoggedIn()
+
+    ' Keep focus on the grid showing the channel content
     m.videoGrid.setFocus(true)
     m.focusedItem = 2 '[video grid]
-  else
-    m.oauthHeader.visible = true
-              m.oauthLogoutButton.visible = isUserLoggedIn()
-              m.oauthChannelsButton.visible = isUserLoggedIn()
-              m.oauthHistoryButton.visible = isUserLoggedIn()
-              showAuthButtonsIfLoggedIn()
-    m.oauthLogoutButton.setFocus(true)
-    m.focusedItem = 8 '[oauth logout button]
+    ?"[FollowedChannels] Staying on channel page"
   end if
-
-  ?"[FollowedChannels] Returned to Favorites view"
 end sub
 
 ' Handle channel selection from Followed Channels Scene
@@ -6708,6 +6771,12 @@ sub onChannelSelected()
 
     ' Set flag to remember we came from Followed Channels
     m.returnToFollowedChannels = true
+
+    ' Clear any prior channel context to ensure fresh navigation
+    m.currentChannelId = ""
+    m.uiLayer = 1
+    m.uiLayers = []
+    ?"[FollowedChannels] Set uiLayer to 1 and cleared prior channel context"
 
     ' Show loading
     m.loadingText.visible = true
@@ -6783,75 +6852,101 @@ end sub
 
 ' Hide Watch History Scene
 sub hideWatchHistory()
-  ?"[WatchHistory] Closing watch history view"
+  ?"[WatchHistory] Closing watch history view, uiLayer="; m.uiLayer
 
   ' Hide watch history scene
   m.watchHistoryScene.visible = false
   m.viewingWatchHistory = false
 
-  ' Reset UI layer state
-  m.uiLayer = 0
-  m.uiLayers = []
+  if m.uiLayer = 0
+    ' Not on a channel page - restore to category view
+    ?"[WatchHistory] Clearing UI layers (not on channel page)"
 
-  ' Hide channel sidebar elements that may be showing
-  if IsValid(m.channelSidebarThumb)
-    m.channelSidebarThumb.visible = false
-  end if
+    ' Reset UI layer state
+    m.uiLayer = 0
+    m.uiLayers = []
 
-  ' Restore proper sidebar layout
-  showCategorySelector()
-
-  ' Restore main UI elements
-  m.odyseeLogo.visible = true
-
-  ' Set grid position (History button is visible for all users)
-  m.videoGrid.translation = [210, 150]
-
-  ' Restore to appropriate category based on authentication state
-  if m.wasLoggedIn and m.favoritesLoaded and IsValid(m.categories["FAVORITES"])
-    ' Authenticated user with favorites - go to Favorites category
-    if m.categorySelector.itemFocused <> 1
-      m.categorySelector.jumpToItem = 1
-      updateActiveCategoryIndex(1)
+    ' Hide channel sidebar elements that may be showing
+    if IsValid(m.channelSidebarThumb)
+      m.channelSidebarThumb.visible = false
     end if
-    m.videoGrid.content = m.categories["FAVORITES"]
-    m.videoGrid.visible = true
-    m.oauthLogoutButton.visible = true
-    m.oauthChannelsButton.visible = true
-    m.oauthHistoryButton.visible = true
-    showAuthButtonsIfLoggedIn()
-    m.videoGrid.setFocus(true)
-    m.focusedItem = 2 '[video grid]
-    ?"[WatchHistory] Returned to Favorites view"
-  else if m.wasLoggedIn
-    ' Authenticated user without favorites loaded - show oauth buttons
-    if m.categorySelector.itemFocused <> 1
-      m.categorySelector.jumpToItem = 1
-      updateActiveCategoryIndex(1)
-    end if
-    m.oauthHeader.visible = true
-    m.oauthLogoutButton.visible = true
-    m.oauthChannelsButton.visible = true
-    m.oauthHistoryButton.visible = true
-    m.oauthLogoutButton.setFocus(true)
-    m.focusedItem = 8
-    ?"[WatchHistory] Returned to Favorites view (no content loaded)"
-  else
-    ' Not authenticated - go to Featured category (index 2)
-    m.categorySelector.jumpToItem = 2
-    updateActiveCategoryIndex(2)
-    showAuthButtonsIfLoggedIn()
-    if IsValid(m.categories["FEATURED"])
-      m.videoGrid.content = m.categories["FEATURED"]
+
+    ' Restore proper sidebar layout
+    showCategorySelector()
+
+    ' Restore main UI elements
+    m.odyseeLogo.visible = true
+
+    ' Set grid position (History button is visible for all users)
+    m.videoGrid.translation = [210, 150]
+
+    ' Restore to appropriate category based on authentication state
+    if m.wasLoggedIn and m.favoritesLoaded and IsValid(m.categories["FAVORITES"])
+      ' Authenticated user with favorites - go to Favorites category
+      if m.categorySelector.itemFocused <> 1
+        m.categorySelector.jumpToItem = 1
+        updateActiveCategoryIndex(1)
+      end if
+      m.videoGrid.content = m.categories["FAVORITES"]
       m.videoGrid.visible = true
+      m.oauthLogoutButton.visible = true
+      m.oauthChannelsButton.visible = true
+      m.oauthHistoryButton.visible = true
+      showAuthButtonsIfLoggedIn()
       m.videoGrid.setFocus(true)
       m.focusedItem = 2 '[video grid]
+      ?"[WatchHistory] Returned to Favorites view"
+    else if m.wasLoggedIn
+      ' Authenticated user without favorites loaded - show oauth buttons
+      if m.categorySelector.itemFocused <> 1
+        m.categorySelector.jumpToItem = 1
+        updateActiveCategoryIndex(1)
+      end if
+      m.oauthHeader.visible = true
+      m.oauthLogoutButton.visible = true
+      m.oauthChannelsButton.visible = true
+      m.oauthHistoryButton.visible = true
+      m.oauthLogoutButton.setFocus(true)
+      m.focusedItem = 8
+      ?"[WatchHistory] Returned to Favorites view (no content loaded)"
     else
-      ' Featured not loaded yet - focus on category selector
-      m.categorySelector.setFocus(true)
-      m.focusedItem = 1 '[selector]
+      ' Not authenticated - go to Featured category (index 2)
+      m.categorySelector.jumpToItem = 2
+      updateActiveCategoryIndex(2)
+      showAuthButtonsIfLoggedIn()
+      if IsValid(m.categories["FEATURED"])
+        m.videoGrid.content = m.categories["FEATURED"]
+        m.videoGrid.visible = true
+        m.videoGrid.setFocus(true)
+        m.focusedItem = 2 '[video grid]
+      else
+        ' Featured not loaded yet - focus on category selector
+        m.categorySelector.setFocus(true)
+        m.focusedItem = 1 '[selector]
+      end if
+      ?"[WatchHistory] Returned to Featured view (not authenticated)"
     end if
-    ?"[WatchHistory] Returned to Featured view (not authenticated)"
+  else
+    ' On a channel page - preserve UI layers and stay on channel page
+    ?"[WatchHistory] Preserving UI layers and staying on channel page, uiLayer="; m.uiLayer
+
+    ' Restore main UI elements visibility (but NOT category selector - we're on a channel)
+    m.videoGrid.visible = true
+    m.odyseeLogo.visible = true
+
+    ' Channel sidebar should remain visible (don't show categorySelector on channel page)
+    ' The channel sidebar elements should already be visible from when we entered the channel
+
+    ' Restore auth buttons
+    m.oauthLogoutButton.visible = isUserLoggedIn()
+    m.oauthChannelsButton.visible = isUserLoggedIn()
+    m.oauthHistoryButton.visible = isUserLoggedIn()
+    showAuthButtonsIfLoggedIn()
+
+    ' Keep focus on the grid showing the channel content
+    m.videoGrid.setFocus(true)
+    m.focusedItem = 2 '[video grid]
+    ?"[WatchHistory] Staying on channel page"
   end if
 end sub
 
@@ -7034,6 +7129,12 @@ sub onHistoryChannelSelected()
 
     ' Set flag to remember we came from Watch History
     m.returnToWatchHistory = true
+
+    ' Clear any prior channel context to ensure fresh navigation
+    m.currentChannelId = ""
+    m.uiLayer = 1
+    m.uiLayers = []
+    ?"[WatchHistory] Set uiLayer to 1 and cleared prior channel context"
 
     ' Show loading
     m.loadingText.visible = true

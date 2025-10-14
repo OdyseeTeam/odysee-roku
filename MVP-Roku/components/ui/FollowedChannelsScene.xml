@@ -43,7 +43,7 @@
       itemSize="[1720,195]"
       showRowLabel="[false, false]"
       rowFocusAnimationStyle="floatingFocus"
-      vertFocusAnimationStyle="floatingFocus"
+      vertFocusAnimationStyle="fixedFocus"
       horizFocusAnimationStyle="floatingFocus"
       focusXOffset="[0]"
       visible="true"
@@ -66,9 +66,8 @@
       focusXOffset="[0]"
       showRowLabel="[false]"
       rowFocusAnimationStyle="floatingFocus"
-      vertFocusAnimationStyle="fixedFocusWrap"
+      vertFocusAnimationStyle="fixedFocus"
       horizFocusAnimationStyle="floatingFocus"
-      wrapDividerBitmapUri=""
       visible="true"
     />
 

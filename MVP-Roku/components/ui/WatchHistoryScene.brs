@@ -4,7 +4,7 @@
     m.clearBtn = m.top.findNode("clearHistoryButton")
 
     m.historyGrid.observeField("rowItemSelected", "onVideoSelected")
-    m.historyGrid.observeField("itemFocused", "onItemFocused")
+    m.historyGrid.observeField("rowItemFocused", "onItemFocused")
     if IsValid(m.clearBtn) then m.clearBtn.observeField("buttonSelected", "onClearHistorySelected")
 
     m.top.observeField("restoreFocus", "onRestoreFocus")
@@ -21,17 +21,35 @@ end sub
 
 sub onItemFocused()
     ' Update last known focus position when it changes
-    focused = m.historyGrid.itemFocused
+    focused = m.historyGrid.rowItemFocused
     if Type(focused) = "roArray" and focused.Count() >= 2
         m.lastFocusRow = focused[0]
         m.lastFocusCol = focused[1]
+        print "[WatchHistory] Focus updated to ["; m.lastFocusRow; ","; m.lastFocusCol; "]"
     end if
 end sub
 
 sub onVisibleChanged()
     ' Reload history when scene becomes visible
     if m.top.visible = true
-        loadWatchHistory()
+        ' Check if grid already has content loaded
+        hasContent = false
+        if IsValid(m.historyGrid) and IsValid(m.historyGrid.content)
+            if m.historyGrid.content.getChildCount() > 0 then hasContent = true
+        end if
+
+        if hasContent
+            ' Grid already loaded - just restore focus position
+            print "[WatchHistory] Restoring grid with saved position ["; m.lastFocusRow; ","; m.lastFocusCol; "]"
+            m.historyGrid.visible = true
+            m.historyGrid.setFocus(true)
+            m.historyGrid.jumpToRowItem = [m.lastFocusRow, m.lastFocusCol]
+        else
+            ' No content yet - do full reload
+            print "[WatchHistory] Loading fresh content"
+            loadWatchHistory()
+        end if
+
         if IsValid(m.clearBtn) then m.clearBtn.visible = true
     end if
 end sub
@@ -438,8 +456,8 @@ function onKeyEvent(key as string, press as boolean) as boolean
     content = m.historyGrid.content
     if not IsValid(content) then return false
 
-    currentItem = m.historyGrid.itemFocused
-    ' itemFocused is array [row, col] when grid has focus, but can be integer initially
+    currentItem = m.historyGrid.rowItemFocused
+    ' rowItemFocused is array [row, col] when grid has focus
     row = -1
     col = -1
 
@@ -448,7 +466,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         row = currentItem[0]
         col = currentItem[1]
     else
-        ' Use last known position if itemFocused isn't valid yet
+        ' Use last known position if rowItemFocused isn't valid yet
         if IsValid(m.lastFocusRow) and IsValid(m.lastFocusCol)
             row = m.lastFocusRow
             col = m.lastFocusCol
@@ -511,22 +529,39 @@ sub navigateToChannel()
     print "[WatchHistory] Navigate to channel for focused video"
 
     content = m.historyGrid.content
-    if not IsValid(content) then return
+    if not IsValid(content) then
+        print "[WatchHistory] ERROR: content is invalid"
+        return
+    end if
 
+    ' Try multiple methods to get the focused position
     currentItem = m.historyGrid.itemFocused
+    rowItemFocused = m.historyGrid.rowItemFocused
+
+    print "[WatchHistory] itemFocused type: "; Type(currentItem); " value: "; currentItem
+    print "[WatchHistory] rowItemFocused type: "; Type(rowItemFocused); " value: "; rowItemFocused
+    print "[WatchHistory] lastFocusRow: "; m.lastFocusRow; " lastFocusCol: "; m.lastFocusCol
+
     row = -1
     col = -1
 
-    ' Get row and col from itemFocused
-    itemType = Type(currentItem)
-    if itemType = "roArray" and currentItem.Count() >= 2
+    ' Try rowItemFocused first (most reliable for RowList)
+    if Type(rowItemFocused) = "roArray" and rowItemFocused.Count() >= 2
+        row = rowItemFocused[0]
+        col = rowItemFocused[1]
+        print "[WatchHistory] Using rowItemFocused: row="; row; " col="; col
+    ' Then try itemFocused
+    else if Type(currentItem) = "roArray" and currentItem.Count() >= 2
         row = currentItem[0]
         col = currentItem[1]
+        print "[WatchHistory] Using itemFocused: row="; row; " col="; col
+    ' Fallback to last known position
     else if IsValid(m.lastFocusRow) and IsValid(m.lastFocusCol)
         row = m.lastFocusRow
         col = m.lastFocusCol
+        print "[WatchHistory] Using lastFocus: row="; row; " col="; col
     else
-        print "[WatchHistory] Could not determine focused item"
+        print "[WatchHistory] ERROR: Could not determine focused item"
         return
     end if
 
@@ -539,19 +574,29 @@ sub navigateToChannel()
                 ' Extract channel info from video node
                 channelId = videoNode.Channel
                 channelName = videoNode.Creator
+                videoTitle = videoNode.TITLE
+
+                print "[WatchHistory] Video at ["; row; ","; col; "]: '"; videoTitle; "'"
+                print "[WatchHistory] Channel: '"; channelName; "' ID: '"; channelId; "'"
 
                 if IsValid(channelId) and channelId <> ""
-                    print "[WatchHistory] Navigating to channel: "; channelName; " ("; channelId; ")"
+                    print "[WatchHistory] Setting selectedChannel field to trigger navigation"
                     ' Set selectedChannel field to trigger navigation in HomeScene
                     m.top.selectedChannel = {
                         channelId: channelId,
                         channelName: channelName
                     }
                 else
-                    print "[WatchHistory] Channel ID not available for this video"
+                    print "[WatchHistory] ERROR: Channel ID not available for this video"
                 end if
+            else
+                print "[WatchHistory] ERROR: videoNode is invalid"
             end if
+        else
+            print "[WatchHistory] ERROR: Invalid rowNode or col out of range. rowNode valid: "; IsValid(rowNode); " col: "; col; " rowNode.getChildCount: "; rowNode.getChildCount()
         end if
+    else
+        print "[WatchHistory] ERROR: row out of range. row: "; row; " content.getChildCount: "; content.getChildCount()
     end if
 end sub
 

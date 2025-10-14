@@ -413,9 +413,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
                 return true
             end if
         else if m.focusedSection = "all"
-            ' Move to Recently Active when at top of All Channels
+            ' Always move to Recently Active when pressing up in All Channels
+            ' Block backward scrolling within All Channels section
             focusPos = m.allChannelsGrid.rowItemFocused
-            if IsValid(focusPos) and focusPos[0] = 0
+            if IsValid(focusPos)
                 m.allChannelsGrid.setFocus(false)
                 m.recentlyActiveGrid.setFocus(true)
                 ' Jump to bottom row, same column
