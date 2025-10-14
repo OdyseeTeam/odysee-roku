@@ -1,15 +1,19 @@
 function getLivestream(channel)
     try
-        'Github seems to be at least one commit behind, making a placeholder commit.
-        livestreamStatus = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
-        liveData = livestreamStatus.data
-        if liveData["Live"]
-            lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
-            lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_id": liveData["ActiveClaim"]["ClaimID"], "page": 1, "page_size": 1, "no_totals": true }, "id": m.top.uid })
-            livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
-            liveClaim = livestreamclaimquery["result"]["items"][0]
-            ' Do not gate on fetching VideoURL; CDN may return 4xx for HEAD/GET without token.
-            ' Trust the live API and proceed to build the livestream item.
+        status = getJSON(m.top.constants["NEW_LIVE_API"] + "/is_live?channel_claim_id=" + channel)
+        liveData = invalid
+        try: liveData = status.data : catch e: liveData = invalid : end try
+        if IsValid(liveData) and IsValid(liveData["Live"]) and liveData["Live"] = true
+            activeId = invalid
+            try: activeId = liveData["ActiveClaim"]["ClaimID"] : catch e: activeId = invalid : end try
+            liveClaim = invalid
+            if IsValid(activeId) and activeId <> ""
+                queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+                params = { "claim_ids": [ activeId ], "page": 1, "page_size": 1, "no_totals": true }
+                q = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": params, "id": m.top.uid })
+                resp = postJSON(q, queryURL, invalid)
+                try: liveClaim = resp["result"]["items"][0] : catch e: liveClaim = invalid : end try
+            end if
             liveItem = parseLiveData(channel, liveData, liveClaim)
             return { liveItem: liveItem : success: true }
         else
@@ -23,24 +27,28 @@ end function
 function getLivestreamsBatch(claimIDs, liveData, liveIDs)
     livestreams = []
     try
-        if isValid(claimIDs) and isValid(liveData) and isValid(liveIDs)
+        if IsValid(claimIDs) and IsValid(liveData) and IsValid(liveIDs)
             if claimIDs.Count() = liveData.Count() and liveIDs.Count() = claimIDs.Count()
-                lsqueryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+                queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
                 pageSize = claimIDs.Count()
                 if pageSize <= 0 then pageSize = 50
-                lsqueryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "fee_amount": "<=0", "claim_ids": claimIDs, "page": 1, "page_size": pageSize, "no_totals": true }, "id": m.top.uid })
-                livestreamClaimQuery = postJSON(lsqueryJSON, lsqueryURL, invalid)
-                liveClaims = livestreamclaimquery["result"]["items"]
-                if liveIDs.Count() = liveClaims.Count()
-                    liveClaimsIndexed = {}
-                    for each claim in liveclaims
-                        liveClaimsIndexed.addReplace(claim.claim_id, claim)
+                params = { "claim_ids": claimIDs, "page": 1, "page_size": pageSize, "no_totals": true }
+                q = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": params, "id": m.top.uid })
+                resp = postJSON(q, queryURL, invalid)
+                liveClaims = []
+                try: liveClaims = resp["result"]["items"] : catch e: liveClaims = [] : end try
+                if IsValid(liveClaims) and liveIDs.Count() = liveClaims.Count()
+                    idx = {}
+                    for each it in liveClaims
+                        if IsValid(it) and IsValid(it.claim_id) then idx.addReplace(it.claim_id, it)
                     end for
-                    for each claim in livedata
-                        livestreams.push(parseLiveData(claim["ChannelClaimID"],claim,liveClaimsIndexed[claim["ActiveClaim"]["ClaimID"]]))
+                    for each ld in liveData
+                        chId = invalid: activeId = invalid
+                        try: chId = ld["ChannelClaimID"] : catch e: chId = invalid : end try
+                        try: activeId = ld["ActiveClaim"]["ClaimID"] : catch e: activeId = invalid : end try
+                        livestreams.Push(parseLiveData(chId, ld, idx[activeId]))
                     end for
-                    liveClaimsIndexed = invalid
-                    claim = invalid
+                    idx = invalid
                 end if
             end if
         end if

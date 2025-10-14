@@ -29,7 +29,7 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     result = [] 'This is an array of associativeArrays that can be used to set a ContentNode
     lastParsedAmount = 0
     currentParsedAmount = 0
-    max = 48 ' Amount of items needed
+    max = 36 ' Amount of items needed
     channels = m.top.channels
     gotEnough = false 'got enough items?
 
@@ -63,8 +63,13 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     'm.parseTimer.Mark()
     'STAGE 2: mass parse
     m.parseLibTimer.Mark()
-    currentPage = getVideoPage(curPage)
+    pageData = getVideoPage(curPage)
     ? "GetSinglePage," + threadname + ",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
+    initialReleaseTime = invalid
+    if IsValid(pageData) and IsValid(pageData.releaseTime)
+        initialReleaseTime = pageData.releaseTime
+    end if
+    currentPage = pageData.items
     while gotEnough = false
         if currentParsedAmount = lastParsedAmount and curPage <> 1 or currentParsedAmount >= max 'got no more/got enough
             gotEnough = true
@@ -94,8 +99,9 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         end if
         curPage += 1
         m.parseLibTimer.Mark()
-        currentPage = getVideoPage(curPage)
+        pageData = getVideoPage(curPage)
         ? "GetSinglePage," + threadname + ",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
+        currentPage = pageData.items
     end while
     '? "GetSinglePage,"+threadname+",get," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()
     m.parseTimer.Mark()
@@ -143,5 +149,5 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     end if
     '?"manufacturing finished for key: "+subkey
     m.top.error = false
-    return { contentarray: result: content: content } 'Returns the array
+    return { contentarray: result: content: content: lastPage: curPage: releaseTime: initialReleaseTime } 'Returns the array, last page fetched, and release time
 end function

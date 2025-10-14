@@ -8,6 +8,7 @@
         <field id="blocked" type="roArray"/>
         <field id="excluded" type="roArray"/>
         <field id="rawname" type="String"/>
+        <field id="initialReleaseTime" type="integer"/>
         <field id="output" type="assocarray"/>
         <field id="cookies" type="roArray"/>
         <field id="error" type="bool"/>

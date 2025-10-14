@@ -547,6 +547,13 @@ sub init()
   ' Channel and search paging state
   m.currentChannelId = ""
   m.currentChannelPage = 1
+  m.noMoreChannelPages = {}
+  m.noMoreVideoSearchPages = false
+  m.noMoreChannelSearchPages = false
+  ' Store initial release_time per category to ensure consistent pagination
+  m.categoryReleaseTime = {}
+  ' Debug: track claim IDs per category to detect duplicates
+  m.categoryClaimIds = {}
   ' Debug: Track key sequence for clearing local data (press REWIND five times rapidly while focused on Logout)
   m.debugKeySequence = []
   m.debugKeyTimer = CreateObject("roSGNode", "Timer")
@@ -886,6 +893,12 @@ sub onRowItemFocused()
     ? "[Prefetch] row=" + Str(row) + "/" + Str(lastRow) + " col=" + Str(col) + " searchActive=" + sa$ + " channelId=" + ch$
     ' Prefer channel paging when viewing a channel
     if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+      ' Check if we've already hit the end for this channel
+      if not IsValid(m.noMoreChannelPages) then m.noMoreChannelPages = {}
+      if IsValid(m.noMoreChannelPages[m.currentChannelId]) and m.noMoreChannelPages[m.currentChannelId] = true
+        ? "[Channel] Skipping prefetch - no more content for channel: " + m.currentChannelId
+        return
+      end if
       if m.loadingChannelNext = true then return
       m.loadingChannelNext = true
       nextChPage = m.currentChannelPage + 1
@@ -918,6 +931,10 @@ sub onRowItemFocused()
         userBlocked = []
         if IsValid(m.preferences) and IsValid(m.preferences.blocked) then userBlocked = m.preferences.blocked
         fieldsAA = { constants: m.constants, page: nextPage, uid: m.uid, blocked: userBlocked, excluded: [], rawname: catName, channels: m.preferences.following }
+        ' Pass stored release_time for consistent pagination
+        if IsValid(m.categoryReleaseTime[catName])
+          fieldsAA["initialReleaseTime"] = m.categoryReleaseTime[catName]
+        end if
         t.setFields(fieldsAA)
         t.observeField("output","onNextPageLoaded")
         t.control = "RUN"
@@ -949,6 +966,10 @@ sub onRowItemFocused()
         ' For Wild West, pass no channels (task handles trending-only claim_search); else pass list
         fieldsAA = { constants: m.constants, page: nextPage, uid: m.uid, blocked: userBlocked, excluded: excluded, rawname: catName }
         if IsValid(chs) and chs.Count() > 0 then fieldsAA["channels"] = chs
+        ' Pass stored release_time for consistent pagination
+        if IsValid(m.categoryReleaseTime[catName])
+          fieldsAA["initialReleaseTime"] = m.categoryReleaseTime[catName]
+        end if
         t.setFields(fieldsAA)
         t.observeField("output","onNextPageLoaded")
         t.control = "RUN"
@@ -957,6 +978,11 @@ sub onRowItemFocused()
       end if
     else if m.searchActive = true
       if m.searchContext.type = "video"
+        ' Check if we've already hit the end of video search results
+        if m.noMoreVideoSearchPages = true
+          ? "[Search:Video] Skipping prefetch - no more search results"
+          return
+        end if
         if m.loadingVideoSearch = true then return
         m.loadingVideoSearch = true
         nextFrom = m.searchContext.from + 48
@@ -968,6 +994,11 @@ sub onRowItemFocused()
         ? "[Search:Video] Prefetch dispatch from=" + Str(nextFrom)
         ensureLoadingPlaceholderRow()
       else if m.searchContext.type = "channel"
+        ' Check if we've already hit the end of channel search results
+        if m.noMoreChannelSearchPages = true
+          ? "[Search:Channel] Skipping prefetch - no more search results"
+          return
+        end if
         if m.loadingChannelSearch = true then return
         m.loadingChannelSearch = true
         nextFromC = m.searchContext.from + 48
@@ -1299,6 +1330,39 @@ end sub
 sub onNextPageLoaded(evt as object)
   if type(evt) <> "roSGNodeEvent" then return
   data = evt.getData()
+  ' Debug: Check for duplicate claim IDs
+  if IsValid(data) and IsValid(data.claimIds) and IsValid(data.rawname)
+    catName = data.rawname
+    newClaimIds = data.claimIds
+    ? "[onNextPageLoaded] " + catName + " - Received " + Str(newClaimIds.Count()) + " new claims"
+    if IsValid(m.categoryClaimIds[catName])
+      existingIds = m.categoryClaimIds[catName]
+      duplicateCount = 0
+      duplicates = []
+      for each newId in newClaimIds
+        for each existingId in existingIds
+          if newId = existingId
+            duplicateCount = duplicateCount + 1
+            if duplicates.Count() < 5
+              duplicates.push(newId)
+            end if
+            exit for
+          end if
+        end for
+      end for
+      if duplicateCount > 0
+        ? "[DUPLICATE WARNING] " + catName + " - Found " + Str(duplicateCount) + " duplicate claims!"
+        ? "[DUPLICATE WARNING] First duplicates: " + duplicates.Join(", ")
+      else
+        ? "[onNextPageLoaded] " + catName + " - No duplicates found"
+      end if
+      ' Append new claim IDs to existing list
+      existingIds.Append(newClaimIds)
+      m.categoryClaimIds[catName] = existingIds
+    else
+      m.categoryClaimIds[catName] = newClaimIds
+    end if
+  end if
   ' Append new rows to the current grid
   if IsValid(data) and IsValid(data.content)
     clearLoadingPlaceholderRow()
@@ -1341,10 +1405,19 @@ sub onChannelNextPageLoaded(evt as object)
     m.loadingChannelNext = false
     return
   end if
+  itemsAdded = 0
   if IsValid(data) and IsValid(data.content)
     clearLoadingPlaceholderRow()
     if IsValid(m.videoGrid) and IsValid(m.videoGrid.content)
-      appendRowsFillingPartial(data.content)
+      itemsAdded = appendRowsFillingPartial(data.content)
+    end if
+  end if
+  ' If no items were added, mark channel as having no more pages
+  if itemsAdded = 0
+    if not IsValid(m.noMoreChannelPages) then m.noMoreChannelPages = {}
+    if IsValid(m.currentChannelId) and m.currentChannelId <> ""
+      m.noMoreChannelPages[m.currentChannelId] = true
+      ? "[Channel] No more content available for channel: " + m.currentChannelId
     end if
   end if
   t = evt.getRoSGNode()
@@ -1358,9 +1431,15 @@ end sub
 sub onVideoSearchNextPageLoaded(evt as object)
   if type(evt) <> "roSGNodeEvent" then return
   data = evt.getData()
+  itemsAdded = 0
   if IsValid(data) and IsValid(data.content)
     clearLoadingPlaceholderRow()
-    appendRowsFillingPartial(data.content)
+    itemsAdded = appendRowsFillingPartial(data.content)
+  end if
+  ' If no items were added, mark search as having no more pages
+  if itemsAdded = 0
+    m.noMoreVideoSearchPages = true
+    ? "[Search:Video] No more search results available"
   end if
   t = evt.getRoSGNode()
   if IsValid(t)
@@ -1373,9 +1452,15 @@ end sub
 sub onChannelSearchNextPageLoaded(evt as object)
   if type(evt) <> "roSGNodeEvent" then return
   data = evt.getData()
+  itemsAdded = 0
   if IsValid(data) and IsValid(data.content)
     clearLoadingPlaceholderRow()
-    appendRowsFillingPartial(data.content)
+    itemsAdded = appendRowsFillingPartial(data.content)
+  end if
+  ' If no items were added, mark channel search as having no more pages
+  if itemsAdded = 0
+    m.noMoreChannelSearchPages = true
+    ? "[Search:Channel] No more search results available"
   end if
   t = evt.getRoSGNode()
   if IsValid(t)
@@ -1386,8 +1471,8 @@ sub onChannelSearchNextPageLoaded(evt as object)
 end sub
 
 ' Append rows to m.videoGrid.content, filling any partial last row up to 4 items first
-sub appendRowsFillingPartial(newContent as object)
-  if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then return
+function appendRowsFillingPartial(newContent as object) as integer
+  if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then return 0
   dest = m.videoGrid.content
   rowSize = 4
   ' 1) Flatten all incoming items into a queue by moving nodes out of newContent
@@ -1444,8 +1529,9 @@ sub appendRowsFillingPartial(newContent as object)
   if dest.getChildCount() > 0 then
     lastCount = dest.getChild(dest.getChildCount()-1).getChildCount()
   end if
-  ? "[Append] dest rows=" + Str(dest.getChildCount()) + " last count=" + Str(lastCount)
-end sub
+  ? "[Append] dest rows=" + Str(dest.getChildCount()) + " last count=" + Str(lastCount) + " items added=" + Str(qCount)
+  return qCount
+end function
 
 ' Utility: count total tiles across all rows in a ContentNode grid
 function countTiles(grid as object) as integer
@@ -1923,6 +2009,21 @@ sub threadDone(msg as object)
         end if
       end if
       m.categories.addReplace(thread.rawname, mergedContent)
+      ' Store the last page fetched so pagination can continue from the correct page
+      if IsValid(thread.output.lastPage)
+        m.currentCategoryPage[thread.rawname] = thread.output.lastPage
+        ? "[Init] " + thread.rawname + " ended at page " + Str(thread.output.lastPage)
+      end if
+      ' Store initial release_time to ensure consistent pagination
+      if IsValid(thread.output.releaseTime)
+        m.categoryReleaseTime[thread.rawname] = thread.output.releaseTime
+        ? "[Init] " + thread.rawname + " - Stored release_time=" + Str(thread.output.releaseTime)
+      end if
+      ' Store claim IDs for duplicate detection
+      if IsValid(thread.output.claimIds)
+        m.categoryClaimIds[thread.rawname] = thread.output.claimIds
+        ? "[Init] " + thread.rawname + " - Stored " + Str(thread.output.claimIds.Count()) + " claim IDs"
+      end if
       thread.unObserveField("output")
       thread.control = "STOP"
       for cThread = 0 to m.runningThreads.Count() - 1
@@ -2811,6 +2912,10 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
               m.currentChannelId = curChannel
               m.currentChannelPage = 1
               m.loadingChannelNext = false
+              ' Reset pagination flag for this channel
+              if IsValid(m.noMoreChannelPages[curChannel])
+                m.noMoreChannelPages.delete(curChannel)
+              end if
               if not isValid(m.channelResolver)
                 m.channelResolver = createObject("roSGNode", "getSingleChannel")
                 m.channelResolver.observeField("cookies", "gotCookies")
@@ -2840,10 +2945,20 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 m.favoritesThread.setFields({ constants: m.constants, channels: m.preferences.following, blocked: m.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, cookies: m.cookies })
                 m.favoritesThread.observeField("output", "gotFavorites")
                 m.favoritesThread.control = "RUN"
+                ' Reset pagination flag when favorites are manually refreshed
+                if IsValid(m.noMoreCategoryPages) and IsValid(m.noMoreCategoryPages["FAVORITES"])
+                  m.noMoreCategoryPages.delete("FAVORITES")
+                  ? "[Favorites] Reset pagination flag due to manual refresh"
+                end if
               end if
             else
               trueName = m.categorySelector.content.getChild(m.categorySelector.itemFocused).trueName
               ? "would refresh " + trueName
+              ' Reset pagination flag when category is manually refreshed
+              if IsValid(m.noMoreCategoryPages) and IsValid(m.noMoreCategoryPages[trueName])
+                m.noMoreCategoryPages.delete(trueName)
+                ? "[Category] Reset pagination flag for " + trueName + " due to manual refresh"
+              end if
               catData = m.channelIDs[trueName]
               excludedChannelIds = []
               catOrder = "new"
@@ -3397,6 +3512,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
     ?"task running, denying user input"
     return true
   end if
+
 end function
 
 sub videoButtonFocused(msg)
@@ -4052,6 +4168,7 @@ end sub
 'end sub
 
 sub resolveVideo(url = invalid)
+  ? "[VideoLoad] ========== Video Selection Started =========="
   ?type(url)
   if type(url) = "roSGNodeEvent" 'we might actually pass a URL (string) through to this as well.
     incomingData = url.getData()
@@ -4061,7 +4178,14 @@ sub resolveVideo(url = invalid)
         curItem = m.videoGrid.content.getChild(incomingData[0]).getChild(incomingData[1])
         ' Capture current item guid for robust return
         if IsValid(curItem) and IsValid(curItem.guid) then m.currentVideoGuid = curItem.guid
+
+        ? "[VideoLoad] User selected video at position ["; incomingData[0]; ", "; incomingData[1]; "]"
+        ? "[VideoLoad] Item type: "; curItem.itemType
+        if IsValid(curItem.TITLE) then ? "[VideoLoad] Video title: "; curItem.TITLE
+        if IsValid(curItem.guid) then ? "[VideoLoad] Claim ID: "; curItem.guid
+
         if curItem.itemType = "video"
+          ? "[VideoLoad] Starting regular video resolution..."
           resolveEvaluatedVideo(curItem) 'used for this AND next video/previous video
         end if
         if curItem.itemType = "channel"
@@ -4245,11 +4369,17 @@ end sub
 
 sub resolveEvaluatedVideo(curItem)
   ?"Resolving a Video"
+  ? "[VideoLoad] Entering resolveEvaluatedVideo()"
+  ? "[VideoLoad] Video URL: "; curItem.URL
+  if IsValid(curItem.streamFormat) then ? "[VideoLoad] Stream format: "; curItem.streamFormat
+
   m.currentVideoChannelIcon = curitem.channelicon
   m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
   m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
   m.currentVideoGuid = curItem.guid ' For grid restoration
   isFollowed = false
+
+  ? "[VideoLoad] Setting up video buttons and UI..."
   if m.wasLoggedIn
     ' Choose live vs VOD button sets; exclude restart/loop on livestreams
     if isValid(curItem.streamFormat) and LCase(curItem.streamFormat) = "hls"
@@ -4310,13 +4440,18 @@ sub resolveEvaluatedVideo(curItem)
   m.skipHoldCount = 0
   m.skipHoldDirection = 0
   m.urlResolver.observeField("output", "playResolvedVideo")
+  ' Start timing video load
+  if not IsValid(m.videoLoadTimer) then m.videoLoadTimer = CreateObject("roTimeSpan")
+  m.videoLoadTimer.Mark()
+  ? "[VideoLoad] Starting video resolution at T+0ms for claim: "; m.currentVideoClaimID
+
   m.urlResolver.control = "RUN"
   m.taskRunning = True
   m.videoGrid.setFocus(false)
   m.videoGrid.visible = false
   m.loadingText.visible = true
   m.loadingText.text = "Loading Video..."
-  ? "made it here"
+  ? "[VideoLoad] urlResolver task started, waiting for response..."
 end sub
 
 sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
@@ -4483,14 +4618,27 @@ end sub
 sub playResolvedVideo(msg as object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
+
+    ' Log timing information
+    elapsed = 0
+    if IsValid(m.videoLoadTimer) then elapsed = m.videoLoadTimer.TotalMilliseconds()
+    ? "[VideoLoad] playResolvedVideo called at T+"; elapsed; "ms"
+
     if isValid(data.error)
+      ? "[VideoLoad] ERROR: Video resolution failed at T+"; elapsed; "ms - "; data.error
       m.urlResolver.unobserveField("output")
       m.urlResolver.control = "STOP"
       m.taskRunning = False
       resolveError()
     else if isValid(data.length) = false
+      ? "[VideoLoad] ERROR: Malformed video data (no length) at T+"; elapsed; "ms"
       malformedVideoError()
     else
+      ? "[VideoLoad] Video resolved successfully at T+"; elapsed; "ms"
+      ? "[VideoLoad] Video URL: "; data.videourl
+      ? "[VideoLoad] Video type: "; data.videotype
+      ? "[VideoLoad] Video length: "; data.length; " seconds"
+
       m.videoGrid.visible = true
       m.videoGrid.setFocus(false)
       m.categorySelector.setFocus(false)
@@ -4528,7 +4676,9 @@ sub playResolvedVideo(msg as object)
       updatePlaybackRateUI(m.playbackRateLabels[m.playbackRateIndex])
       updateLoopButtonUI()
       applyPlaybackRate()
+      ? "[VideoLoad] Starting video playback at T+"; m.videoLoadTimer.TotalMilliseconds(); "ms"
       m.video.control = "play"
+
       ' Attempt to resume from saved position in watch history
       m.pendingResume = -1
       if isValid(m.currentVideoClaimID)
@@ -4540,6 +4690,7 @@ sub playResolvedVideo(msg as object)
               seconds = Int(historyData.position)
               if seconds > 0 and seconds < data.length - 15
                 m.pendingResume = seconds
+                ? "[VideoLoad] Will resume from position: "; seconds; " seconds"
               end if
             end if
           catch e
@@ -4563,6 +4714,7 @@ sub playResolvedVideo(msg as object)
       m.urlResolver.unobserveField("output")
       m.urlResolver.control = "STOP"
       m.taskRunning = False
+      ? "[VideoLoad] Video load complete at T+"; m.videoLoadTimer.TotalMilliseconds(); "ms"
     end if
   end if
 end sub
@@ -4610,6 +4762,12 @@ function onVideoStateChanged(msg as object)
     state = msg.getData()
     ?"==========VIDEO STATE==========="
     ?state
+
+    ' Log video state changes with timing
+    elapsed = 0
+    if IsValid(m.videoLoadTimer) then elapsed = m.videoLoadTimer.TotalMilliseconds()
+    ? "[VideoLoad] Video state changed to: "; state; " at T+"; elapsed; "ms"
+
     if state = "error"
       m.video.unobserveField("state")
       m.videoObserved = false
@@ -4711,13 +4869,40 @@ end sub
 
 sub returnToUIPage()
   ' Save final watch history and send view progress before stopping video
-  if IsValid(m.video) and IsValid(m.video.position) and m.video.position > 0
+  ' Always save, even if position is 0 (handles very quick exits)
+  if IsValid(m.video) and IsValid(m.video.position)
     saveWatchHistory()
     sendViewProgress()
   end if
 
   ' Refresh progress bars on grid when returning from video
   if IsValid(m.videoGrid) and IsValid(m.videoGrid.content)
+    ' Immediate targeted update for the just-watched item
+    ' Read from registry instead of m.video.position to get the saved value (handles quick exits)
+    curPos = 0: curDur = 0
+    if IsValid(m.currentVideoClaimID) and m.currentVideoClaimID <> ""
+      savedJson = GetRegistry("historyRegistry", m.currentVideoClaimID)
+      if IsValid(savedJson) and savedJson <> ""
+        try
+          historyData = ParseJson(savedJson)
+          if IsValid(historyData)
+            if IsValid(historyData.position) then curPos = historyData.position
+            if IsValid(historyData.duration) then curDur = historyData.duration
+          end if
+        catch e
+          ' Fallback to video player values
+          try: curPos = m.video.position : catch e2: curPos = 0 : end try
+          if IsValid(m.urlResolver) and IsValid(m.urlResolver.output) and IsValid(m.urlResolver.output.length)
+            curDur = m.urlResolver.output.length
+          else
+            try: curDur = m.video.duration : catch e2: curDur = 0 : end try
+          end if
+        end try
+      end if
+    end if
+    ? "[ProgressBar] Updating grid progress: position="; curPos; " duration="; curDur
+    updateGridWatchProgressFor(m.currentVideoClaimID, curPos, curDur)
+    ' Also merge any other saved progress from registry
     addWatchProgressToContent(m.videoGrid.content)
   end if
 
@@ -4888,6 +5073,7 @@ sub gotVideoSearch(msg as object)
       ' Set search context for autoload
       m.searchActive = true
       m.searchContext = { type: "video": query: m.searchKeyboard.text: from: 0 }
+      m.noMoreVideoSearchPages = false
       ' Restore standard row heights for video search
       try
         m.videoGrid.rowItemSize = [[410,380]]
@@ -4964,6 +5150,7 @@ sub gotChannelSearch(msg as object)
       m.searchActive = true
       if not IsValid(m.lastChannelSearchQuery) or m.lastChannelSearchQuery = "" then m.lastChannelSearchQuery = m.searchKeyboard.text
       m.searchContext = { type: "channel": query: m.lastChannelSearchQuery: from: 0 }
+      m.noMoreChannelSearchPages = false
       ' Ensure taller rows for channel search tiles
       try
         m.videoGrid.rowItemSize = [[410,420]]
@@ -5645,6 +5832,11 @@ sub gotUserPrefs()
     m.favoritesThread.setFields({ constants: m.constants, channels: m.getpreferencesTask.preferences.following, blocked: m.getpreferencesTask.preferences.blocked, rawname: "FAVORITES", resolveLivestreams: true, uid: m.uid, cookies: m.cookies })
     m.favoritesThread.observeField("output", "gotFavorites")
     m.favoritesThread.control = "RUN"
+    ' Reset pagination flag when favorites are refreshed (new content may be available)
+    if IsValid(m.noMoreCategoryPages) and IsValid(m.noMoreCategoryPages["FAVORITES"])
+      m.noMoreCategoryPages.delete("FAVORITES")
+      ? "[Favorites] Reset pagination flag due to content refresh"
+    end if
   end if
   if isValid(m.getpreferencesTask.preferences.following)
     if m.getpreferencesTask.preferences.following.Count() = 0 and m.loadingBackground.visible = false
@@ -5692,6 +5884,11 @@ sub gotCategoryRefresh(msg as object)
       thread.control = "STOP"
     else
       m.categories.addReplace(thread.rawname, thread.output.content)
+      ' Store the last page fetched so pagination can continue from the correct page
+      if IsValid(thread.output.lastPage)
+        m.currentCategoryPage[thread.rawname] = thread.output.lastPage
+        ? "[Refresh] " + thread.rawname + " ended at page " + Str(thread.output.lastPage)
+      end if
       thread.unObserveField("output")
       thread.control = "STOP"
       m.favoritesUIFlag = true
@@ -5727,6 +5924,11 @@ sub gotFavorites(msg as object)
       thread.control = "STOP"
     else
       m.categories.addReplace("FAVORITES", thread.output.content)
+      ' Store the last page fetched so pagination can continue from the correct page
+      if IsValid(thread.output.lastPage)
+        m.currentCategoryPage["FAVORITES"] = thread.output.lastPage
+        ? "[Favorites] Ended at page " + Str(thread.output.lastPage)
+      end if
       thread.unObserveField("output")
       thread.control = "STOP"
       m.favoritesUIFlag = true
@@ -6921,6 +7123,9 @@ sub saveWatchHistory()
   if not IsValid(m.currentVideoClaimID) or m.currentVideoClaimID = "" then return
   if not IsValid(m.video) or not IsValid(m.video.position) then return
 
+  ? "[WatchHistory] saveWatchHistory called for claim: "; m.currentVideoClaimID
+  ? "[WatchHistory] m.video.position = "; m.video.position
+
   ' Check if this is a livestream
   isLivestream = (IsValid(m.videoContent) and IsValid(m.videoContent.Live) and m.videoContent.Live = true)
 
@@ -6931,6 +7136,8 @@ sub saveWatchHistory()
   else if IsValid(m.video) and IsValid(m.video.duration)
     videoDuration = m.video.duration
   end if
+
+  ? "[WatchHistory] videoDuration = "; videoDuration; " isLivestream = "; isLivestream
 
   ' For livestreams: always save position as 0 (no resume), duration as 0 (no progress bar)
   ' For regular videos: save actual position and duration
@@ -6943,10 +7150,14 @@ sub saveWatchHistory()
   if not isLivestream
     historyData.position = Int(m.video.position)
     historyData.duration = Int(videoDuration)
+    ? "[WatchHistory] Saving position = "; historyData.position; " duration = "; historyData.duration
+  else
+    ? "[WatchHistory] Livestream detected, saving position=0 duration=0"
   end if
 
   historyJson = FormatJson(historyData)
   SetRegistry("historyRegistry", m.currentVideoClaimID, historyJson)
+  ? "[WatchHistory] Saved to registry: "; historyJson
 end sub
 
 ' Send view progress completion (when video finishes)
@@ -7012,28 +7223,108 @@ sub addWatchProgressToContent(contentNode as object)
       for item = 0 to itemCount - 1
         itemNode = rowNode.getChild(item)
         if IsValid(itemNode) and IsValid(itemNode.guid)
-          ' Look up history for this claim ID (key is just the claim ID)
-          jsonStr = reg.Read(itemNode.guid)
-          if jsonStr <> ""
-            try
-              historyData = ParseJson(jsonStr)
-              if IsValid(historyData) and IsValid(historyData.position) and IsValid(historyData.duration) and historyData.duration > 0
-                ' Calculate progress percentage
-                progress = (historyData.position / historyData.duration) * 100
-                if progress > 100 then progress = 100
-                ' Minimum 1% if video has been started
-                if progress > 0 and progress < 1 then progress = 1
-                if progress < 0 then progress = 0
-                ' Add watchProgress field to the item
-                itemNode.addFields({ watchProgress: progress })
-              end if
-            catch e
-            end try
+          ' Skip progress bar for livestreams (still keep watch history)
+          isLivestream = IsValid(itemNode.itemType) and itemNode.itemType = "livestream"
+          if not isLivestream
+            ' Look up history for this claim ID (key is just the claim ID)
+            jsonStr = reg.Read(itemNode.guid)
+            if jsonStr <> ""
+              try
+                historyData = ParseJson(jsonStr)
+                if IsValid(historyData) and IsValid(historyData.position) and IsValid(historyData.duration) and historyData.duration > 0
+                  ' Calculate progress percentage
+                  progress = (historyData.position / historyData.duration) * 100
+                  if progress > 100 then progress = 100
+                  if progress < 0 then progress = 0
+                  ' Show minimum 1% for any video in watch history (even if position is 0)
+                  ' This indicates the video was opened/viewed, even briefly
+                  if progress < 1 then progress = 1
+                  ' Add or update watchProgress field
+                  if not itemNode.hasField("watchProgress")
+                    itemNode.addFields({ watchProgress: progress })
+                  else
+                    itemNode.watchProgress = progress
+                  end if
+                end if
+              catch e
+              end try
+            end if
           end if
         end if
       end for
     end if
   end for
+end sub
+
+' Targeted progress update for currently watched item (avoids race with registry flush)
+sub updateGridWatchProgressFor(claimId as string, position as integer, duration as integer)
+  ? "[ProgressBar] updateGridWatchProgressFor called: claimId="; claimId; " position="; position; " duration="; duration
+
+  if not IsValid(m.videoGrid) or not IsValid(m.videoGrid.content) then
+    ? "[ProgressBar] SKIP: videoGrid or content not valid"
+    return
+  end if
+  if not IsValid(claimId) or claimId = "" then
+    ? "[ProgressBar] SKIP: claimId not valid"
+    return
+  end if
+  if not IsValid(duration) or duration <= 0 then
+    ? "[ProgressBar] SKIP: duration not valid or <= 0"
+    return
+  end if
+
+  progress = 0
+  try
+    progress = (position * 100) / duration
+  catch e
+    progress = 0
+  end try
+  if progress > 100 then progress = 100
+  if progress < 0 then progress = 0
+  ' Show minimum 1% for any video in watch history (even if position is 0)
+  ' This indicates the video was opened/viewed, even briefly
+  if progress < 1 then progress = 1
+
+  ? "[ProgressBar] Calculated progress: "; progress; "% (position="; position; ")"
+
+  rowCount = 0
+  try: rowCount = m.videoGrid.content.getChildCount() : catch e: rowCount = 0 : end try
+  for r = 0 to rowCount - 1
+    rowNode = m.videoGrid.content.getChild(r)
+    if IsValid(rowNode)
+      ic = 0
+      try: ic = rowNode.getChildCount() : catch e: ic = 0 : end try
+      for c = 0 to ic - 1
+        itemNode = rowNode.getChild(c)
+        if IsValid(itemNode) and IsValid(itemNode.guid)
+          if itemNode.guid = claimId
+            ? "[ProgressBar] Found matching item at ["; r; ","; c; "]"
+            ' Skip progress bar for livestreams (still keep watch history)
+            if IsValid(itemNode.itemType) and itemNode.itemType = "livestream"
+              ? "[ProgressBar] Item is livestream, skipping progress bar"
+              return
+            end if
+            ? "[ProgressBar] Setting watchProgress to "; progress; "% for item"
+            ' Use addFields if field doesn't exist, otherwise update directly
+            if not itemNode.hasField("watchProgress")
+              itemNode.addFields({ watchProgress: progress })
+            else
+              itemNode.watchProgress = progress
+            end if
+            ' Force RowList to refresh renderers so PosterItem updates immediately
+            try
+              m.videoGrid.content = m.videoGrid.content
+            catch e
+              ? "[ProgressBar] ERROR: Failed to refresh grid content"
+            end try
+            ? "[ProgressBar] Progress bar updated and grid refreshed"
+            return
+          end if
+        end if
+      end for
+    end if
+  end for
+  ? "[ProgressBar] WARNING: Item with claimId "; claimId; " not found in grid"
 end sub
 
 ' Debug: Reset timer when no keys pressed for a while
@@ -7121,6 +7412,7 @@ sub restartApp()
   ' Soft-reinitialize by invoking Logout flow (device-code screen)
   Logout()
 end sub
+
 
 
 

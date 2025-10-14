@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <component name="WatchHistoryScene" extends="Group">
   <interface>
     <field id="selectedVideo" type="assocarray"/>
@@ -22,6 +22,9 @@
       <Font role="font" uri="pkg:/components/generic/fonts/Inter-Emoji.otf" fallbackGlyph="u0020" size="64"/>
     </Label>
 
+    <!-- Clear History button (top-right) -->
+    <Button id="clearHistoryButton" textcolor="#ffffff" minwidth="240" height="64" text="Clear History" showFocusFootprint="true" translation="[1560,70]" visible="true"/>
+
     <!-- History Grid - using more horizontal space without sidebar -->
     <RowList
       id="historyGrid"
@@ -29,12 +32,12 @@
       itemComponentName="PosterItem"
       numRows="4"
       rowItemSize="[[410,380]]"
-      rowItemSpacing="[[20,20]]"
-      itemSize="[1920,460]"
+      rowItemSpacing="[[20,5]]"
+      itemSize="[1920,425]"
       focusXOffset="[50]"
       showRowLabel="[false]"
       rowLabelWidth="[260]"
-      rowLabelOffset="[0]"
+      rowLabelOffset="[-50]"
       rowFocusAnimationStyle="floatingFocus"
       vertFocusAnimationStyle="fixedFocus"
       wrapDividerBitmapUri=""
@@ -49,3 +52,4 @@
     </Label>
   </children>
 </component>
+

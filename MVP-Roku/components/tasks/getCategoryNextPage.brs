@@ -13,19 +13,26 @@ function FetchNextPage(pageNum as integer)
     m.time = CreateObject("roDateTime")
     m.time.Mark()
     curTime = m.time.AsSeconds()
+
+    ' Use stored initial release_time if provided for consistent pagination
+    if IsValid(m.top.initialReleaseTime)
+        curTime = m.top.initialReleaseTime
+    end if
+
     queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
 
-    params = { "fee_amount": "<=0", "claim_type": ["stream"], "stream_types": ["video"], "has_source": true, "page": pageNum, "page_size": 48, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
+    params = { "fee_amount": "<=0", "claim_type": ["stream"], "stream_types": ["video"], "has_source": true, "page": pageNum, "page_size": 36, "no_totals": true, "order_by": ["release_time"], "release_time": "<"+curTime.toStr() }
 
     ' For FAVORITES: no per-channel limit and filter to last 6 months
-    ' For other categories: limit to 2 per channel to show variety
+    ' For other categories: limit to 5 per channel to show variety (must match initial load)
     if IsValid(m.top.rawname) and UCase(m.top.rawname) = "FAVORITES"
         ' No limit_claims_per_channel for Favorites
         ' Filter to videos from last 6 months
         sixMonthsAgo = curTime - (6 * 30 * 24 * 60 * 60)
         params["release_time"] = ">"+sixMonthsAgo.toStr()
     else
-        params["limit_claims_per_channel"] = 2
+        params["limit_claims_per_channel"] = 5
+        params["remove_duplicates"] = true
     end if
     ' Only include channel_ids when provided (e.g., most categories). Wild West intentionally omits this.
     if IsValid(m.top.channels)
@@ -59,18 +66,6 @@ function FetchNextPage(pageNum as integer)
     if notIdsMap.Keys().Count() > 0
         params["not_channel_ids"] = notIdsMap.Keys()
     end if
-    ' Debug context: counts and release cutoff
-    chCount = 0
-    if IsValid(params["channel_ids"])
-        if Type(params["channel_ids"]) = "roArray" or Type(params["channel_ids"]) = "Array"
-            chCount = params["channel_ids"].Count()
-        end if
-    end if
-    limitClaims = 0
-    if IsValid(params["limit_claims_per_channel"])
-        limitClaims = params["limit_claims_per_channel"]
-    end if
-    ? "[CatNext] limit=" + Str(limitClaims) + " channels=" + Str(chCount) + " release<" + curTime.ToStr()
     q = FormatJson({"jsonrpc":"2.0","method":"claim_search","params":params,"id":m.top.uid})
     ' Defensive: if channel_ids provided but empty, remove to avoid server-side filtering to zero
     if IsValid(params["channel_ids"]) and (Type(params["channel_ids"]) = "roArray" or Type(params["channel_ids"]) = "Array")
@@ -79,28 +74,21 @@ function FetchNextPage(pageNum as integer)
             q = FormatJson({"jsonrpc":"2.0","method":"claim_search","params":params,"id":m.top.uid})
         end if
     end if
-    ? "[CatNext] claim_search page=" + pageNum.ToStr() + " rawname=" + m.top.rawname
     resp = postJSON(q, queryURL, invalid)
-    if not IsValid(resp) or not IsValid(resp.result)
-        ? "[CatNext] no result from claim_search"
-    end if
     items = []
     try
         if IsValid(resp) and IsValid(resp.result) and IsValid(resp.result.items)
-            ? "[CatNext] resp.items=" + Str(resp.result.items.Count())
             for each cl in resp.result.items
                 pv = parseVideo(cl)
-                if pv.Count() > 0 then items.push(pv)
+                if pv.Count() > 0 then
+                    items.push(pv)
+                end if
             end for
-        else
-            ? "[CatNext] items missing in response"
         end if
     catch e
-        ? "[CatNext] parse error"
     end try
     ' build content rows
     content = createObject("RoSGNode","ContentNode")
-    ? "[CatNext] items parsed=" + Str(items.Count())
     counter = 0: currow = invalid
     for each it in items
         if counter < 4
@@ -121,7 +109,6 @@ function FetchNextPage(pageNum as integer)
         end if
     end for
     if IsValid(currow) and currow.getChildCount() > 0 then content.appendChild(currow)
-    ? "[CatNext] rows=" + Str(content.getChildCount()) + " tiles=" + Str(items.Count())
     return { content: content, items: items }
 end function
 

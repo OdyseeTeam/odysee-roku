@@ -1,9 +1,11 @@
-sub Init()
+﻿sub Init()
     m.historyGrid = m.top.findNode("historyGrid")
     m.statusText = m.top.findNode("statusText")
+    m.clearBtn = m.top.findNode("clearHistoryButton")
 
     m.historyGrid.observeField("rowItemSelected", "onVideoSelected")
     m.historyGrid.observeField("itemFocused", "onItemFocused")
+    if IsValid(m.clearBtn) then m.clearBtn.observeField("buttonSelected", "onClearHistorySelected")
 
     m.top.observeField("restoreFocus", "onRestoreFocus")
     m.top.observeField("visible", "onVisibleChanged")
@@ -30,6 +32,7 @@ sub onVisibleChanged()
     ' Reload history when scene becomes visible
     if m.top.visible = true
         loadWatchHistory()
+        if IsValid(m.clearBtn) then m.clearBtn.visible = true
     end if
 end sub
 
@@ -123,6 +126,69 @@ sub onMetadataFetched()
 
     ' Build grid content (4 items per row)
     buildGrid(results)
+end sub
+
+sub onClearHistorySelected()
+    print "[WatchHistory] Clear History pressed"
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = "Clear Watch History?"
+    dialog.message = "This removes all locally saved watch progress. This cannot be undone."
+    dialog.buttons = ["Clear", "Cancel"]
+    dialog.observeField("buttonSelected", "onClearHistoryDialogButton")
+    scene = m.top.getScene()
+    if IsValid(scene) then scene.dialog = dialog
+end sub
+
+sub onClearHistoryDialogButton(e as object)
+    idx = e.getData()
+    scene = m.top.getScene()
+    if IsValid(scene) then scene.dialog = invalid
+    if idx = 0
+        reg = CreateObject("roRegistrySection", "watchHistory")
+        keys = reg.GetKeyList()
+        for each k in keys
+            reg.Delete(k)
+        end for
+        reg.Flush()
+        clearProgressFromHomeGrid()
+        m.statusText.visible = true
+        m.statusText.text = "Watch history cleared"
+        m.historyGrid.visible = false
+        if IsValid(m.clearBtn) then m.clearBtn.setFocus(true)
+    else
+        if IsValid(m.historyGrid) and m.historyGrid.visible = true
+            m.historyGrid.setFocus(true)
+        else if IsValid(m.clearBtn)
+            m.clearBtn.setFocus(true)
+        end if
+    end if
+end sub
+
+sub clearProgressFromHomeGrid()
+    scene = m.top.getScene()
+    if not IsValid(scene) then return
+    vg = invalid
+    try
+        vg = scene.findNode("vgrid")
+    catch e
+        vg = invalid
+    end try
+    if not IsValid(vg) or not IsValid(vg.content) then return
+    rowCount = 0
+    try: rowCount = vg.content.getChildCount() : catch e: rowCount = 0 : end try
+    for r = 0 to rowCount - 1
+        rowNode = vg.content.getChild(r)
+        if IsValid(rowNode)
+            ic = 0
+            try: ic = rowNode.getChildCount() : catch e: ic = 0 : end try
+            for c = 0 to ic - 1
+                n = rowNode.getChild(c)
+                if IsValid(n)
+                    n.addFields({ watchProgress: 0 })
+                end if
+            end for
+        end if
+    end for
 end sub
 
 sub buildGrid(results as object)
@@ -260,15 +326,21 @@ function addHistorySection(content as object, sectionLabel as string, items as o
                 node.URL = "lbry://" + result.claimId
             end if
 
-            ' Calculate watch progress percentage with minimum 1%
-            if IsValid(result.duration) and result.duration > 0
-                progress = (result.position / result.duration) * 100
-                if progress > 100 then progress = 100
-                if progress > 0 and progress < 1 then progress = 1
-                if progress < 0 then progress = 0
-                node.addFields({ watchProgress: progress })
-            else if IsValid(result.lastPlayedAt)
-                node.addFields({ watchProgress: 1 })
+            ' Calculate watch progress percentage with minimum 1% (skip for livestreams)
+            isLivestream = IsValid(result.itemType) and result.itemType = "livestream"
+            if not isLivestream
+                if IsValid(result.duration) and result.duration > 0 and IsValid(result.position)
+                    progress = (result.position / result.duration) * 100
+                    if progress > 100 then progress = 100
+                    if progress < 0 then progress = 0
+                    ' Show minimum 1% for any video in watch history (even if position is 0)
+                    ' This indicates the video was opened/viewed, even briefly
+                    if progress < 1 then progress = 1
+                    node.addFields({ watchProgress: progress })
+                else if IsValid(result.lastPlayedAt)
+                    ' Fallback: show 1% if we have lastPlayedAt but no duration
+                    node.addFields({ watchProgress: 1 })
+                end if
             end if
         end for
     end for
@@ -313,13 +385,52 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
 
     if key = "back"
-        ' Let parent handle back button
+        ' If clear button has focus, move back to grid instead of bubbling
+        if IsValid(m.clearBtn)
+            has = false
+            try: has = m.clearBtn.hasFocus() : catch e: has = false : end try
+            if has = true and IsValid(m.historyGrid)
+                m.historyGrid.setFocus(true)
+                m.historyGrid.jumpToRowItem = [0, 0]
+                return true
+            end if
+        end if
+        ' Let parent handle back button otherwise
         return false
     else if key = "*" or key = "options"
         ' Navigate to channel page for currently focused video
         navigateToChannel()
         return true
     end if
+
+    ' DOWN from clear button -> return focus to grid
+    if key = "down"
+        if IsValid(m.clearBtn)
+            cf = false
+            try: cf = m.clearBtn.hasFocus() : catch e: cf = false : end try
+            if cf = true and IsValid(m.historyGrid)
+                m.historyGrid.setFocus(true)
+                return true
+            end if
+        end if
+    end if
+
+    ' LEFT from clear button -> return focus to grid (restore last known)
+    if key = "left"
+        if IsValid(m.clearBtn)
+            cf = false
+            try: cf = m.clearBtn.hasFocus() : catch e: cf = false : end try
+            if cf = true and IsValid(m.historyGrid)
+                m.historyGrid.setFocus(true)
+                r = 0: c = 0
+                if IsValid(m.lastFocusRow) then r = m.lastFocusRow
+                if IsValid(m.lastFocusCol) then c = m.lastFocusCol
+                m.historyGrid.jumpToRowItem = [r, c]
+                return true
+            end if
+        end if
+    end if
+
 
     ' Prevent focus from disappearing by blocking navigation at boundaries
     if not IsValid(m.historyGrid) or not m.historyGrid.visible then return false
@@ -348,9 +459,14 @@ function onKeyEvent(key as string, press as boolean) as boolean
 
     rowCount = content.getChildCount()
 
-    ' Guard UP - block if at first row
+    ' UP from first row -> focus clear history button
     if key = "up" and row = 0
-        return true
+        if IsValid(m.clearBtn)
+            m.clearBtn.setFocus(true)
+            return true
+        else
+            return true
+        end if
     end if
 
     ' Guard DOWN - block if at last row
@@ -371,6 +487,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
 
             ' Guard RIGHT - block if at last column in this row
             if key = "right" and col = itemCount - 1
+                ' If on top row, move to clear button instead of blocking
+                if row = 0 and IsValid(m.clearBtn)
+                    m.clearBtn.setFocus(true)
+                    return true
+                end if
                 return true
             end if
         end if
@@ -433,3 +554,4 @@ sub navigateToChannel()
         end if
     end if
 end sub
+
