@@ -40,8 +40,6 @@
       rowLabelOffset="[-50]"
       rowFocusAnimationStyle="floatingFocus"
       vertFocusAnimationStyle="fixedFocus"
-      wrapDividerBitmapUri=""
-      wrapDividerHeight="0"
       visible="true"
     />
 
@@ -52,4 +50,3 @@
     </Label>
   </children>
 </component>
-

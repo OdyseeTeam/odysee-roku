@@ -55,10 +55,10 @@ function restoreCategoryPosition() as object
   key = getCurrentViewKey()
 
   if IsValid(m.categoryPositions[key])
-    pos = m.categoryPositions[key]
-    if Type(pos) = "roArray" and pos.Count() >= 2
-      ?"[NAV] Restored position for " + key + ": [" + pos[0].ToStr() + ", " + pos[1].ToStr() + "]"
-      return pos
+    posi = m.categoryPositions[key]
+    if Type(posi) = "roArray" and posi.Count() >= 2
+      ?"[NAV] Restored position for " + key + ": [" + posi[0].ToStr() + ", " + posi[1].ToStr() + "]"
+      return posi
     end if
   end if
 
@@ -70,10 +70,10 @@ end function
 sub restoreGridFocus()
   if not IsValid(m.videoGrid) then return
 
-  pos = restoreCategoryPosition()
-  if IsValid(pos) and Type(pos) = "roArray" and pos.Count() >= 2
-    row = pos[0]
-    col = pos[1]
+  posi = restoreCategoryPosition()
+  if IsValid(posi) and Type(posi) = "roArray" and posi.Count() >= 2
+    row = posi[0]
+    col = posi[1]
 
     ' Validate the position is within bounds
     if IsValid(m.videoGrid.content)

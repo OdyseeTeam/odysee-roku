@@ -708,7 +708,7 @@ sub init()
       type: m.top.mediaType
     }
     ?"Setting initial deeplink from launch: "; deeplink
-    m.global.deeplink = deeplink
+    m.global.addFields({ deeplink: deeplink })
   end if
 
   m.favoritesThread = CreateObject("roSGNode", "getSinglePage")
@@ -888,8 +888,10 @@ sub onRowItemFocused()
   if col >= 1 and row >= lastRow - 1 then shouldPrefetch = true
   if shouldPrefetch
     ' Safe prefetch debug
-    sa$ = "false": if m.searchActive then sa$ = "true"
-    ch$ = "": if IsValid(m.currentChannelId) then ch$ = m.currentChannelId
+    sa$ = "false": 
+    if m.searchActive then sa$ = "true"
+    ch$ = "": 
+    if IsValid(m.currentChannelId) then ch$ = m.currentChannelId
     ? "[Prefetch] row=" + Str(row) + "/" + Str(lastRow) + " col=" + Str(col) + " searchActive=" + sa$ + " channelId=" + ch$
     ' Prefer channel paging when viewing a channel
     if IsValid(m.currentChannelId) and m.currentChannelId <> ""
@@ -1330,39 +1332,6 @@ end sub
 sub onNextPageLoaded(evt as object)
   if type(evt) <> "roSGNodeEvent" then return
   data = evt.getData()
-  ' Debug: Check for duplicate claim IDs
-  if IsValid(data) and IsValid(data.claimIds) and IsValid(data.rawname)
-    catName = data.rawname
-    newClaimIds = data.claimIds
-    ? "[onNextPageLoaded] " + catName + " - Received " + Str(newClaimIds.Count()) + " new claims"
-    if IsValid(m.categoryClaimIds[catName])
-      existingIds = m.categoryClaimIds[catName]
-      duplicateCount = 0
-      duplicates = []
-      for each newId in newClaimIds
-        for each existingId in existingIds
-          if newId = existingId
-            duplicateCount = duplicateCount + 1
-            if duplicates.Count() < 5
-              duplicates.push(newId)
-            end if
-            exit for
-          end if
-        end for
-      end for
-      if duplicateCount > 0
-        ? "[DUPLICATE WARNING] " + catName + " - Found " + Str(duplicateCount) + " duplicate claims!"
-        ? "[DUPLICATE WARNING] First duplicates: " + duplicates.Join(", ")
-      else
-        ? "[onNextPageLoaded] " + catName + " - No duplicates found"
-      end if
-      ' Append new claim IDs to existing list
-      existingIds.Append(newClaimIds)
-      m.categoryClaimIds[catName] = existingIds
-    else
-      m.categoryClaimIds[catName] = newClaimIds
-    end if
-  end if
   ' Append new rows to the current grid
   if IsValid(data) and IsValid(data.content)
     clearLoadingPlaceholderRow()
@@ -2138,7 +2107,7 @@ sub finishInit()
 
   ' Adjust grid position for buttons (History button visible for all users)
   m.videoGrid.translation = [210, 150]
-  m.global.scene.signalBeacon("AppLaunchComplete")
+  m.top.signalBeacon("AppLaunchComplete")
   ' Check for deep link parameters passed from main.brs via global args (if not already set)
   if not isValid(m.global.deeplink) or not isValid(m.global.deeplink.contentId)
     if isValid(m.global.deeplink) and type(m.global.deeplink) = "roAssociativeArray"
@@ -2156,7 +2125,7 @@ sub finishInit()
           type: m.global.deeplink.mediaType
         }
         ?"Setting initial deeplink from main args: "; formatJson(deeplink)
-        m.global.deeplink = deeplink
+        m.global.addFields({ deeplink: deeplink })
       end if
     end if
   end if
@@ -3550,7 +3519,6 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
     ?"task running, denying user input"
     return true
   end if
-
 end function
 
 sub videoButtonFocused(msg)
@@ -3945,7 +3913,19 @@ sub handleInputEvent(msg)
     if deeplink <> invalid
       ?"Got deeplink"
       ?deeplink
-      m.global.deeplink = deeplink
+      m.global.addFields({ deeplink: deeplink })
+      ' Trigger playback immediately when a deep link is received at runtime
+      content$ = ""
+      if deeplink.DoesExist("contentId") then content$ = deeplink.contentId
+      if content$ = "" and deeplink.DoesExist("contentID") then content$ = deeplink.contentID
+      if content$ = "" and deeplink.DoesExist("content_id") then content$ = deeplink.content_id
+      if content$ <> ""
+        if content$.instr("http") < 0
+          resolveVideo(content$)
+        else
+          resolveVideo(content$)
+        end if
+      end if
     end if
   end if
 end sub
@@ -4206,7 +4186,6 @@ end sub
 'end sub
 
 sub resolveVideo(url = invalid)
-  ? "[VideoLoad] ========== Video Selection Started =========="
   ?type(url)
   if type(url) = "roSGNodeEvent" 'we might actually pass a URL (string) through to this as well.
     incomingData = url.getData()
@@ -4217,13 +4196,7 @@ sub resolveVideo(url = invalid)
         ' Capture current item guid for robust return
         if IsValid(curItem) and IsValid(curItem.guid) then m.currentVideoGuid = curItem.guid
 
-        ? "[VideoLoad] User selected video at position ["; incomingData[0]; ", "; incomingData[1]; "]"
-        ? "[VideoLoad] Item type: "; curItem.itemType
-        if IsValid(curItem.TITLE) then ? "[VideoLoad] Video title: "; curItem.TITLE
-        if IsValid(curItem.guid) then ? "[VideoLoad] Claim ID: "; curItem.guid
-
         if curItem.itemType = "video"
-          ? "[VideoLoad] Starting regular video resolution..."
           resolveEvaluatedVideo(curItem) 'used for this AND next video/previous video
         end if
         if curItem.itemType = "channel"
@@ -4407,17 +4380,12 @@ end sub
 
 sub resolveEvaluatedVideo(curItem)
   ?"Resolving a Video"
-  ? "[VideoLoad] Entering resolveEvaluatedVideo()"
-  ? "[VideoLoad] Video URL: "; curItem.URL
-  if IsValid(curItem.streamFormat) then ? "[VideoLoad] Stream format: "; curItem.streamFormat
 
   m.currentVideoChannelIcon = curitem.channelicon
   m.currentVideoChannelID = curItem.channel 'Current claim ID for Video's Channel
   m.currentVideoClaimID = curItem.guid 'Current claim ID for Video
   m.currentVideoGuid = curItem.guid ' For grid restoration
   isFollowed = false
-
-  ? "[VideoLoad] Setting up video buttons and UI..."
   if m.wasLoggedIn
     ' Choose live vs VOD button sets; exclude restart/loop on livestreams
     if isValid(curItem.streamFormat) and LCase(curItem.streamFormat) = "hls"
@@ -4478,10 +4446,6 @@ sub resolveEvaluatedVideo(curItem)
   m.skipHoldCount = 0
   m.skipHoldDirection = 0
   m.urlResolver.observeField("output", "playResolvedVideo")
-  ' Start timing video load
-  if not IsValid(m.videoLoadTimer) then m.videoLoadTimer = CreateObject("roTimeSpan")
-  m.videoLoadTimer.Mark()
-  ? "[VideoLoad] Starting video resolution at T+0ms for claim: "; m.currentVideoClaimID
 
   m.urlResolver.control = "RUN"
   m.taskRunning = True
@@ -4489,8 +4453,7 @@ sub resolveEvaluatedVideo(curItem)
   m.videoGrid.visible = false
   m.loadingText.visible = true
   m.loadingText.text = "Loading Video..."
-  ? "[VideoLoad] urlResolver task started, waiting for response..."
-end sub
+  end sub
 
 sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem that livestreams do not start at live.
   ?m.video.position
@@ -4657,26 +4620,14 @@ sub playResolvedVideo(msg as object)
   if type(msg) = "roSGNodeEvent"
     data = msg.getData()
 
-    ' Log timing information
-    elapsed = 0
-    if IsValid(m.videoLoadTimer) then elapsed = m.videoLoadTimer.TotalMilliseconds()
-    ? "[VideoLoad] playResolvedVideo called at T+"; elapsed; "ms"
-
     if isValid(data.error)
-      ? "[VideoLoad] ERROR: Video resolution failed at T+"; elapsed; "ms - "; data.error
       m.urlResolver.unobserveField("output")
       m.urlResolver.control = "STOP"
       m.taskRunning = False
       resolveError()
     else if isValid(data.length) = false
-      ? "[VideoLoad] ERROR: Malformed video data (no length) at T+"; elapsed; "ms"
       malformedVideoError()
     else
-      ? "[VideoLoad] Video resolved successfully at T+"; elapsed; "ms"
-      ? "[VideoLoad] Video URL: "; data.videourl
-      ? "[VideoLoad] Video type: "; data.videotype
-      ? "[VideoLoad] Video length: "; data.length; " seconds"
-
       m.videoGrid.visible = true
       m.videoGrid.setFocus(false)
       m.categorySelector.setFocus(false)
@@ -4714,9 +4665,7 @@ sub playResolvedVideo(msg as object)
       updatePlaybackRateUI(m.playbackRateLabels[m.playbackRateIndex])
       updateLoopButtonUI()
       applyPlaybackRate()
-      ? "[VideoLoad] Starting video playback at T+"; m.videoLoadTimer.TotalMilliseconds(); "ms"
       m.video.control = "play"
-
       ' Attempt to resume from saved position in watch history
       m.pendingResume = -1
       if isValid(m.currentVideoClaimID)
@@ -4728,7 +4677,6 @@ sub playResolvedVideo(msg as object)
               seconds = Int(historyData.position)
               if seconds > 0 and seconds < data.length - 15
                 m.pendingResume = seconds
-                ? "[VideoLoad] Will resume from position: "; seconds; " seconds"
               end if
             end if
           catch e
@@ -4752,7 +4700,6 @@ sub playResolvedVideo(msg as object)
       m.urlResolver.unobserveField("output")
       m.urlResolver.control = "STOP"
       m.taskRunning = False
-      ? "[VideoLoad] Video load complete at T+"; m.videoLoadTimer.TotalMilliseconds(); "ms"
     end if
   end if
 end sub
@@ -4800,12 +4747,6 @@ function onVideoStateChanged(msg as object)
     state = msg.getData()
     ?"==========VIDEO STATE==========="
     ?state
-
-    ' Log video state changes with timing
-    elapsed = 0
-    if IsValid(m.videoLoadTimer) then elapsed = m.videoLoadTimer.TotalMilliseconds()
-    ? "[VideoLoad] Video state changed to: "; state; " at T+"; elapsed; "ms"
-
     if state = "error"
       m.video.unobserveField("state")
       m.videoObserved = false
@@ -5302,7 +5243,8 @@ sub gotResolvedChannel(msg as object)
         end if
       catch e
       end try
-      ch$ = "": if IsValid(m.currentChannelId) then ch$ = m.currentChannelId
+      ch$ = "": 
+      if IsValid(m.currentChannelId) then ch$ = m.currentChannelId
       ? "[Channel] context channelId=" + ch$
       m.currentChannelPage = 1
       m.loadingChannelNext = false
@@ -6852,7 +6794,7 @@ end sub
 
 ' Hide Watch History Scene
 sub hideWatchHistory()
-  ?"[WatchHistory] Closing watch history view, uiLayer="; m.uiLayer
+  ?"[WatchHistory] Closing watch history view"
 
   ' Hide watch history scene
   m.watchHistoryScene.visible = false
@@ -7513,8 +7455,3 @@ sub restartApp()
   ' Soft-reinitialize by invoking Logout flow (device-code screen)
   Logout()
 end sub
-
-
-
-
-
