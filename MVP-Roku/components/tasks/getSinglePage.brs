@@ -66,8 +66,20 @@ function ChannelsToVideoGrid(channels, blockedChannels)
     pageData = getVideoPage(curPage)
     ? "GetSinglePage," + threadname + ",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
     initialReleaseTime = invalid
-    if IsValid(pageData) and IsValid(pageData.releaseTime)
+    ' Check if pageData is valid before accessing properties
+    if not IsValid(pageData) or Type(pageData) <> "roAssociativeArray"
+        m.top.error = true
+        m.top.numerrors += 1
+        return { error: true }
+    end if
+    if IsValid(pageData.releaseTime)
         initialReleaseTime = pageData.releaseTime
+    end if
+    ' Check if items array exists
+    if not IsValid(pageData.items) or Type(pageData.items) <> "roArray"
+        m.top.error = true
+        m.top.numerrors += 1
+        return { error: true }
     end if
     currentPage = pageData.items
     while gotEnough = false
@@ -101,6 +113,15 @@ function ChannelsToVideoGrid(channels, blockedChannels)
         m.parseLibTimer.Mark()
         pageData = getVideoPage(curPage)
         ? "GetSinglePage," + threadname + ",getPage," + (m.parseLibTimer.TotalMilliseconds() / 1000).ToStr()
+        ' Check if pageData is valid before accessing properties
+        if not IsValid(pageData) or Type(pageData) <> "roAssociativeArray"
+            gotEnough = true
+            exit while
+        end if
+        if not IsValid(pageData.items) or Type(pageData.items) <> "roArray"
+            gotEnough = true
+            exit while
+        end if
         currentPage = pageData.items
     end while
     '? "GetSinglePage,"+threadname+",get," + (m.parseTimer.TotalMilliseconds() / 1000).ToStr()

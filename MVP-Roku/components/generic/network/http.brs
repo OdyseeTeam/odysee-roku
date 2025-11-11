@@ -44,7 +44,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
             try
               cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-              response = parsejson(event.getString().replace("\n","|||||"))
+              response = parsejson(cleanJSONString(event.getString()))
             catch e
               response = { success: False }
             end try
@@ -185,7 +185,7 @@ function postURLEncoded(data, url, headers) as Object
           if responseCode >= 200 and responseCode <= 299
             cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-            response = parsejson(event.getString().replace("\n","|||||"))
+            response = parsejson(cleanJSONString(event.getString()))
             done = true
             exit while
           else if responseCode >= 300 and responseCode <= 399
@@ -203,7 +203,7 @@ function postURLEncoded(data, url, headers) as Object
             try
               cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-              response = parsejson(event.getString().replace("\n","|||||"))
+              response = parsejson(cleanJSONString(event.getString()))
             catch e
               response = { success: False }
             end try
@@ -285,7 +285,7 @@ function getURLEncoded(data, url, headers) as Object
           if responseCode >= 200 AND responseCode <= 299
             cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-            response = parsejson(event.getString().replace("\n","|||||"))
+            response = parsejson(cleanJSONString(event.getString()))
             done = true
             exit while
           else if responseCode >= 300 AND responseCode <= 399
@@ -303,7 +303,7 @@ function getURLEncoded(data, url, headers) as Object
             try
               cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-              response = parsejson(event.getString().replace("\n","|||||"))
+              response = parsejson(cleanJSONString(event.getString()))
             catch e
               response = { success: False }
             end try
@@ -399,7 +399,7 @@ function getJSONAuthenticated(url, headers = invalid) as Object
             ' Success
             cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-            response = parsejson(event.getString().replace("\n","|||||"))
+            response = parsejson(cleanJSONString(event.getString()))
             done = true
             exit while
           else if responseCode >= 300 and responseCode <= 399
@@ -421,7 +421,7 @@ function getJSONAuthenticated(url, headers = invalid) as Object
             try
               cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-              response = parsejson(event.getString().replace("\n","|||||"))
+              response = parsejson(cleanJSONString(event.getString()))
             catch e
               response = {success: False, error: "Client error"}
             end try
@@ -487,7 +487,7 @@ function getJSON(url) as Object
           if responseCode >= 200 AND responseCode <= 299
             cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-            response = parsejson(event.getString().replace("\n","|||||"))
+            response = parsejson(cleanJSONString(event.getString()))
             done = true
             exit while
           else if responseCode >= 300 AND responseCode <= 399
@@ -506,7 +506,7 @@ function getJSON(url) as Object
             try
               cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-              response = parsejson(event.getString().replace("\n","|||||"))
+              response = parsejson(cleanJSONString(event.getString()))
             catch e
               response = { success: False }
             end try
@@ -792,6 +792,20 @@ Function httpPreSetup(url)
     http.SetUrl(url)
     http.EnableCookies()
     return http
+End Function
+
+' Clean JSON string by removing newlines only (no character cleaning)
+Function cleanJSONString(jsonStr As String) As String
+    if not isValid(jsonStr) or jsonStr = ""
+        return jsonStr
+    end if
+    ' Remove actual newline characters (Chr(10)) and carriage returns (Chr(13))
+    cleaned = jsonStr.replace(Chr(10), "")
+    cleaned = cleaned.replace(Chr(13), "")
+    ' Remove the string "\n" if it appears (though it shouldn't in valid JSON)
+    cleaned = cleaned.replace("\n", "")
+    ' NOTE: We DON'T fix \  here - that's intentional
+    return cleaned
 End Function
 
 Sub cleanup()
