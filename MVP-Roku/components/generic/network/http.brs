@@ -25,7 +25,7 @@ function postJSON(json, url, headers) as Object 'json, url, headers: {header: he
           if responseCode >= 200 and responseCode <= 299
             cookies = http.getCookies("", "/")
             if cookies <> invalid then m.top.cookies = cookies
-            response = parsejson(event.getString().replace("\n","|||||"))
+            response = parsejson(cleanJSONString(event.getString()))
             done = true
             exit while
           else if responseCode >= 300 and responseCode <= 399
@@ -794,17 +794,17 @@ Function httpPreSetup(url)
     return http
 End Function
 
-' Clean JSON string by removing newlines only (no character cleaning)
+' Clean JSON string by removing actual newline characters only
+' IMPORTANT: Do NOT do string-based replacements for "\n" as this corrupts
+' valid JSON containing \\n (which becomes \ after replacement, creating invalid escapes)
 Function cleanJSONString(jsonStr As String) As String
     if not isValid(jsonStr) or jsonStr = ""
         return jsonStr
     end if
     ' Remove actual newline characters (Chr(10)) and carriage returns (Chr(13))
+    ' These are the only characters that need to be removed for valid JSON parsing
     cleaned = jsonStr.replace(Chr(10), "")
     cleaned = cleaned.replace(Chr(13), "")
-    ' Remove the string "\n" if it appears (though it shouldn't in valid JSON)
-    cleaned = cleaned.replace("\n", "")
-    ' NOTE: We DON'T fix \  here - that's intentional
     return cleaned
 End Function
 

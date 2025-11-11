@@ -169,7 +169,7 @@ function runtask() as void
                             m.parseTimer.Mark()
                             if isValid(message.message)
                                 message = ParseJson(message.message)
-                                if message.type = "delta"
+                                if IsValid(message) and Type(message) = "roAssociativeArray" and IsValid(message.type) and message.type = "delta"
                                     ? "GOT DELTA MESSAGE!"
                                     if isValid(message.data)
                                         ? "data valid"

@@ -1579,12 +1579,18 @@ sub gotAllLive(msg as object)
       if IsValid(m.categorySelector) and m.categorySelector.visible = true
         catIndex = m.categorySelector.itemFocused
         if catIndex >= 0 and IsValid(m.categorySelectordata) and catIndex < m.categorySelectordata.Count()
-          currentCatName = m.categorySelectordata[catIndex].trueName
+          if IsValid(m.categorySelectordata[catIndex].trueName)
+            currentCatName = m.categorySelectordata[catIndex].trueName
+          end if
         end if
       end if
 
       ' Update FAVORITES even when viewing to keep live streams current
-      ? "[Live] gotAllLive: updating FAVORITES; following=" + Str(m.preferences.following.Count()) + " viewing=" + currentCatName
+      if IsValid(currentCatName)
+        ? "[Live] gotAllLive: updating FAVORITES; following=" + Str(m.preferences.following.Count()) + " viewing=" + currentCatName
+      else
+        ? "[Live] gotAllLive: updating FAVORITES; following=" + Str(m.preferences.following.Count())
+      end if
       mergeLiveIntoCategory("FAVORITES", m.preferences.following, 0)
     end if
   end if
@@ -1762,7 +1768,7 @@ sub authPhaseChanged(msg as object)
       if m.wasLoggedIn = false
         authDone()
       end if
-      if m.constants["EMERG_DISABLE"]["accounts"]
+      if IsValid(m.constants) and IsValid(m.constants["EMERG_DISABLE"]) and IsValid(m.constants["EMERG_DISABLE"]["accounts"]) and m.constants["EMERG_DISABLE"]["accounts"]
         m.wasLoggedIn = false
         m.authTask.authPhase = 1.5
         m.authTask.control = "RUN"
@@ -2594,9 +2600,22 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                 m.videoGrid.content = m.uiLayers[m.uiLayers.Count() - 1]
               end if
               if m.uiLayers.Count() > 0 and isValid(m.uiLayers[m.uiLayers.Count() - 1])
-                if m.videoGrid.content.getChildren(1, 0)[0].getChildren(1, 0)[0].itemType = "channel" 'if we go back to a Channel search, we should downsize the video grid.
-                  downsizeVideoGrid()
-                end if
+                ' Safely check deep chain for channel itemType
+                try
+                  if isValid(m.videoGrid.content)
+                    firstRow = m.videoGrid.content.getChildren(1, 0)
+                    if isValid(firstRow) and firstRow.Count() > 0 and isValid(firstRow[0])
+                      firstItem = firstRow[0].getChildren(1, 0)
+                      if isValid(firstItem) and firstItem.Count() > 0 and isValid(firstItem[0])
+                        if isValid(firstItem[0].itemType) and firstItem[0].itemType = "channel"
+                          downsizeVideoGrid()
+                        end if
+                      end if
+                    end if
+                  end if
+                catch e
+                  ' Ignore errors accessing deep chain
+                end try
               end if
               m.uiLayer -= 1
               if m.uiLayer = 0
