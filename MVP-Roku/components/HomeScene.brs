@@ -1675,6 +1675,7 @@ sub authPhaseChanged(msg as object)
       m.oauthFooter.visible = false
       ' Keep loading text visible until app finishes loading categories
       m.loadingText.text = "Loading personalized content..."
+      m.loadingText.visible = true
       if m.syncTimerObserved = false
         m.syncLoop.setFields({ "accessToken": m.accessToken, "constants": m.constants })
         m.syncLoop.control = "RUN"
@@ -5934,7 +5935,9 @@ sub gotFavorites(msg as object)
       m.favoritesLoaded = true
       ?m.focusedItem
       ?m.categorySelector.itemFocused
-      if m.focusedItem = 1 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 or m.focusedItem = 2 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0
+      ' Update UI if on Following tab (categorySelector.itemFocused = 1) and at main level
+      ' Use broader condition to handle edge cases after auth completion
+      if m.categorySelector.itemFocused = 1 and m.uiLayer = 0
         m.oauthHeader.visible = false
         m.oauthCode.visible = false
         m.oauthFooter.visible = false
@@ -5945,9 +5948,14 @@ sub gotFavorites(msg as object)
         end if
         truename = invalid
         m.videoGrid.visible = true
-        m.videoGrid.setFocus(true)
-        m.focusedItem = 2
+        ' Only take focus if we're on categorySelector or videoGrid, not if user navigated elsewhere
+        if m.focusedItem = 1 or m.focusedItem = 2
+          m.videoGrid.setFocus(true)
+          m.focusedItem = 2
+        end if
         m.oauthLogoutButton.visible = isUserLoggedIn()
+        m.oauthChannelsButton.visible = isUserLoggedIn()
+        m.oauthHistoryButton.visible = isUserLoggedIn()
       else if m.focusedItem = 7 and m.categorySelector.itemFocused = 1 and m.uiLayer = 0 'update under video
         m.videoGrid.content = m.categories["FAVORITES"]
         restoreGridFocus() ' Restore saved position for favorites
