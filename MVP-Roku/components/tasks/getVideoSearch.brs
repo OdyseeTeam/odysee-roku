@@ -13,7 +13,14 @@ sub master()
 end sub
 function getLighthouseResult(search)
     m.errorType = "noResults"
-    queryURL = m.top.constants["LIGHTHOUSE_API"]
+    queryURL = invalid
+    if isValid(m.top.constants) and isValid(m.top.constants["LIGHTHOUSE_API"])
+        queryURL = m.top.constants["LIGHTHOUSE_API"]
+    end if
+    if not isValid(queryURL) or queryURL = ""
+        ?"lighthouse error: missing LIGHTHOUSE_API"
+        return { result: {}, success: false, errortype: "lighthouseError" }
+    end if
     ' Request a larger first page to reduce blanks and improve scroll runway
     queryRAW = { s: m.top.search, size: "48", from: "0", "claimType": "file", nsfw: "false", free_only: "true" }
     ? "[Search:Video] Lighthouse request:" + FormatJson(queryRAW)
@@ -28,7 +35,9 @@ function getLighthouseResult(search)
         if queryResult.Count() > 0
             ?"valid"
             for each claim in queryResult
-                claimIds.push(claim.claimId)
+                if isValid(claim) and isValid(claim.claimId)
+                    claimIds.push(claim.claimId)
+                end if
             end for
             ? "lighthouse success"
             ? "[Search:Video] claim_ids count=" + Str(claimIds.Count())
@@ -50,12 +59,24 @@ end function
 
 function ClaimsToVideoGrid(claims)
     try
+        if not isValid(claims) or (Type(claims) <> "roArray" and Type(claims) <> "Array")
+            content = createObject("RoSGNode", "ContentNode")
+            return { contentarray: [], content: content, error: false }
+        end if
         queryOutput = "placeholder"
         date = CreateObject("roDateTime")
         date.Mark()
         curTime = date.AsSeconds()
         max = 48
-        queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+        queryBase = invalid
+        if isValid(m.top.constants) and isValid(m.top.constants["QUERY_API"])
+            queryBase = m.top.constants["QUERY_API"]
+        end if
+        if not isValid(queryBase) or queryBase = ""
+            content = createObject("RoSGNode", "ContentNode")
+            return { contentarray: [], content: content, error: false }
+        end if
+        queryURL = queryBase + "/api/v1/proxy?m=claim_search"
         queryJSON = FormatJson({ "jsonrpc": "2.0", "method": "claim_search", "params": { "page_size": max, "fee_amount": "<=0", "claim_type": ["stream"], "stream_types": ["video"], "no_totals": true, "any_tags": [], "not_tags": ["porn", "porno", "nsfw", "mature", "xxx", "sex", "creampie", "blowjob", "handjob", "boobs", "big boobs", "big dick", "pussy", "cumshot", "anal", "hard fucking", "ass", "fuck", "hentai"], "claim_ids": claims, "not_channel_ids": [], "order_by": ["release_time"], "release_time": "<" + curTime.toStr(), "include_purchase_receipt": false, "has_channel_signature": true, "valid_channel_signature": true, "has_source": true }, "id": m.top.uid })
         response = postJSON(queryJSON, queryURL, invalid)
         retries = 0

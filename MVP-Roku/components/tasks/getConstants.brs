@@ -20,6 +20,9 @@ sub master()
     if isValid(globalAPIConstants["ROOT_SDK"]) = false
         globalAPIConstants["ROOT_SDK"] = "https://api.na-backend.odysee.com" 'SDK is used for changing wallet (follow/unfollow/etc.)
     end if
+    if isValid(globalAPIConstants["QUERY_API"]) = false
+        globalAPIConstants["QUERY_API"] = "https://api.na-backend.odysee.com" 'QUERY_API is used for claim_search and other content queries
+    end if
     if isValid(globalAPIConstants["CHANNEL_ICON_PROCESSOR"]) = false
         globalAPIConstants["CHANNEL_ICON_PROCESSOR"] = "https://thumbnails.odycdn.com/optimize/s:100:0/quality:85/plain/"
     end if

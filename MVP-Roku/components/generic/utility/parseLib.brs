@@ -122,7 +122,15 @@ function getVideoPage(pageNum)
     m.time = CreateObject("roDateTime")
     m.time.Mark()
     curTime = m.time.AsSeconds()
-    queryURL = m.top.constants["QUERY_API"] + "/api/v1/proxy?m=claim_search"
+    queryBase = invalid
+    if isValid(m.top.constants) and isValid(m.top.constants["QUERY_API"])
+        queryBase = m.top.constants["QUERY_API"]
+    end if
+    if not isValid(queryBase) or queryBase = ""
+        print "[parseLib] getVideoPage: QUERY_API missing"
+        return { items: [], releaseTime: invalid }
+    end if
+    queryURL = queryBase + "/api/v1/proxy?m=claim_search"
     'orderBy support temporarily removed for this implementation
     rawChannels = []
     if isValid(m.top.channels)

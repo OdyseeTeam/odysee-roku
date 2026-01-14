@@ -4,6 +4,17 @@ sub safeSeek(newPos as integer)
   totalLen = getCurrentContentLength()
   if newPos < 0 then newPos = 0
   if totalLen > 0 and newPos > totalLen then newPos = totalLen
+  prevPos = 0
+  if IsValid(m.lastKnownVideoPos) then prevPos = m.lastKnownVideoPos
+  if prevPos = 0
+    try: prevPos = m.video.position : catch e: prevPos = 0 : end try
+  end if
+  if IsValid(m.seekStabilizeTimer)
+    m.seekStartPos = prevPos
+    m.seekExpectedPos = newPos
+    m.seekStabilizeActive = true
+    m.seekStabilizeTimer.Mark()
+  end if
   try
     m.video.seek = newPos
     m.lastKnownVideoPos = newPos
@@ -350,6 +361,488 @@ sub updateScrubUI()
   end if
 end sub
 
+' Show scrub UI elements for hold-to-scrub mode
+sub showScrubUI()
+  if IsValid(m.scrubHighlight) then m.scrubHighlight.visible = true
+  if IsValid(m.scrubMarker) then m.scrubMarker.visible = true
+  if IsValid(m.scrubTimePreview) then m.scrubTimePreview.visible = true
+end sub
+
+' Hide scrub UI elements when scrub mode ends
+sub hideScrubUI()
+  if IsValid(m.scrubHighlight) then m.scrubHighlight.visible = false
+  if IsValid(m.scrubMarker) then m.scrubMarker.visible = false
+  if IsValid(m.scrubTimePreview) then m.scrubTimePreview.visible = false
+end sub
+
+' Update the scrub highlight zone and marker position
+sub updateScrubHighlight()
+  totalLen = getCurrentContentLength()
+  if totalLen <= 0 then return
+
+  barWidth = 1290
+  currentX = barWidth * (m.scrubStartPos / totalLen)
+  targetX = barWidth * (m.scrubTargetPos / totalLen)
+
+  ' Highlight zone between current and target
+  if IsValid(m.scrubHighlight)
+    if targetX > currentX
+      ' Fast forward - highlight from current to target
+      m.scrubHighlight.translation = [302 + currentX, 67]
+      m.scrubHighlight.width = targetX - currentX
+    else
+      ' Rewind - highlight from target to current
+      m.scrubHighlight.translation = [302 + targetX, 67]
+      m.scrubHighlight.width = currentX - targetX
+    end if
+  end if
+
+  ' Position marker at target
+  if IsValid(m.scrubMarker)
+    m.scrubMarker.translation = [302 + targetX - 1, 62]
+  end if
+
+  ' Update time preview
+  if IsValid(m.scrubTimePreview)
+    m.scrubTimePreview.text = getvideoLength(m.scrubTargetPos)
+  end if
+end sub
+
+function calcScrubSkipAmount(totalLen as integer, holdCount as integer) as integer
+  baseSkip = 10
+  if IsValid(m.skipStep) and m.skipStep > 0
+    baseSkip = m.skipStep
+  end if
+  if totalLen >= 300 and holdCount <= 2
+    return baseSkip
+  end if
+  skipAmount = 0
+  if totalLen < 300  ' <5 min: 10s/20s/30s
+    if holdCount <= 3
+      skipAmount = 10
+    else if holdCount <= 7
+      skipAmount = 20
+    else
+      skipAmount = 30
+    end if
+  else if totalLen < 1800  ' 5-30 min: 1%/2%/3%
+    if holdCount <= 3
+      skipAmount = totalLen * 0.01
+    else if holdCount <= 7
+      skipAmount = totalLen * 0.02
+    else
+      skipAmount = totalLen * 0.03
+    end if
+    if skipAmount < 10 then skipAmount = 10
+  else  ' >30 min: 2%/5%/10%
+    if holdCount <= 3
+      skipAmount = totalLen * 0.02
+    else if holdCount <= 7
+      skipAmount = totalLen * 0.05
+    else
+      skipAmount = totalLen * 0.10
+    end if
+  end if
+  return skipAmount
+end function
+
+' Enter progress bar scrub mode after a hold starts
+sub enterScrubModeFromHold()
+  if m.progressBarSelected then return
+
+  m.progressBarSelected = true
+  m.blockVideoButtonsFocusEvents = true
+
+  if IsValid(m.videoUITimer)
+    m.videoUITimer.control = "stop"
+    m.videoUITimer.unobserveField("fire")
+  end if
+
+  if IsValid(m.progressBarFocus)
+    m.progressBarFocus.color = "0xF05060FF"
+    m.progressBarFocus.visible = true
+  end if
+
+  try: m.videoButtons.setFocus(false) : catch e: end try
+  try: m.video.setFocus(true) : catch e: end try
+
+  showScrubUI()
+end sub
+
+' Start scrub mode for hold-to-scrub (direction: -1=rewind, 1=fastforward)
+' Quick tap (<hold threshold) = single 10s skip; hold (>= threshold) = percentage-based scrubbing
+sub startScrub(direction as integer, keepButtonFocus = false as boolean)
+  if not IsValid(m.video) or not m.video.visible then return
+  if IsValid(m.videoContent) and m.videoContent.Live then return
+
+  ' Prevent multiple startScrub calls
+  if m.scrubbing then return
+
+  ' Clean up any previous timer state first
+  m.ffrwTimer.control = "stop"
+  m.ffrwTimer.unobserveField("fire")
+
+  m.scrubbing = true
+  m.scrubDirection = direction
+  m.scrubHoldCount = 0
+  m.scrubHoldTicks = 0
+  m.scrubReleasePending = false
+  m.seekStabilizeActive = false
+  m.seekExpectedPos = 0
+  m.seekStartPos = 0
+
+  ' Get current position
+  m.scrubStartPos = 0
+  if IsValid(m.lastKnownVideoPos) then m.scrubStartPos = m.lastKnownVideoPos
+  if m.scrubStartPos = 0 then
+    try: m.scrubStartPos = m.video.position : catch e: end try
+  end if
+  m.scrubTargetPos = m.scrubStartPos
+
+  ' Show overlay immediately
+  showVideoOverlay(keepButtonFocus)
+
+  ' Start timer; scrub mode activates after the hold threshold
+  ' If released before that, endScrub does a single 10s skip
+  m.ffrwTimer.observeField("fire", "onScrubTimer")
+  m.ffrwTimer.control = "start"
+end sub
+
+' End scrub mode and seek to target position
+sub endScrub()
+  if not m.scrubbing then return
+
+  m.ffrwTimer.control = "stop"
+  m.ffrwTimer.unobserveField("fire")
+
+  ' Quick tap (released before hold threshold) = single 10s skip
+  if m.scrubHoldTicks < m.scrubHoldThresholdTicks
+    skipVideo(m.skipStep * m.scrubDirection)
+    hideScrubUI()
+  else if m.scrubTargetPos <> m.scrubStartPos
+    ' Hold-to-scrub: seek to target position
+    safeSeek(m.scrubTargetPos)
+    m.scrubTarget = m.scrubTargetPos
+    updateScrubUI()
+    saveWatchHistory()
+    sendViewProgress()
+  end if
+
+  m.scrubbing = false
+  m.scrubDirection = 0
+  m.scrubHoldCount = 0
+  m.scrubHoldTicks = 0
+  m.scrubReleasePending = false
+  m.scrubKeyHeld = false
+end sub
+
+' Timer callback for hold-to-scrub - accelerates with hold duration
+' Skip amounts are dynamic based on content length to feel consistent
+sub onScrubTimer()
+  if not m.scrubbing then return
+  if m.scrubReleasePending
+    if IsValid(m.scrubReleaseTimer)
+      if m.scrubReleaseTimer.TotalSeconds() >= m.scrubReleaseDelay
+        m.scrubReleasePending = false
+        endScrub()
+      end if
+    else
+      m.scrubReleasePending = false
+      endScrub()
+    end if
+    return
+  end if
+
+  totalLen = getCurrentContentLength()
+  if totalLen <= 0 then return
+
+  m.scrubHoldTicks += 1
+  if m.scrubHoldTicks < m.scrubHoldThresholdTicks then return
+
+  ' On hold threshold, show scrub UI (user is holding, not just tapping)
+  if m.scrubHoldTicks = m.scrubHoldThresholdTicks
+    enterScrubModeFromHold()
+    m.scrubHoldCount = 0
+  end if
+
+  m.scrubHoldCount += 1
+  skipAmount = calcScrubSkipAmount(totalLen, m.scrubHoldCount)
+
+  m.scrubTargetPos = m.scrubTargetPos + (skipAmount * m.scrubDirection)
+
+  ' Clamp to valid range
+  if m.scrubTargetPos < 0 then m.scrubTargetPos = 0
+  if m.scrubTargetPos > totalLen then m.scrubTargetPos = totalLen
+
+  updateScrubHighlight()
+end sub
+
+sub handleScrubKey(direction as integer, press as boolean, fromControlBar = false as boolean)
+  if direction = 0 then return
+  if not IsValid(m.video) then return
+  if not m.video.visible then return
+  if IsValid(m.videoContent) and m.videoContent.Live then return
+
+  if press
+    m.scrubKeyHeld = true
+    if m.scrubbing
+      if m.scrubReleasePending
+        m.scrubReleasePending = false
+      end if
+      return
+    end if
+
+    if m.progressBarSelected
+      startProgressBarScrub(direction)
+    else
+      startScrub(direction, fromControlBar)
+    end if
+  else
+    m.scrubKeyHeld = false
+    if m.scrubbing
+      if m.scrubHoldTicks >= m.scrubHoldThresholdTicks
+        m.scrubReleasePending = true
+        if IsValid(m.scrubReleaseTimer)
+          m.scrubReleaseTimer.Mark()
+        end if
+      else
+        endScrub()
+      end if
+    else if m.progressBarSelected
+      stopProgressBarScrub()
+    end if
+  end if
+end sub
+
+' Select progress bar for arrow key scrubbing
+sub selectProgressBar()
+  if m.progressBarSelected then return
+  m.progressBarSelected = true
+
+  ' Block video button focus events to prevent interference
+  m.blockVideoButtonsFocusEvents = true
+
+  ' Stop auto-hide timer so overlay stays visible during scrubbing
+  m.videoUITimer.control = "stop"
+  m.videoUITimer.unobserveField("fire")
+
+  ' Show focus highlight
+  if IsValid(m.progressBarFocus) then
+    m.progressBarFocus.color = "0xF05060FF"  ' Solid Odysee color
+    m.progressBarFocus.visible = true
+  end if
+
+  ' Initialize scrub position from current video position
+  m.scrubStartPos = 0
+  if IsValid(m.lastKnownVideoPos) then m.scrubStartPos = m.lastKnownVideoPos
+  if m.scrubStartPos = 0 and IsValid(m.video) then
+    try: m.scrubStartPos = m.video.position : catch e: end try
+  end if
+  m.scrubTargetPos = m.scrubStartPos
+  m.scrubHoldCount = 0
+
+  ' Unfocus control bar
+  try: m.videoButtons.setFocus(false) : catch e: end try
+  try: m.video.setFocus(true) : catch e: end try
+
+  ' Show scrub UI immediately
+  showScrubUI()
+end sub
+
+' Deselect progress bar and return to control bar
+sub deselectProgressBar(seekToTarget as boolean)
+  if not m.progressBarSelected then return
+
+  ' Stop any running scrub timer first
+  stopProgressBarScrub()
+  if IsValid(m.ffrwTimer)
+    m.ffrwTimer.control = "stop"
+    m.ffrwTimer.unobserveField("fire")
+  end if
+
+  ' Hide focus highlight
+  if IsValid(m.progressBarFocus) then m.progressBarFocus.visible = false
+
+  ' Seek to target if requested and position changed
+  if seekToTarget and m.scrubTargetPos <> m.scrubStartPos
+    safeSeek(m.scrubTargetPos)
+    m.scrubTarget = m.scrubTargetPos
+    updateScrubUI()
+    saveWatchHistory()
+    sendViewProgress()
+  end if
+
+  hideScrubUI()
+  m.progressBarSelected = false
+  m.scrubHoldCount = 0
+  m.progressBarScrubbing = false
+  m.progressBarKeyHeld = false
+  m.progressBarHoldArmed = false
+  m.progressBarHoldDirection = 0
+  m.progressBarReleasePending = false
+
+  ' Unblock video button focus events
+  m.blockVideoButtonsFocusEvents = false
+
+  ' Restart auto-hide timer if overlay is still visible
+  if IsValid(m.videoOverlayGroup) and m.videoOverlayGroup.visible
+    m.videoUITimer.duration = 5
+    m.videoUITimer.observeField("fire", "hideVideoOverlay")
+    m.videoUITimer.control = "start"
+  end if
+
+  ' Restore focus to control bar
+  try: m.videoButtons.setFocus(true) : catch e: end try
+end sub
+
+' Simple scrub navigation step (used by key presses and the hold timer)
+sub doScrubNavigation(direction as integer)
+  if not m.progressBarSelected then return
+
+  m.scrubDirection = direction
+  totalLen = getCurrentContentLength()
+  if totalLen <= 0 then return
+
+  skipAmount = 0
+  if m.progressBarScrubbing
+    m.scrubHoldCount += 1  ' Increment for acceleration
+    skipAmount = calcScrubSkipAmount(totalLen, m.scrubHoldCount)
+  else
+    ' Single-step presses always use the fixed skip amount
+    m.scrubHoldCount = 0
+    skipAmount = m.skipStep
+  end if
+
+  m.scrubTargetPos = m.scrubTargetPos + (skipAmount * m.scrubDirection)
+
+  ' Clamp to valid range
+  if m.scrubTargetPos < 0 then m.scrubTargetPos = 0
+  if m.scrubTargetPos > totalLen then m.scrubTargetPos = totalLen
+
+  updateScrubHighlight()
+end sub
+
+' Start progress bar scrubbing (called on key press)
+sub startProgressBarScrub(direction as integer)
+  if not m.progressBarSelected then return
+  if m.scrubbing then return
+
+  m.progressBarKeyHeld = true
+  m.progressBarReleasePending = false
+  m.progressBarHoldDirection = direction
+
+  if m.progressBarScrubbing
+    m.scrubDirection = direction
+    return
+  end if
+  if m.progressBarHoldArmed
+    m.scrubDirection = direction
+    return
+  end if
+
+  ' Initialize scrub position if first call
+  if m.scrubHoldCount = 0
+    m.scrubStartPos = 0
+    if IsValid(m.lastKnownVideoPos) then m.scrubStartPos = m.lastKnownVideoPos
+    if m.scrubStartPos = 0 and IsValid(m.video) then
+      try: m.scrubStartPos = m.video.position : catch e: end try
+    end if
+    m.scrubTargetPos = m.scrubStartPos
+  end if
+
+  m.scrubDirection = direction
+  m.progressBarHoldArmed = true
+
+  ' Do one navigation step immediately
+  doScrubNavigation(direction)
+
+  if IsValid(m.ffrwTimer)
+    m.ffrwTimer.control = "stop"
+    m.ffrwTimer.unobserveField("fire")
+    m.ffrwTimer.observeField("fire", "onProgressBarScrubTimer")
+    m.ffrwTimer.control = "start"
+  end if
+end sub
+
+' Finalize progress bar scrubbing (called after release debounce or immediate release)
+sub finalizeProgressBarScrub()
+  if not m.progressBarSelected then return
+
+  m.progressBarReleasePending = false
+  m.progressBarKeyHeld = false
+
+  if m.progressBarHoldArmed or m.progressBarScrubbing
+    m.progressBarHoldArmed = false
+    m.progressBarScrubbing = false
+    if IsValid(m.ffrwTimer)
+      m.ffrwTimer.control = "stop"
+      m.ffrwTimer.unobserveField("fire")
+    end if
+  end if
+
+  ' Seek to target if position changed
+  if m.scrubTargetPos <> m.scrubStartPos
+    safeSeek(m.scrubTargetPos)
+    m.scrubTarget = m.scrubTargetPos
+    updateScrubUI()
+    saveWatchHistory()
+    sendViewProgress()
+  end if
+
+  ' Reset for next scrub
+  m.scrubHoldCount = 0
+end sub
+
+' Stop progress bar scrubbing (called on key release)
+' Seeks to target position
+sub stopProgressBarScrub()
+  if not m.progressBarSelected then return
+  m.progressBarKeyHeld = false
+  if m.progressBarScrubbing
+    m.progressBarReleasePending = true
+    if IsValid(m.progressBarReleaseTimer)
+      m.progressBarReleaseTimer.Mark()
+    end if
+    return
+  end if
+
+  finalizeProgressBarScrub()
+end sub
+
+sub onProgressBarScrubTimer()
+  if not m.progressBarHoldArmed then return
+  if m.progressBarReleasePending
+    if IsValid(m.progressBarReleaseTimer)
+      if m.progressBarReleaseTimer.TotalSeconds() >= m.progressBarReleaseDelay
+        finalizeProgressBarScrub()
+      end if
+    else
+      finalizeProgressBarScrub()
+    end if
+    return
+  end if
+  if not m.progressBarKeyHeld
+    m.progressBarHoldArmed = false
+    m.progressBarScrubbing = false
+    if IsValid(m.ffrwTimer)
+      m.ffrwTimer.control = "stop"
+      m.ffrwTimer.unobserveField("fire")
+    end if
+    return
+  end if
+  if not m.progressBarScrubbing then m.progressBarScrubbing = true
+  if not m.progressBarSelected then return
+
+  doScrubNavigation(m.progressBarHoldDirection)
+end sub
+
+' Legacy function for single navigation (backwards compatibility)
+sub progressBarNavigate(direction as integer)
+  m.scrubDirection = direction
+  m.scrubHoldCount = 0
+  progressBarNavigateTick()
+end sub
+
 function captureVideoButtonsFocus() as object
   info = { index: -1, hadFocus: false }
   if not IsValid(m.videoButtons) then return info
@@ -404,7 +897,8 @@ sub restartCurrentVideo()
 end sub
 
 ' Skip from control bar without changing selection/focus
-function skipFromControlBar(dir as integer, focusInfo = invalid as dynamic) as object
+' Set enterScrubMode to true to skip focus restoration (caller will enter scrub mode)
+function skipFromControlBar(dir as integer, focusInfo = invalid as dynamic, enterScrubMode = false as boolean) as object
   result = { hadFocus: false, index: -1 }
   if dir = 0 then return result
   if not IsValid(m.video) then return result
@@ -440,9 +934,11 @@ function skipFromControlBar(dir as integer, focusInfo = invalid as dynamic) as o
   end if
   m.blockVideoButtonsFocusEvents = false
 
-  ' Re-enable the control bar and restore prior focus/index if it had focus before
+  ' Re-enable the control bar
   try: m.videoButtons.focusable = true : catch e: end try
-  if hadFocusBefore = true and idxBefore >= 0 then
+
+  ' Only restore focus if not entering scrub mode
+  if not enterScrubMode and hadFocusBefore = true and idxBefore >= 0 then
     restoreVideoButtonFocus(idxBefore)
   end if
 
@@ -582,12 +1078,43 @@ sub init()
   m.videoProgressBarp1 = m.videoOverlayGroup.findNode("beginningProgress")
   m.videoProgressBarp2 = m.videoOverlayGroup.findNode("endingProgress")
   m.videoProgressBar = m.videoOverlayGroup.findNode("bar")
+  ' Scrub UI elements for hold-to-scrub feature
+  m.scrubHighlight = m.videoOverlayGroup.findNode("scrubHighlight")
+  m.scrubMarker = m.videoOverlayGroup.findNode("scrubMarker")
+  m.scrubTimePreview = m.videoOverlayGroup.findNode("scrubTimePreview")
+  m.progressBarFocus = m.videoOverlayGroup.findNode("progressBarFocus")
   m.videoButtons = m.videoOverlayGroup.findNode("videoButtons")
   m.videoButtons.itemSize = [180, 128]
   m.videoButtons.itemSpacing = "[36, 20]"
   ' Observe FF/RW skip requests from the control bar grid
   try: m.videoButtons.observeField("skipRequest", "onControlBarSkip") : catch e: end try
-  m.skipStep = 10 'seconds to skip on single-tap FF/RW and hold increments
+  m.skipStep = 10 'seconds to skip on single-tap and single-step scrubs
+  ' Scrub state for hold-to-scrub feature
+  m.scrubbing = false           ' Currently in scrub mode?
+  m.scrubDirection = 0          ' -1=rewind, 1=fastforward
+  m.scrubStartPos = 0           ' Position when scrub started
+  m.scrubTargetPos = 0          ' Target position to seek to on release
+  m.scrubHoldCount = 0          ' How many scrub steps held (for acceleration)
+  m.scrubHoldTicks = 0          ' How many timer ticks held (for hold threshold)
+  m.scrubHoldThresholdTicks = 3 ' Hold threshold in timer ticks (3 * 0.3s = 0.9s)
+  m.scrubKeyHeld = false        ' Is scrub key currently held down?
+  m.scrubLastKeyTime = 0        ' Timestamp of last key activity (for auto-stop)
+  m.progressBarSelected = false ' Is progress bar selected for scrubbing?
+  m.progressBarScrubbing = false ' Is a progress bar key currently held?
+  m.progressBarKeyHeld = false ' Is a progress bar key currently held down?
+  m.progressBarHoldArmed = false ' Awaiting hold threshold before repeating
+  m.progressBarHoldDirection = 0 ' Direction for hold scrubbing
+  m.seekStabilizeActive = false
+  m.seekStabilizeDuration = 1.0
+  m.seekExpectedPos = 0
+  m.seekStartPos = 0
+  m.seekStabilizeTimer = CreateObject("roTimeSpan")
+  m.scrubReleasePending = false
+  m.scrubReleaseDelay = 0.12
+  m.scrubReleaseTimer = CreateObject("roTimeSpan")
+  m.progressBarReleasePending = false
+  m.progressBarReleaseDelay = 0.12
+  m.progressBarReleaseTimer = CreateObject("roTimeSpan")
   m.playbackRateValues = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
   m.playbackRateLabels = ["1.0x", "1.25x", "1.5x", "1.75x", "2.0x", "2.5x", "3.0x"]
   m.playbackRateIndex = 0
@@ -849,9 +1376,7 @@ sub onControlBarSkip(evt as object)
     try: dir = evt.getData() : catch e: dir = 0 : end try
     if dir = 0 then return
 
-    ' Centralized handling performs swallow, disables focus, performs seek,
-    ' and restores prior selection/focus when appropriate.
-    skipFromControlBar(dir)
+    handleScrubKey(dir, true, true)
 
     ' Reset skipRequest so identical consecutive presses keep firing the observer
     try: m.videoButtons.skipRequest = 0 : catch e: end try
@@ -1831,7 +2356,9 @@ sub retryAuth()
 end sub
 
 sub gotCIDS()
-  ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+  if isValid(m.appTimer)
+    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+  end if
   m.cidsTask.control = "STOP"
   m.cidsTask.unobserveField("channelids")
   if m.cidsTask.error
@@ -1842,7 +2369,9 @@ sub gotCIDS()
     ?m.channelIDs
     ?"Got channelIDs+raw category selector data"
     ?"Creating threads"
-    ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+    if isValid(m.appTimer)
+      ?"Current app Time:" + str(m.appTimer.TotalMilliSeconds() / 1000) + "s"
+    end if
     blocked = []
     if m.wasLoggedIn and m.preferences.Count() > 0
       if isValid(m.preferences.blocked)
@@ -2277,6 +2806,32 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
     ?"current ui layer:", m.uiLayer
     ?"current ui array:"
     ?m.uiLayers
+    if key = "rewind" or key = "fastforward"
+      if IsValid(m.video) and m.video.visible and IsValid(m.videoContent) and m.videoContent.Live = false
+        dir = 0
+        if key = "fastforward" then
+          dir = 1
+        else
+          dir = -1
+        end if
+        handleScrubKey(dir, press, false)
+        return true
+      end if
+    end if
+    if key = "left" or key = "right"
+      if IsValid(m.video) and m.video.visible and m.progressBarSelected
+        dir = -1
+        if key = "right" then
+          dir = 1
+        end if
+        if press
+          startProgressBarScrub(dir)
+        else
+          stopProgressBarScrub()
+        end if
+        return true
+      end if
+    end if
     if press
       if key = "OK"
         ' Handle OK press on heart icon (disabled when signed out)
@@ -2299,6 +2854,12 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             ' Follow directly without confirmation
             follow(m.currentChannelId)
           end if
+          return true
+        end if
+
+        ' Progress bar selected: OK confirms and seeks to target position
+        if m.video.visible = true and m.progressBarSelected
+          deselectProgressBar(true)  ' Seek to target position
           return true
         end if
 
@@ -2520,6 +3081,13 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "back" 'If the back button is pressed
         ? "[Back] key received press="; press; " video.visible="; (IsValid(m.video) and m.video.visible); " live="; (IsValid(m.videoContent) and IsValid(m.videoContent.Live) and m.videoContent.Live)
+        ' Progress bar selected: back cancels and returns to control bar
+        if m.video.visible and m.progressBarSelected
+          if press = true
+            deselectProgressBar(false)  ' Cancel without seeking
+          end if
+          return true
+        end if
         if m.video.visible
           ? "[Back] tearing down WS and returning to UI"
           ' Ensure WS/chat fully torn down so focus returns reliably
@@ -2592,7 +3160,9 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
             if m.categorySelector.itemFocused = 1 'are favorites in focus?
               m.uiLayer = 0
               m.uiLayers = []
-              m.videoGrid.content = m.categories["FAVORITES"]
+              if IsValid(m.categories["FAVORITES"])
+                m.videoGrid.content = m.categories["FAVORITES"]
+              end if
               restoreGridFocus() ' Restore saved position for favorites
               showCategorySelector()
             else 'go back a UI layer
@@ -2728,66 +3298,7 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
                     end if
         end if
       end if
-      if key = "rewind"
-        if m.video.visible and m.videoContent.Live = false
-          focusInfo = captureVideoButtonsFocus()
-          focusIdx = focusInfo.index
-          keepFocus = isVideoButtonsFocused()
-          ' Always move focus off the control bar so it cannot react to RW
-          m.blockVideoButtonsFocusEvents = true
-          m.videoButtonsIndexBeforeSkip = -1
-          if keepFocus = true then m.videoButtonsIndexBeforeSkip = focusIdx
-          ' Do not swallow nav; focus is disabled during seek and restored after
-          ' Temporarily disable grid navigation to prevent any internal key handling
-          try: m.videoButtons.focusable = false : catch e: end try
-          try: m.videoButtons.setFocus(false) : catch e: end try
-          try: m.video.setFocus(true) : catch e: end try
-          ' Show overlay without changing focus ownership
-          showVideoOverlay(false)
-          if press = true then
-            skipVideo(-m.skipStep)
-            if keepFocus and focusIdx >= 0 then restoreVideoButtonFocus(focusIdx)
-            ' Re-enable itemFocused events after the skip completes
-            m.blockVideoButtonsFocusEvents = false
-            try: m.videoButtons.focusable = true : catch e: end try
-          else
-            ' Key release path: ensure we don't leave events blocked
-            m.blockVideoButtonsFocusEvents = false
-            try: m.videoButtons.focusable = true : catch e: end try
-          end if
-          return true
-        end if
-      end if
-
       if key = "fastforward"
-        if isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live = false
-          focusInfo = captureVideoButtonsFocus()
-          focusIdx = focusInfo.index
-          keepFocus = isVideoButtonsFocused()
-          ' Always move focus off the control bar so it cannot react to FF
-          m.blockVideoButtonsFocusEvents = true
-          m.videoButtonsIndexBeforeSkip = -1
-          if keepFocus = true then m.videoButtonsIndexBeforeSkip = focusIdx
-          ' Do not swallow nav; focus is disabled during seek and restored after
-          ' Temporarily disable grid navigation to prevent any internal key handling
-          try: m.videoButtons.focusable = false : catch e: end try
-          try: m.videoButtons.setFocus(false) : catch e: end try
-          try: m.video.setFocus(true) : catch e: end try
-          ' Show overlay without changing focus ownership
-          showVideoOverlay(false)
-          if press = true then
-            skipVideo(m.skipStep)
-            if keepFocus and focusIdx >= 0 then restoreVideoButtonFocus(focusIdx)
-            ' Re-enable itemFocused events after the skip completes
-            m.blockVideoButtonsFocusEvents = false
-            try: m.videoButtons.focusable = true : catch e: end try
-          else
-            ' Key release path: ensure we don't leave events blocked
-            m.blockVideoButtonsFocusEvents = false
-            try: m.videoButtons.focusable = true : catch e: end try
-          end if
-          return true
-        end if
         if press = true and isValid(m.video) and isValid(m.videoContent) and m.video.visible and m.videoContent.Live
           'TODO: change toggleChat video button's image.
           if m.chatBox.visible
@@ -3063,6 +3574,17 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "up"
         if m.video.visible
+          ' Progress bar selected: up does nothing (already at top)
+          if m.progressBarSelected
+            return true
+          end if
+          ' Control bar focused: up selects progress bar
+          if m.focusedItem = 7 and IsValid(m.videoButtons) and IsValid(m.videoOverlayGroup) and m.videoOverlayGroup.visible
+            if press = true
+              selectProgressBar()
+            end if
+            return true
+          end if
           ' If controls are focused, let grid handle navigation
           if m.focusedItem = 7 and IsValid(m.videoButtons)
             handled = false
@@ -3122,6 +3644,13 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
 
       if key = "down"
         if m.video.visible
+          ' Progress bar selected: down returns to control bar (cancel without seeking)
+          if m.progressBarSelected
+            if press = true
+              deselectProgressBar(false)  ' Don't seek, just cancel
+            end if
+            return true
+          end if
           ' If controls are focused, let grid handle navigation
           if m.focusedItem = 7 and IsValid(m.videoButtons)
             handled = false
@@ -3171,6 +3700,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "left"
+        ' Don't navigate control bar while scrubbing (defensive check)
+        if m.progressBarSelected then return true
         ' Handle button navigation first (priority)
         if m.focusedItem = 8 '[oauth logout button]
           ' Left from logout button - go to channels button if visible
@@ -3345,6 +3876,8 @@ function onKeyEvent(key as string, press as boolean) as boolean 'Literally the b
       end if
 
       if key = "right"
+        ' Don't navigate control bar while scrubbing (defensive check)
+        if m.progressBarSelected then return true
         ' Handle heart icon navigation - right goes back to video grid
         if m.focusedItem = 12 '[heart icon]
           if IsValid(m.videoGrid) and m.videoGrid.visible = true
@@ -3896,6 +4429,11 @@ sub hideVideoOverlay()
   m.videoUITimer.control = "stop"
   m.videoUITimer.unobserveField("fire")
   m.videoOverlayGroup.visible = false
+  ' Clean up any progress bar selection state
+  if m.progressBarSelected
+    deselectProgressBar(false)
+  end if
+  hideScrubUI()
 end sub
 
 sub resetVideoGrid()
@@ -4495,8 +5033,37 @@ sub liveDurationChanged() 'ported from salt app, this (mostly) fixes the problem
 end sub
 
 sub videoPositionChanged()
-  try: m.lastKnownVideoPos = m.video.position : catch e: end try
-  m.scrubTarget = m.lastKnownVideoPos
+  actualPos = 0
+  try: actualPos = m.video.position : catch e: actualPos = 0 : end try
+  displayPos = actualPos
+  if m.seekStabilizeActive
+    if IsValid(m.seekStabilizeTimer)
+      if m.seekStabilizeTimer.TotalSeconds() < m.seekStabilizeDuration
+        if m.seekExpectedPos >= m.seekStartPos
+          if displayPos < m.seekExpectedPos
+            displayPos = m.seekExpectedPos
+          end if
+          if actualPos >= m.seekExpectedPos
+            m.seekStabilizeActive = false
+          end if
+        else
+          if displayPos > m.seekExpectedPos
+            displayPos = m.seekExpectedPos
+          end if
+          if actualPos <= m.seekExpectedPos
+            m.seekStabilizeActive = false
+          end if
+        end if
+      else
+        m.seekStabilizeActive = false
+      end if
+    else
+      m.seekStabilizeActive = false
+    end if
+  end if
+
+  m.lastKnownVideoPos = displayPos
+  m.scrubTarget = displayPos
   if m.global.constants.enableStatistics 'if position/duration changes, report if vStats are turned on.
     if m.vStatsTimer.TotalSeconds() > 5
       ' Avoid flooding the watchman task; only run if it is not already running
@@ -4541,13 +5108,18 @@ sub videoPositionChanged()
     if isValid(m.urlResolver) and isValid(m.urlResolver.output) and isValid(m.urlResolver.output.length)
       totalLen = m.urlResolver.output.length
     end if
-    m.videoProgressBarp1.text = getvideoLength(m.video.position)
-    if m.video.position > 0 and totalLen > 0
-      m.videoProgressBar.width = 1290 * (m.video.position / totalLen)
+    m.videoProgressBarp1.text = getvideoLength(displayPos)
+    if displayPos > 0 and totalLen > 0
+      m.videoProgressBar.width = 1290 * (displayPos / totalLen)
     end if
     if totalLen > 0
-      m.videoProgressBarp2.text = getvideoLength(totalLen + 1 - m.video.position)
+      m.videoProgressBarp2.text = getvideoLength(totalLen + 1 - displayPos)
     end if
+  end if
+  if m.progressBarSelected and not m.scrubbing and not m.progressBarScrubbing
+    m.scrubStartPos = m.lastKnownVideoPos
+    m.scrubTargetPos = m.lastKnownVideoPos
+    updateScrubHighlight()
   end if
   ' Save watch history and send to API every 30 seconds
   if isValid(m.currentVideoClaimID)
@@ -4867,6 +5439,25 @@ sub deleteSpinner()
 end sub
 
 sub returnToUIPage()
+  ' Clean up any scrub/progress bar state
+  m.ffrwTimer.control = "stop"
+  m.ffrwTimer.unobserveField("fire")
+  m.scrubbing = false
+  m.scrubKeyHeld = false
+  m.scrubLastKeyTime = 0
+  m.scrubDirection = 0
+  m.scrubHoldCount = 0
+  m.scrubHoldTicks = 0
+  m.scrubReleasePending = false
+  m.progressBarSelected = false
+  m.progressBarScrubbing = false
+  m.progressBarKeyHeld = false
+  m.progressBarHoldArmed = false
+  m.progressBarHoldDirection = 0
+  m.progressBarReleasePending = false
+  m.blockVideoButtonsFocusEvents = false
+  hideScrubUI()
+
   ' Save final watch history and send view progress before stopping video
   ' Always save, even if position is 0 (handles very quick exits)
   if IsValid(m.video) and IsValid(m.video.position)

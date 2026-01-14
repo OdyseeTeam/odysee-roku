@@ -288,7 +288,16 @@
         vertAlign = "center"
         translation="[300,40]" />
         <Rectangle id="outline" color="0x000000FF" width="1293" height="12" translation="[300,65]"/>
+        <!-- Progress bar focus highlight (shown when progress bar is selected) -->
+        <Rectangle id="progressBarFocus" color="0xF0506000" width="1297" height="16" translation="[298,63]" visible="false"/>
         <Rectangle id="bar" color="0xFFFFFF88" width="0" height="10" translation="[302,67]" />
+        <!-- Scrub highlight zone (between current pos and target) -->
+        <Rectangle id="scrubHighlight" color="0xF0506088" width="0" height="10" translation="[302,67]" visible="false"/>
+        <!-- Scrub target marker (vertical line at target position) -->
+        <Rectangle id="scrubMarker" color="0xFFFFFFFF" width="3" height="20" translation="[302,62]" visible="false"/>
+        <!-- Scrub target time preview -->
+        <Label id="scrubTimePreview" font="font:MediumBoldSystemFont" color="0xFFFFFFFF"
+               text="00:00" translation="[960,30]" horizAlign="center" visible="false"/>
         <VideoButtonsGrid 
         id="videoButtons"
         itemComponentName="horizontalButton"

@@ -11,16 +11,15 @@
     end function
 
     function onKeyEvent(key as string, press as boolean) as boolean
-      if press = true
-        if key = "fastforward" or key = "rewind"
-          dir = 0
-          if key = "fastforward" then dir = 1 else dir = -1
-          scn = invalid
-          try: scn = m.top.getScene() : catch e: scn = invalid : end try
-          ' Emit a skip request to be observed by the scene
-          m.top.skipRequest = dir
-          return true
+      if key = "fastforward" or key = "rewind"
+        dir = 0
+        if key = "fastforward" then dir = 1 else dir = -1
+        scn = invalid
+        try: scn = m.top.getScene() : catch e: scn = invalid : end try
+        if isValid(scn)
+          try: scn.callFunc("handleScrubKey", dir, press, true) : catch e: end try
         end if
+        return true
       end if
       return false
     end function

@@ -44,14 +44,40 @@ function FetchRecentlyActive()
         print "[getFollowedChannels] FetchRecentlyActive: Found "; resp.result.items.Count(); " items"
         for each cl in resp.result.items
             if IsValid(cl.signing_channel)
+                channelId = ""
+                if IsValid(cl.signing_channel.claim_id)
+                    channelId = cl.signing_channel.claim_id
+                end if
+
+                channelName = ""
+                if IsValid(cl.signing_channel.name)
+                    channelName = cl.signing_channel.name
+                end if
+
+                channelTitle = channelName
+                if IsValid(cl.signing_channel.value) and IsValid(cl.signing_channel.value.title)
+                    channelTitle = cl.signing_channel.value.title
+                end if
+
+                lastVideoTitle = ""
+                lastVideoDate = 0
+                if IsValid(cl.value)
+                    if IsValid(cl.value.title)
+                        lastVideoTitle = cl.value.title
+                    end if
+                    if IsValid(cl.value.release_time)
+                        lastVideoDate = cl.value.release_time
+                    end if
+                end if
+
                 channelInfo = {
-                    "channelId": cl.signing_channel.claim_id,
-                    "channelName": cl.signing_channel.name,
-                    "channelTitle": cl.signing_channel.value.title,
+                    "channelId": channelId,
+                    "channelName": channelName,
+                    "channelTitle": channelTitle,
                     "channelThumb": "",
                     "videoCount": "",
-                    "lastVideoTitle": cl.value.title,
-                    "lastVideoDate": cl.value.release_time
+                    "lastVideoTitle": lastVideoTitle,
+                    "lastVideoDate": lastVideoDate
                 }
 
                 ' Get channel thumbnail
